@@ -136,10 +136,12 @@ impl DistrohomeWindow {
         let title_label = gtk::Label::new(Some(&container_info.name));
         title_label.set_xalign(0.0);
         title_label.add_css_class("title");
+        title_label.add_css_class("heading");
 
         let subtitle_label = gtk::Label::new(Some(&container_info.image));
         subtitle_label.set_xalign(0.0);
         subtitle_label.add_css_class("subtitle");
+        subtitle_label.add_css_class("dim-label");
 
         // Create a vertical box to hold the title and subtitle
         let text_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
