@@ -124,8 +124,38 @@ impl DistrohomeWindow {
 
         self.imp().sidebar_content.set_child(Some(&scrolled_window));
     }
-    pub fn build_container_header(&self) {
+    pub fn build_container_header(&self, container_info: &distrobox::ContainerInfo) -> gtk::Box {
+        // Create a horizontal box to hold the header information
+        let header_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        header_box.set_margin_top(12);
+        header_box.set_margin_bottom(12);
+        header_box.set_margin_start(12);
+        header_box.set_margin_end(12);
 
+        // Create labels for the title and subtitle
+        let title_label = gtk::Label::new(Some(&container_info.name));
+        title_label.set_xalign(0.0);
+        title_label.add_css_class("title");
+
+        let subtitle_label = gtk::Label::new(Some(&container_info.image));
+        subtitle_label.set_xalign(0.0);
+        subtitle_label.add_css_class("subtitle");
+
+        // Create a vertical box to hold the title and subtitle
+        let text_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        text_box.append(&title_label);
+        text_box.append(&subtitle_label);
+
+        // Create a label for the status
+        let status_label = gtk::Label::new(Some("Running")); // Placeholder for actual status
+        status_label.set_xalign(1.0);
+        status_label.add_css_class("status");
+
+        // Add the text box and status label to the header box
+        header_box.append(&text_box);
+        header_box.append(&status_label);
+
+        header_box
     }
     pub fn build_main_content(&self) {
         let widget = gtk::Box::new(gtk::Orientation::Vertical, 0);
