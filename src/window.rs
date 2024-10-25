@@ -25,7 +25,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 use crate::sidebar_row::SidebarRow;
-use crate::distrobox::{self, Distrobox};
+use crate::distrobox::{self, ContainerInfo, Distrobox};
 
 mod imp {
     use std::{cell::RefCell, collections::{HashMap, HashSet}};
@@ -294,6 +294,12 @@ impl DistrohomeWindow {
         danger_group.add(&delete_row);
 
         // Add all groups to main box
+        main_box.append(&self.build_container_header(&ContainerInfo {
+            id: "ubuntu1".into(),
+            name: "ubuntu1".into(),
+            status: "Running".into(),
+            image: "dockerhub/ubuntu".into(),
+        }));
         main_box.append(&status_group);
         main_box.append(&actions_group);
         main_box.append(&config_group);
