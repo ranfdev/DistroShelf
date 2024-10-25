@@ -147,11 +147,23 @@ impl DistrohomeWindow {
         text_box.append(&subtitle_label);
 
         // Create a label for the status
-        let status_label = gtk::Label::new(Some("Running")); // Placeholder for actual status
+        let status_label = gtk::Label::new(Some(&container_info.status));
         status_label.set_xalign(1.0);
         status_label.add_css_class("status");
+        status_label.add_css_class("dim-label");
 
         // Add the text box and status label to the header box
+        let icon = gtk::Image::from_icon_name(Some("distrobox-symbolic"));
+        icon.add_css_class("header-icon");
+
+        let header_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        header_box.set_margin_top(12);
+        header_box.set_margin_bottom(12);
+        header_box.set_margin_start(12);
+        header_box.set_margin_end(12);
+        header_box.add_css_class("header-box");
+
+        header_box.append(&icon);
         header_box.append(&text_box);
         header_box.append(&status_label);
 
