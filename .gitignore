@@ -1,1 +1,6 @@
-.flatpak/
+.flatpak/*
+.vscode/*
+target/*
+_build/
+.aider*
+.env
