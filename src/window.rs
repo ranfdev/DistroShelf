@@ -124,6 +124,9 @@ impl DistrohomeWindow {
 
         self.imp().sidebar_content.set_child(Some(&scrolled_window));
     }
+    pub fn build_container_header(&self) {
+
+    }
     pub fn build_main_content(&self) {
         let widget = gtk::Box::new(gtk::Orientation::Vertical, 0);
         
