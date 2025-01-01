@@ -4,6 +4,8 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{self, glib, pango};
 
+use crate::{container::Container, distro_icon, known_distros::KnownDistro};
+
 mod imp {
     use super::*;
 
@@ -17,7 +19,7 @@ mod imp {
         pub text_box: gtk::Box,
 
         // Data
-        pub id: std::cell::RefCell<String>,
+        pub name: std::cell::RefCell<String>,
     }
 
     // The central trait for subclassing a GObject
@@ -38,7 +40,7 @@ mod imp {
                 title_label: gtk::Label::new(None),
                 subtitle_label: gtk::Label::new(None),
                 text_box: gtk::Box::new(gtk::Orientation::Vertical, 4),
-                id: std::cell::RefCell::new(String::new()),
+                name: std::cell::RefCell::new(String::new()),
             }
         }
     }
@@ -53,13 +55,13 @@ mod imp {
             // Configure the main box (self)
             obj.set_orientation(gtk::Orientation::Horizontal);
             obj.set_spacing(12);
-            obj.set_margin_start(12);
-            obj.set_margin_end(12);
+            obj.set_margin_start(6);
+            obj.set_margin_end(6);
             obj.set_margin_top(8);
             obj.set_margin_bottom(8);
 
             // Configure the icon
-            self.icon.set_icon_size(gtk::IconSize::Large);
+            distro_icon::setup(&self.icon);
 
             // Configure the labels
             self.title_label.set_halign(gtk::Align::Start);
@@ -70,8 +72,8 @@ mod imp {
             self.subtitle_label.set_opacity(0.7);
 
             // Configure ellipsization for both labels
-            self.title_label.set_ellipsize(pango::EllipsizeMode::End);
-            self.subtitle_label.set_ellipsize(pango::EllipsizeMode::End);
+            self.title_label.set_ellipsize(pango::EllipsizeMode::Middle);
+            self.subtitle_label.set_ellipsize(pango::EllipsizeMode::Middle);
 
             // Build the widget hierarchy
             self.text_box.append(&self.title_label);
@@ -97,22 +99,24 @@ glib::wrapper! {
 }
 
 impl SidebarRow {
-    pub fn new(id: &str, icon_name: &str, title: &str, subtitle: &str) -> Self {
+    pub fn new(container: &Container) -> Self {
         let obj: Self = glib::Object::builder().build();
-        obj.set_data(id, icon_name, title, subtitle);
+        obj.set_data(container);
         obj
     }
 
-    pub fn set_data(&self, id: &str, icon_name: &str, title: &str, subtitle: &str) {
+    fn set_data(&self, container: &Container) {
         let imp = self.imp();
-        imp.id.replace(id.to_string());
-        imp.icon.set_icon_name(Some(icon_name));
-        imp.title_label.set_text(title);
-        imp.subtitle_label.set_text(subtitle);
+        imp.name.replace(container.name());
+
+        distro_icon::set_image(&imp.icon, &container.image());
+
+        imp.title_label.set_text(&container.name());
+        imp.subtitle_label.set_text(&container.image());
     }
 
-    pub fn id(&self) -> String {
-        self.imp().id.borrow().clone()
+    pub fn name(&self) -> String {
+        self.imp().name.borrow().clone()
     }
 
     pub fn title(&self) -> String {

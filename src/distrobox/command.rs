@@ -1,0 +1,109 @@
+use std::{
+    ffi::{OsStr, OsString},
+    process::Stdio,
+};
+
+#[derive(Debug, Clone)]
+pub enum FdMode {
+    Inherit,
+    Pipe,
+}
+
+impl Into<Stdio> for FdMode {
+    fn into(self) -> Stdio {
+        match self {
+            FdMode::Inherit => Stdio::inherit(),
+            FdMode::Pipe => Stdio::piped(),
+        }
+    }
+}
+
+// The standard library's `std::process::Command` isn't clonable and has some private parameters,
+// like the stdout mode (inherited/piped).
+// This `Command` struct fully owns its parameters, so that it can be cloned,
+// passed around and transformed as a proper "Value type".
+#[derive(Clone, Debug)]
+pub struct Command {
+    pub program: OsString,
+    pub args: Vec<OsString>,
+    pub stdout: FdMode,
+    pub stderr: FdMode,
+    pub stdin: FdMode,
+}
+
+impl Command {
+    pub fn new(program: impl AsRef<OsStr>) -> Self {
+        Self {
+            program: program.as_ref().to_owned(),
+            args: Vec::new(),
+            stdin: FdMode::Inherit,
+            stdout: FdMode::Inherit,
+            stderr: FdMode::Inherit,
+        }
+    }
+
+    pub fn new_with_args(program: impl AsRef<OsStr>, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Self {
+        Self {
+            program: program.as_ref().to_owned(),
+            args: args.into_iter().map(|arg| arg.as_ref().to_owned()).collect(),
+            stdin: FdMode::Inherit,
+            stdout: FdMode::Inherit,
+            stderr: FdMode::Inherit,
+        }
+    }
+
+    pub fn extend(&mut self, separator: impl AsRef<OsStr>, other: &Command) -> &mut Command {
+        self.arg(separator);
+        self.arg(other.program.clone());
+        self.args(other.args.clone());
+        self
+    }
+
+    // backward compatibility with some `std::process::Command` methods
+
+    // appends multiple args
+    pub fn args<I, S>(&mut self, args: I) -> &mut Command
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        self.args
+            .extend(args.into_iter().map(|x| x.as_ref().to_owned()));
+        self
+    }
+
+    // appends one arg
+    pub fn arg<S>(&mut self, arg: S) -> &mut Command
+    where
+        S: AsRef<OsStr>,
+    {
+        self.args.push(arg.as_ref().to_owned());
+        self
+    }
+}
+
+impl Into<async_process::Command> for Command {
+    fn into(self) -> async_process::Command {
+        let mut cmd = async_process::Command::new(self.program);
+        cmd.args(self.args)
+            .stdin::<Stdio>(self.stdin.into())
+            .stdout::<Stdio>(self.stdout.into())
+            .stderr::<Stdio>(self.stderr.into());
+        cmd
+    }
+}
+
+pub fn wrap_flatpak_cmd(mut prev: Command) -> Command {
+    let mut args = vec!["--host".into(), prev.program];
+    args.extend(prev.args);
+
+    prev.args = args;
+    prev.program = "flatpak-spawn".into();
+    prev
+}
+
+pub fn wrap_capture_cmd(cmd: &mut Command) -> &mut Command {
+    cmd.stdout = FdMode::Pipe;
+    cmd.stderr = FdMode::Pipe;
+    cmd
+}

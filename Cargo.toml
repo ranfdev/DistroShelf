@@ -7,8 +7,16 @@ edition = "2021"
 gettext-rs = { version = "0.7", features = ["gettext-system"] }
 gtk = { version = "0.9", package = "gtk4", features = ["gnome_47"] }
 thiserror = "1.0.64"
+async-channel = "2.3.1"
+async-process = "2.3.0"
+futures = "0.3.31"
+anyhow = "1.0.92"
+regex = "1.11.1"
 
 [dependencies.adw]
 package = "libadwaita"
 version = "0.7"
 features = ["v1_6"]
+
+[dev-dependencies]
+smol = "2.0.2"

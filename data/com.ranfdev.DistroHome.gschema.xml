@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="distrohome">
 	<schema id="com.ranfdev.DistroHome" path="/com/ranfdev/DistroHome/">
-		
+		<key name="selected-terminal" type="s">
+            <default>'gnome-terminal'</default>
+            <summary>Selected terminal emulator</summary>
+            <description>The terminal emulator selected by the user.</description>
+        </key>
 	</schema>
 </schemalist>

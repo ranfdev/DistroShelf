@@ -46,9 +46,6 @@
                     "type" : "git",
                     "url" : "file:///home/lollo/Importante"
                 }
-            ],
-            "config-opts" : [
-                "--libdir=lib"
             ]
         }
     ]

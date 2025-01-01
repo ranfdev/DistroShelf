@@ -1,4 +1,4 @@
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct DesktopEntry {
     pub name: String,
     pub exec: String,

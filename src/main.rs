@@ -20,9 +20,20 @@
 
 mod application;
 mod config;
+mod container;
+mod create_distrobox_dialog;
+mod distro_combo_row_item;
+mod distro_icon;
 mod distrobox;
-mod window;
+mod distrobox_service;
+mod distrobox_task;
+mod exportable_apps_dialog;
+mod known_distros;
+mod resource;
 mod sidebar_row;
+mod supported_terminals;
+mod tasks_button;
+mod window;
 
 use self::application::DistrohomeApplication;
 use self::window::DistrohomeWindow;

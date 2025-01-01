@@ -17,18 +17,36 @@
       <object class="AdwNavigationSplitView" id="split_view">
         <property name="sidebar">
           <object class="AdwNavigationPage">
-            <property name="title" translatable="yes">Sidebar</property>
+            <property name="title" translatable="yes">Distrobox</property>
             <property name="child">
-              <object class="AdwToolbarView">
+                <object class="AdwToolbarView">
                 <child type="top">
-                  <object class="AdwHeaderBar"/>
+                  <object class="AdwHeaderBar">
+                    <child type="start">
+                      <object class="GtkButton" id="create_distrobox_btn">
+                      <property name="icon-name">list-add-symbolic</property>
+                      </object>
+                    </child>
+                    <child type="end">
+                      <object class="GtkMenuButton">
+                        <property name="primary">True</property>
+                        <property name="menu-model">primary_menu</property>
+                        <property name="icon_name">open-menu-symbolic</property>
+                      </object>
+                    </child>
+                  </object>
                 </child>
                 <property name="content">
-                  <object class="AdwBin" id="sidebar_content">
-                    <!-- ... -->
+                  <object class="AdwBin" id="sidebar_slot">
+                  <!-- ... -->
                   </object>
                 </property>
-              </object>
+                <child type="bottom">
+                  <object class="AdwBin" id="sidebar_bottom_slot">
+                  <!-- ... -->
+                  </object>
+                </child>
+                </object>
             </property>
           </object>
         </property>
@@ -41,7 +59,7 @@
                   <object class="AdwHeaderBar"/>
                 </child>
                 <property name="content">
-                  <object class="AdwBin" id="main_content">
+                  <object class="AdwBin" id="main_slot">
                     <!-- ... -->
                   </object>
                 </property>
@@ -53,18 +71,24 @@
     </property>
   </template>
   <menu id="primary_menu">
+      <section>
+      <item>
+        <attribute name="label" translatable="yes">_Refresh</attribute>
+        <attribute name="action">win.refresh</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Upgrade All</attribute>
+        <attribute name="action">win.upgrade-all</attribute>
+      </item>
+      </section>
     <section>
       <item>
-        <attribute name="label" translatable="yes">_Preferences</attribute>
-        <attribute name="action">app.preferences</attribute>
+      <attribute name="label" translatable="yes">_Settings</attribute>
+      <attribute name="action">win.preferences</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
-        <attribute name="action">win.show-help-overlay</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_About DistroHome</attribute>
-        <attribute name="action">app.about</attribute>
+      <attribute name="label" translatable="yes">_About</attribute>
+      <attribute name="action">app.about</attribute>
       </item>
     </section>
   </menu>

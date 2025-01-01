@@ -27,6 +27,10 @@ use crate::config::VERSION;
 use crate::DistrohomeWindow;
 
 mod imp {
+    use gtk::gdk;
+
+    use crate::{distrobox_service::DistroboxService, known_distros};
+
     use super::*;
 
     #[derive(Debug, Default)]
@@ -55,9 +59,48 @@ mod imp {
         // to do that, we'll just present any existing window.
         fn activate(&self) {
             let application = self.obj();
+
+            let provider = gtk::CssProvider::new();
+            let known_distro_colors = &known_distros::generate_css();
+            provider.load_from_string(&format!("
+                {known_distro_colors}
+                .distro-color-fg {{
+                    color: var(--distro-color);
+                }}
+                .distro-color-bg {{
+                    background-color: var(--distro-color);
+                }}
+                
+                .distro-header {{
+                    background-color: color-mix(in xyz, var(--distro-color), var(--window-bg-color) 80%);
+                    border-radius: 12px;
+                    padding: 12px;
+                }}
+
+                .output {{
+                    border-radius: 12px;
+                    border: 1px solid @borders;
+                }}
+                .tasks-popover row {{
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                }}
+                .combo popover label {{
+                    min-width: 300px;
+                }}
+            "));
+            // We give the CssProvided to the default screen so the CSS rules we added
+            // can be applied to our window.
+            gtk::style_context_add_provider_for_display(
+                &gdk::Display::default().expect("Could not connect to a display."),
+                &provider,
+                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+
             // Get the current window or create one if necessary
             let window = application.active_window().unwrap_or_else(|| {
-                let window = DistrohomeWindow::new(&*application);
+                let window = DistrohomeWindow::new(&*application, DistroboxService::new_null());
+
                 window.upcast()
             });
 
