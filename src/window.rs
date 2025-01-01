@@ -141,6 +141,7 @@ impl DistrohomeWindow {
                 }
                 _ => {}
             });
+        this.build_welcome_dialog();
 
         this
     }
@@ -668,6 +669,115 @@ impl DistrohomeWindow {
         dialog
     }
 
+    fn build_welcome_dialog(&self) {
+        let dialog = adw::Dialog::new();
+        dialog.set_content_width(360);
+        dialog.set_title("Setup");
+
+        let toolbar_view = adw::ToolbarView::new();
+        toolbar_view.add_top_bar(
+            &adw::HeaderBar::builder()
+            .build(),
+        );
+
+        let clamp = adw::Clamp::new();
+        clamp.set_margin_top(12);
+        clamp.set_margin_bottom(12);
+        clamp.set_margin_start(12);
+        clamp.set_margin_end(12);
+
+        let carousel = adw::Carousel::new();
+        carousel.set_vexpand(true);
+
+        let indicator = adw::CarouselIndicatorDots::new();
+        indicator.set_carousel(Some(&carousel));
+        toolbar_view.add_bottom_bar(&indicator);
+
+        let terminal_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
+
+
+        // Page 1: Welcome message
+        if self.distrobox_service().version().error().is_some() {
+            let welcome_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
+            let welcome_label = gtk::Label::new(Some("Welcome to DistroHome!"));
+            welcome_label.set_wrap(true);
+            welcome_label.add_css_class("title-1");
+            welcome_label.set_xalign(0.5);
+            welcome_page.append(&welcome_label);
+
+            let welcome_description = gtk::Label::new(Some("This application helps you manage your distroboxes easily."));
+            welcome_description.set_wrap(true);
+            welcome_description.set_xalign(0.5);
+            welcome_page.append(&welcome_description);
+
+            let link_button = gtk::LinkButton::with_label("https://distrobox.it/", "Learn more about Distrobox");
+            link_button.set_halign(gtk::Align::Center);
+            welcome_page.append(&link_button);
+
+            let install_button = gtk::Button::with_label("Install Distrobox");
+            install_button.set_halign(gtk::Align::Center);
+            install_button.add_css_class("suggested-action");
+            install_button.connect_clicked(clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[weak]
+            carousel,
+            #[weak]
+            terminal_page,
+            move |_| {
+            // this.distrobox_service().install_distrobox();
+            if this.distrobox_service().version().error().is_none() {
+                carousel.scroll_to(&terminal_page, true);
+            }
+            }
+            ));
+            welcome_page.append(&install_button);
+
+            carousel.append(&welcome_page);
+        }
+
+        // Page 2: Choose preferred terminal emulator
+        let explanation_label = gtk::Label::new(Some("Please select your preferred terminal emulator. This will be used to open terminal sessions within your containers."));
+        explanation_label.set_wrap(true);
+        explanation_label.set_xalign(0.0);
+        terminal_page.append(&explanation_label);
+
+        let terminal_combo = self.build_terminal_combo_row();
+        let boxed_list = gtk::ListBox::new();
+        boxed_list.add_css_class("boxed-list");
+        boxed_list.set_margin_top(12);
+        boxed_list.set_margin_bottom(12);
+        boxed_list.set_selection_mode(gtk::SelectionMode::None);
+
+        let row = gtk::ListBoxRow::new();
+        row.set_child(Some(&terminal_combo));
+        boxed_list.append(&row);
+
+        terminal_page.append(&boxed_list);
+
+        let done_button = gtk::Button::with_label("Done");
+        done_button.set_halign(gtk::Align::Center);
+        done_button.add_css_class("suggested-action");
+        done_button.connect_clicked(clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[weak]
+            dialog,
+            move |_| {
+            dialog.close();
+            }
+        ));
+        terminal_page.append(&done_button);
+
+        carousel.append(&terminal_page);
+
+        clamp.set_child(Some(&carousel));
+        toolbar_view.set_content(Some(&clamp));
+        dialog.set_child(Some(&toolbar_view));
+
+        dialog.present(Some(self));
+    }
+
     fn build_preferences_dialog(&self) {
         let dialog = adw::PreferencesDialog::new();
         dialog.set_title("Preferences");
@@ -677,6 +787,15 @@ impl DistrohomeWindow {
         let preferences_group = adw::PreferencesGroup::new();
         preferences_group.set_title("General");
 
+        let terminal_combo = self.build_terminal_combo_row();
+        preferences_group.add(&terminal_combo);
+
+        page.add(&preferences_group);
+        dialog.add(&page);
+        dialog.present(Some(self));
+    }
+
+    fn build_terminal_combo_row(&self) -> adw::ComboRow {
         let terminal_combo = adw::ComboRow::new();
         terminal_combo.set_title("Preferred Terminal");
         terminal_combo.set_use_subtitle(true);
@@ -714,11 +833,7 @@ impl DistrohomeWindow {
             }
         ));
 
-        preferences_group.add(&terminal_combo);
-
-        page.add(&preferences_group);
-        dialog.add(&page);
-        dialog.present(Some(self));
+        terminal_combo
     }
 
     fn build_exportable_apps_dialog(&self, box_name: &str) {
