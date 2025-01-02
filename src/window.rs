@@ -777,6 +777,8 @@ impl DistrohomeWindow {
             self,
             #[weak]
             dialog,
+            #[weak]
+            error_label,
             move |_| {
                 if this.distrobox_service().selected_terminal().is_some() {
                     let this_clone = this.clone();
