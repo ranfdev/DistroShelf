@@ -458,7 +458,7 @@ impl DistroboxService {
         cmd = wrap_flatpak_cmd(cmd);
 
         let mut async_cmd: async_process::Command = cmd.into();
-        let child = async_cmd.spawn()?;
+        let mut child = async_cmd.spawn()?;
         
         if !child.status().await?.success() {
             return Err(anyhow::anyhow!("Terminal validation failed"));
