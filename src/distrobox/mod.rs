@@ -337,8 +337,12 @@ impl Distrobox {
         let cmd_runner = {
             let mut builder = NullCommandRunnerBuilder::new();
             for res in responses {
-                let (args, out) = res.to_cmd_pair();
-                builder.cmd(&args, out);
+                for (cmd, out) in res.to_commands() {
+                    let args: Vec<_> = std::iter::once(cmd.program.to_string_lossy().as_ref())
+                        .chain(cmd.args.iter().map(|arg| arg.to_string_lossy().as_ref()))
+                        .collect();
+                    builder.cmd(&args, out);
+                }
             }
             builder.build()
         };
