@@ -742,18 +742,8 @@ impl DistrohomeWindow {
         explanation_label.set_xalign(0.0);
         terminal_page.append(&explanation_label);
 
-        let terminal_combo = self.build_terminal_combo_row();
-        let boxed_list = gtk::ListBox::new();
-        boxed_list.add_css_class("boxed-list");
-        boxed_list.set_margin_top(12);
-        boxed_list.set_margin_bottom(12);
-        boxed_list.set_selection_mode(gtk::SelectionMode::None);
-
-        let row = gtk::ListBoxRow::new();
-        row.set_child(Some(&terminal_combo));
-        boxed_list.append(&row);
-
-        terminal_page.append(&boxed_list);
+        let terminal_group = self.build_terminal_combo_row();
+        terminal_page.append(&terminal_group);
 
         let done_button = gtk::Button::with_label("Done");
         done_button.set_halign(gtk::Align::Center);
@@ -787,15 +777,18 @@ impl DistrohomeWindow {
         let preferences_group = adw::PreferencesGroup::new();
         preferences_group.set_title("General");
 
-        let terminal_combo = self.build_terminal_combo_row();
-        preferences_group.add(&terminal_combo);
+        let terminal_group = self.build_terminal_combo_row();
+        page.add(&terminal_group);
 
         page.add(&preferences_group);
         dialog.add(&page);
         dialog.present(Some(self));
     }
 
-    fn build_terminal_combo_row(&self) -> adw::ComboRow {
+    fn build_terminal_combo_row(&self) -> adw::PreferencesGroup {
+        let group = adw::PreferencesGroup::new();
+        group.set_title("Terminal Settings");
+
         let terminal_combo = adw::ComboRow::new();
         terminal_combo.set_title("Preferred Terminal");
         terminal_combo.set_use_subtitle(true);
@@ -833,7 +826,8 @@ impl DistrohomeWindow {
             }
         ));
 
-        terminal_combo
+        group.add(&terminal_combo);
+        group
     }
 
     fn build_exportable_apps_dialog(&self, box_name: &str) {
