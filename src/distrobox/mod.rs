@@ -222,7 +222,7 @@ pub enum DistroboxCommandRunnerResponse {
     Version,
     List(Vec<ContainerInfo>),
     Compatibility(Vec<String>),
-    ExportedApps(Vec<String>),
+    ExportedApps(Vec<(String, String)>),
 }
 
 impl DistroboxCommandRunnerResponse {
@@ -255,9 +255,16 @@ impl DistroboxCommandRunnerResponse {
             },
             Self::ExportedApps(apps) => {
                 let mut output = String::new();
-                for app in apps {
-                    output.push_str(app);
-                    output.push_str("\n");
+                for (name, icon) in apps {
+                    output.push_str(&format!(
+                        "[Desktop Entry]\n\
+                        Type=Application\n\
+                        Name={}\n\
+                        Exec=/usr/bin/{}\n\
+                        Icon={}\n\
+                        Categories=Utility;\n\n",
+                        name, name, icon
+                    ));
                 }
                 (vec!["ls", "/home/me/.local/share/applications"], output)
             },
@@ -665,7 +672,18 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 &[
                     "ls", "/home/me/.local/share/applications"
                 ],
-                "ubuntu-vim.desktop\nubuntu-fish.desktop"
+                "[Desktop Entry]\n\
+                Type=Application\n\
+                Name=Vim\n\
+                Exec=/usr/bin/vim\n\
+                Icon=/path/to/vim.png\n\
+                Categories=Utility;\n\n\
+                [Desktop Entry]\n\
+                Type=Application\n\
+                Name=Fish\n\
+                Exec=/usr/bin/fish\n\
+                Icon=/path/to/fish.png\n\
+                Categories=Utility;\n\n"
             )
             .cmd(
                 &[
