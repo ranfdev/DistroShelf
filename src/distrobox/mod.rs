@@ -682,21 +682,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 &[
                     "ls", "/home/me/.local/share/applications"
                 ],
-                "ubuntu-vim.desktop\nubuntu-fish.desktop\n\
-                # START FILE ubuntu-vim.desktop\n\
-                [Desktop Entry]\n\
-                Type=Application\n\
-                Name=Vim\n\
-                Exec=/usr/bin/vim\n\
-                Icon=/path/to/vim.png\n\
-                Categories=Utility;\n\n\
-                # START FILE ubuntu-fish.desktop\n\
-                [Desktop Entry]\n\
-                Type=Application\n\
-                Name=Fish\n\
-                Exec=/usr/bin/fish\n\
-                Icon=/path/to/fish.png\n\
-                Categories=Utility;\n\n"
+                "ubuntu-vim.desktop\nubuntu-fish.desktop\n"
             )
             .cmd(
                 &[
