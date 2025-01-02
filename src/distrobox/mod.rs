@@ -256,7 +256,7 @@ impl DistroboxCommandRunnerResponse {
             Self::ExportedApps(apps) => {
                 // First list the files
                 let file_list = apps.iter()
-                    .map(|(filename, _, _)| filename.to_string())
+                    .map(|(filename, _, _)| format!("ubuntu-{}", filename))
                     .collect::<Vec<_>>()
                     .join("\n");
                 
@@ -264,13 +264,13 @@ impl DistroboxCommandRunnerResponse {
                 let mut contents = String::new();
                 for (filename, name, icon) in apps {
                     contents.push_str(&format!(
-                        "# START FILE {}\n\
+                        "# START FILE /usr/share/applications/{}\n\
                         [Desktop Entry]\n\
                         Type=Application\n\
                         Name={}\n\
-                        Exec=/usr/bin/{}\n\
+                        Exec=/path/to/{}\n\
                         Icon={}\n\
-                        Categories=Utility;\n\n",
+                        Categories=Utility;Network;\n\n",
                         filename, name, name, icon
                     ));
                 }
