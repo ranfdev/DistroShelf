@@ -772,7 +772,23 @@ impl DistrohomeWindow {
             dialog,
             move |_| {
                 if this.distrobox_service().selected_terminal().is_some() {
-                    dialog.close();
+                    let this_clone = this.clone();
+                    let dialog_clone = dialog.clone();
+                    glib::MainContext::ref_thread_default().spawn_local(async move {
+                        match this_clone.distrobox_service().validate_terminal().await {
+                            Ok(_) => {
+                                dialog_clone.close();
+                            }
+                            Err(err) => {
+                                let error_dialog = adw::AlertDialog::builder()
+                                    .heading("Terminal Validation Failed")
+                                    .body(format!("Could not validate terminal: {}", err))
+                                    .build();
+                                error_dialog.add_response("ok", "OK");
+                                error_dialog.present(Some(&this_clone));
+                            }
+                        }
+                    });
                 }
             }
         ));

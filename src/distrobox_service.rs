@@ -445,6 +445,28 @@ impl DistroboxService {
             .expect("Failed to save setting");
     }
 
+    pub async fn validate_terminal(&self) -> Result<(), anyhow::Error> {
+        let Some(terminal) = self.selected_terminal() else {
+            return Err(anyhow::anyhow!("No terminal selected"));
+        };
+
+        // Try running a simple command to validate the terminal
+        let mut cmd = Command::new(terminal.program);
+        cmd.arg(terminal.separator_arg)
+            .arg("echo")
+            .arg("DistroHome terminal validation");
+        cmd = wrap_flatpak_cmd(cmd);
+
+        let mut async_cmd: async_process::Command = cmd.into();
+        let child = async_cmd.spawn()?;
+        
+        if !child.status().await?.success() {
+            return Err(anyhow::anyhow!("Terminal validation failed"));
+        }
+
+        Ok(())
+    }
+
     pub fn selected_terminal(&self) -> Option<SupportedTerminal> {
         let program: String = self.imp().settings.string("selected-terminal").into();
         SUPPORTED_TERMINALS
