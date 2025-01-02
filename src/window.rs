@@ -756,7 +756,7 @@ impl DistrohomeWindow {
         
         // Watch for terminal changes
         let done_button_clone = done_button.clone();
-        self.distrobox_service().connect_selected_terminal_notify(clone!(
+        self.distrobox_service().connect_containers_changed(clone!(
             #[weak]
             done_button_clone,
             move |service| {
