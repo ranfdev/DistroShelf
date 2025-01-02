@@ -453,7 +453,7 @@ impl DistroboxService {
         };
 
         // Try running a simple command to validate the terminal
-        let mut cmd = Command::new(terminal.program);
+        let mut cmd = Command::new(terminal.program.clone());
         cmd.arg(terminal.separator_arg)
             .arg("echo")
             .arg("DistroHome terminal validation");
@@ -465,7 +465,7 @@ impl DistroboxService {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 return Err(anyhow::anyhow!(
                     "Terminal program '{}' not found. Please install it or choose a different terminal.",
-                    terminal.program
+                    &terminal.program
                 ))
             }
             Err(e) => return Err(e.into()),
@@ -474,7 +474,7 @@ impl DistroboxService {
         if !child.status().await?.success() {
             return Err(anyhow::anyhow!(
                 "Terminal validation failed. '{}' did not run successfully.",
-                terminal.program
+                &terminal.program
             ));
         }
 
