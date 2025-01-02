@@ -460,10 +460,22 @@ impl DistroboxService {
         cmd = wrap_flatpak_cmd(cmd);
 
         let mut async_cmd: async_process::Command = cmd.into();
-        let mut child = async_cmd.spawn()?;
+        let mut child = match async_cmd.spawn() {
+            Ok(child) => child,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Err(anyhow::anyhow!(
+                    "Terminal program '{}' not found. Please install it or choose a different terminal.",
+                    terminal.program
+                ))
+            }
+            Err(e) => return Err(e.into()),
+        };
         
         if !child.status().await?.success() {
-            return Err(anyhow::anyhow!("Terminal validation failed"));
+            return Err(anyhow::anyhow!(
+                "Terminal validation failed. '{}' did not run successfully.",
+                terminal.program
+            ));
         }
 
         Ok(())
