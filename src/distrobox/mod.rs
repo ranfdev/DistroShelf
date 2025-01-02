@@ -468,8 +468,10 @@ impl Distrobox {
     }
 
     // assemble
-    pub fn assemble(&mut self) -> Result<(), Error> {
-        !unimplemented!()
+    pub fn assemble(&self, file_path: &str) -> Result<Box<dyn Child + Send>, Error> {
+        let mut cmd = dbcmd();
+        cmd.arg("assemble").arg("--file").arg(file_path);
+        self.cmd_spawn(cmd)
     }
     // create
     pub async fn create(&self, args: CreateArgs) -> Result<Box<dyn Child + Send>, Error> {
@@ -710,6 +712,18 @@ Categories=Utility;Network;
         assert_eq!(output_tracker.items()[0], expected);
         Ok(())
     }
+    #[test]
+    fn assemble() -> Result<(), Error> {
+        let db = Distrobox::new_null(NullCommandRunner::default(), false);
+        let output_tracker = db.output_tracker();
+        db.assemble("/path/to/assemble.yml")?;
+        assert_eq!(
+            output_tracker.items()[0],
+            "\"distrobox\" [\"assemble\", \"--file\", \"/path/to/assemble.yml\"]"
+        );
+        Ok(())
+    }
+
     #[test]
     fn remove() -> Result<(), Error> {
         let mut db = Distrobox::new_null(NullCommandRunner::default(), false);
