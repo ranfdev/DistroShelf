@@ -361,6 +361,17 @@ impl DistroboxService {
             },
         ));
     }
+
+    pub fn do_assemble(&self, file_path: &str) -> DistroboxTask {
+        let this = self.clone();
+        let file_path = file_path.to_string();
+        let task = DistroboxTask::new("assemble", "assemble", move |task| async move {
+            let child = this.distrobox().assemble(&file_path)?;
+            this.handle_child_output_for_task(child, &task).await
+        });
+        self.push_operation(task.clone());
+        task
+    }
     fn reload_till_up(&self, name: String, times: usize) {
         let this = self.clone();
         glib::MainContext::ref_thread_default().spawn_local(async move {
