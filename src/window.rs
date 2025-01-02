@@ -789,7 +789,7 @@ impl DistrohomeWindow {
                                 dialog_clone.close();
                             }
                             Err(err) => {
-                                error_label.set_text(&format!("Could not validate terminal: {}", err));
+                                error_label.set_text(&format!("{}", err));
                                 error_label.set_visible(true);
                             }
                         }
