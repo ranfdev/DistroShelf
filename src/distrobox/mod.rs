@@ -222,6 +222,7 @@ pub enum DistroboxCommandRunnerResponse {
     Version,
     List(Vec<ContainerInfo>),
     Compatibility(Vec<String>),
+    ExportedApps(Vec<String>),
 }
 
 impl DistroboxCommandRunnerResponse {
@@ -251,6 +252,14 @@ impl DistroboxCommandRunnerResponse {
                     output.push_str("\n");
                 }
                 (vec!["distrobox", "create", "--compatibility"], output)
+            },
+            Self::ExportedApps(apps) => {
+                let mut output = String::new();
+                for app in apps {
+                    output.push_str(app);
+                    output.push_str("\n");
+                }
+                (vec!["ls", "/home/me/.local/share/applications"], output)
             },
         };
         (pair.0.into_iter().map(String::from).collect(), pair.1)
@@ -656,7 +665,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 &[
                     "ls", "/home/me/.local/share/applications"
                 ],
-                "ubuntu-vim.desktop"
+                "ubuntu-vim.desktop\nubuntu-fish.desktop"
             )
             .cmd(
                 &[
