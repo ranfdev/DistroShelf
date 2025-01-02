@@ -682,7 +682,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 &[
                     "ls", "/home/me/.local/share/applications"
                 ],
-                "ubuntu-vim.desktop\nubuntu-fish.desktop\n"
+                "ubuntu-vim.desktop\n"
             )
             .cmd(
                 &[
@@ -740,7 +740,7 @@ Categories=Utility;Network;
         };
 
         block_on(db.create(args))?;
-        let expected = "\"distrobox\" [\"--yes\", \"--image\", \"docker.io/library/ubuntu:latest\", \"--init\", \"--nvidia\", \"--home\", \"/home/me\", \"--volume\", \"/mnt/sdb1\", \"--volume\", \"/mnt/sdb4\"]";
+        let expected = "\"distrobox\" [\"create\", \"--yes\", \"--image\", \"docker.io/library/ubuntu:latest\", \"--init\", \"--nvidia\", \"--home\", \"/home/me\", \"--volume\", \"/mnt/sdb1\", \"--volume\", \"/mnt/sdb4\"]";
         assert_eq!(output_tracker.items()[0], expected);
         Ok(())
     }
