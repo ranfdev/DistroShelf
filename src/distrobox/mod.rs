@@ -254,13 +254,20 @@ impl DistroboxCommandRunnerResponse {
                 (vec!["distrobox", "create", "--compatibility"], output)
             },
             Self::ExportedApps(apps) => {
-                // First list the files
+                // First command: Get XDG_DATA_HOME
+                let xdg_data_home_cmd = (vec!["sh", "-c", "echo $XDG_DATA_HOME"], "".to_string());
+                
+                // Second command: Get HOME if XDG_DATA_HOME is empty
+                let home_cmd = (vec!["sh", "-c", "echo $HOME"], "/home/me".to_string());
+                
+                // Third command: List desktop files
                 let file_list = apps.iter()
                     .map(|(filename, _, _)| format!("ubuntu-{}", filename))
                     .collect::<Vec<_>>()
                     .join("\n");
+                let ls_cmd = (vec!["ls", "/home/me/.local/share/applications"], file_list);
                 
-                // Then generate the concatenated contents
+                // Fourth command: Get desktop file contents
                 let mut contents = String::new();
                 for (filename, name, icon) in apps {
                     contents.push_str(&format!(
@@ -274,9 +281,21 @@ impl DistroboxCommandRunnerResponse {
                         filename, name, name, icon
                     ));
                 }
+                let desktop_files_cmd = (
+                    vec![
+                        "distrobox",
+                        "enter",
+                        "ubuntu",
+                        "--",
+                        "sh",
+                        "-c",
+                        "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done",
+                    ],
+                    contents,
+                );
                 
-                // Return both the file list and concatenated contents
-                (vec!["ls", "/home/me/.local/share/applications"], format!("{}\n{}", file_list, contents))
+                // Return the first command - the others will be handled by the command runner
+                xdg_data_home_cmd
             },
         };
         (pair.0.into_iter().map(String::from).collect(), pair.1)
