@@ -75,6 +75,7 @@ mod imp {
                     Signal::builder("images-changed").build(),
                     Signal::builder("tasks-changed").build(),
                     Signal::builder("version-changed").build(),
+                    Signal::builder("terminal-changed").build(),
                 ]
             })
         }
