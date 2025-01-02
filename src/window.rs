@@ -745,6 +745,13 @@ impl DistrohomeWindow {
         let terminal_group = self.build_terminal_combo_row();
         terminal_page.append(&terminal_group);
 
+        let error_label = gtk::Label::new(None);
+        error_label.set_wrap(true);
+        error_label.set_xalign(0.0);
+        error_label.add_css_class("error");
+        error_label.set_visible(false);
+        terminal_page.append(&error_label);
+
         let done_button = gtk::Button::with_label("Done");
         done_button.set_halign(gtk::Align::Center);
         done_button.add_css_class("suggested-action");
@@ -780,12 +787,8 @@ impl DistrohomeWindow {
                                 dialog_clone.close();
                             }
                             Err(err) => {
-                                let error_dialog = adw::AlertDialog::builder()
-                                    .heading("Terminal Validation Failed")
-                                    .body(format!("Could not validate terminal: {}", err))
-                                    .build();
-                                error_dialog.add_response("ok", "OK");
-                                error_dialog.present(Some(&this_clone));
+                                error_label.set_text(&format!("Could not validate terminal: {}", err));
+                                error_label.set_visible(true);
                             }
                         }
                     });
