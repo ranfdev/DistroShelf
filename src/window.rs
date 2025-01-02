@@ -97,6 +97,14 @@ mod imp {
             klass.install_action("win.preferences", None, |win, _action, _target| {
                 win.build_preferences_dialog();
             });
+
+            klass.install_action("win.create", None, |win, _action, _target| {
+                win.build_create_distrobox_dialog();
+            });
+
+            klass.install_action("win.assemble", None, |win, _action, _target| {
+                win.build_assemble_dialog();
+            });
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
@@ -176,10 +184,6 @@ impl DistrohomeWindow {
     fn build_sidebar(&self) {
         let imp = self.imp();
 
-        let this = self.clone();
-        imp.create_distrobox_btn.connect_clicked(move |_| {
-            this.build_create_distrobox_dialog();
-        });
 
         imp.sidebar_list_box.add_css_class("navigation-sidebar");
         imp.sidebar_list_box
@@ -415,12 +419,6 @@ impl DistrohomeWindow {
             ));
         }
 
-        let assemble_row = Self::create_button_row(
-            "Assemble Container",
-            "document-import-symbolic",
-            "Create container from assemble file",
-        );
-        actions_group.add(&assemble_row);
 
         let clone_row = Self::create_button_row(
             "Clone Container", 
