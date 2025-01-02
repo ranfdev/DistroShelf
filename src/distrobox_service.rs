@@ -443,6 +443,7 @@ impl DistroboxService {
             .settings
             .set_string("selected-terminal", program)
             .expect("Failed to save setting");
+        self.emit_by_name::<()>("terminal-changed", &[]);
     }
 
     pub async fn validate_terminal(&self) -> Result<(), anyhow::Error> {
@@ -478,6 +479,14 @@ impl DistroboxService {
     pub fn version(&self) -> Resource<String, anyhow::Error> {
         self.imp().version.borrow().clone()
     }
+    pub fn connect_terminal_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
+        let this = self.clone();
+        self.connect_local("terminal-changed", true, move |values| {
+            f(&this);
+            None
+        })
+    }
+
     pub fn connect_version_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
         let this = self.clone();
         self.connect_local("version-changed", true, move |values| {
