@@ -138,11 +138,18 @@ impl DistroboxService {
         })
         .collect::<Vec<_>>();
 
+        let dummy_exported_apps = vec![
+            ("vim.desktop".into(), "Vim".into(), "vim".into()),
+            ("fish.desktop".into(), "Fish Shell".into(), "fish".into()),
+            ("htop.desktop".into(), "Htop".into(), "htop".into()),
+        ];
+
         let distrobox = Distrobox::new_null_with_responses(
             &[
                 DistroboxCommandRunnerResponse::Version,
                 DistroboxCommandRunnerResponse::List(dummy_containers.clone()),
                 DistroboxCommandRunnerResponse::Compatibility(dummy_containers.into_iter().map(|x| x.image).collect()),
+                DistroboxCommandRunnerResponse::ExportedApps(dummy_exported_apps),
             ],
             false,
         );
