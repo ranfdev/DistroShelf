@@ -222,7 +222,7 @@ pub enum DistroboxCommandRunnerResponse {
     Version,
     List(Vec<ContainerInfo>),
     Compatibility(Vec<String>),
-    ExportedApps(Vec<(String, String)>),
+    ExportedApps(Vec<(String, String, String)>), // (filename, name, icon)
 }
 
 impl DistroboxCommandRunnerResponse {
@@ -254,19 +254,29 @@ impl DistroboxCommandRunnerResponse {
                 (vec!["distrobox", "create", "--compatibility"], output)
             },
             Self::ExportedApps(apps) => {
-                let mut output = String::new();
-                for (name, icon) in apps {
-                    output.push_str(&format!(
-                        "[Desktop Entry]\n\
+                // First list the files
+                let file_list = apps.iter()
+                    .map(|(filename, _, _)| filename.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                
+                // Then generate the concatenated contents
+                let mut contents = String::new();
+                for (filename, name, icon) in apps {
+                    contents.push_str(&format!(
+                        "# START FILE {}\n\
+                        [Desktop Entry]\n\
                         Type=Application\n\
                         Name={}\n\
                         Exec=/usr/bin/{}\n\
                         Icon={}\n\
                         Categories=Utility;\n\n",
-                        name, name, icon
+                        filename, name, name, icon
                     ));
                 }
-                (vec!["ls", "/home/me/.local/share/applications"], output)
+                
+                // Return both the file list and concatenated contents
+                (vec!["ls", "/home/me/.local/share/applications"], format!("{}\n{}", file_list, contents))
             },
         };
         (pair.0.into_iter().map(String::from).collect(), pair.1)
@@ -672,12 +682,15 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 &[
                     "ls", "/home/me/.local/share/applications"
                 ],
-                "[Desktop Entry]\n\
+                "ubuntu-vim.desktop\nubuntu-fish.desktop\n\
+                # START FILE ubuntu-vim.desktop\n\
+                [Desktop Entry]\n\
                 Type=Application\n\
                 Name=Vim\n\
                 Exec=/usr/bin/vim\n\
                 Icon=/path/to/vim.png\n\
                 Categories=Utility;\n\n\
+                # START FILE ubuntu-fish.desktop\n\
                 [Desktop Entry]\n\
                 Type=Application\n\
                 Name=Fish\n\
