@@ -748,13 +748,32 @@ impl DistrohomeWindow {
         let done_button = gtk::Button::with_label("Done");
         done_button.set_halign(gtk::Align::Center);
         done_button.add_css_class("suggested-action");
+        done_button.add_css_class("pill");
+        
+        // Enable/disable button based on terminal selection
+        let terminal_valid = self.distrobox_service().selected_terminal().is_some();
+        done_button.set_sensitive(terminal_valid);
+        
+        // Watch for terminal changes
+        let done_button_clone = done_button.clone();
+        self.distrobox_service().connect_selected_terminal_notify(clone!(
+            #[weak]
+            done_button_clone,
+            move |service| {
+                let valid = service.selected_terminal().is_some();
+                done_button_clone.set_sensitive(valid);
+            }
+        ));
+
         done_button.connect_clicked(clone!(
             #[weak(rename_to = this)]
             self,
             #[weak]
             dialog,
             move |_| {
-            dialog.close();
+                if this.distrobox_service().selected_terminal().is_some() {
+                    dialog.close();
+                }
             }
         ));
         terminal_page.append(&done_button);
