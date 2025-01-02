@@ -226,79 +226,93 @@ pub enum DistroboxCommandRunnerResponse {
 }
 
 impl DistroboxCommandRunnerResponse {
-    fn to_cmd_pair(&self) -> (Vec<String>, String) {
-        let pair = match self {
-            Self::Version => {
-                (vec!["distrobox", "version"], "distrobox: 1.7.2.1".to_string())
-            },
-            Self::List(containers) => {
-                let mut output = String::new();
-                output.push_str("ID           | NAME                 | STATUS             | IMAGE  \n");
-                for container in containers {
-                    output.push_str(&container.id);
-                    output.push_str(" | "); // we reuse the same ID, whatever
-                    output.push_str(&container.name);
-                    output.push_str(" | ");
-                    output.push_str("Created | ");
-                    output.push_str(&container.image);
-                    output.push_str("\n");
-                }
-                (vec!["distrobox", "ls", "--no-color"], output)
-            },
-            Self::Compatibility(images) => {
-                let mut output = String::new();
-                for image in images {
-                    output.push_str(image);
-                    output.push_str("\n");
-                }
-                (vec!["distrobox", "create", "--compatibility"], output)
-            },
-            Self::ExportedApps(apps) => {
-                // First command: Get XDG_DATA_HOME
-                let xdg_data_home_cmd = (vec!["sh", "-c", "echo $XDG_DATA_HOME"], "".to_string());
-                
-                // Second command: Get HOME if XDG_DATA_HOME is empty
-                let home_cmd = (vec!["sh", "-c", "echo $HOME"], "/home/me".to_string());
-                
-                // Third command: List desktop files
-                let file_list = apps.iter()
-                    .map(|(filename, _, _)| format!("ubuntu-{}", filename))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                let ls_cmd = (vec!["ls", "/home/me/.local/share/applications"], file_list);
-                
-                // Fourth command: Get desktop file contents
-                let mut contents = String::new();
-                for (filename, name, icon) in apps {
-                    contents.push_str(&format!(
-                        "# START FILE /usr/share/applications/{}\n\
-                        [Desktop Entry]\n\
-                        Type=Application\n\
-                        Name={}\n\
-                        Exec=/path/to/{}\n\
-                        Icon={}\n\
-                        Categories=Utility;Network;\n\n",
-                        filename, name, name, icon
-                    ));
-                }
-                let desktop_files_cmd = (
-                    vec![
-                        "distrobox",
-                        "enter",
-                        "ubuntu",
-                        "--",
-                        "sh",
-                        "-c",
-                        "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done",
-                    ],
-                    contents,
-                );
-                
-                // Return the first command - the others will be handled by the command runner
-                xdg_data_home_cmd
-            },
-        };
-        (pair.0.into_iter().map(String::from).collect(), pair.1)
+    fn build_version_response() -> (Command, String) {
+        let cmd = Command::new("distrobox").arg("version");
+        (cmd, "distrobox: 1.7.2.1".to_string())
+    }
+
+    fn build_list_response(containers: &[ContainerInfo]) -> (Command, String) {
+        let mut output = String::new();
+        output.push_str("ID           | NAME                 | STATUS             | IMAGE  \n");
+        for container in containers {
+            output.push_str(&container.id);
+            output.push_str(" | ");
+            output.push_str(&container.name);
+            output.push_str(" | ");
+            output.push_str("Created | ");
+            output.push_str(&container.image);
+            output.push_str("\n");
+        }
+        let cmd = Command::new("distrobox")
+            .arg("ls")
+            .arg("--no-color");
+        (cmd, output)
+    }
+
+    fn build_compatibility_response(images: &[String]) -> (Command, String) {
+        let output = images.join("\n");
+        let cmd = Command::new("distrobox")
+            .arg("create")
+            .arg("--compatibility");
+        (cmd, output)
+    }
+
+    fn build_exported_apps_commands(apps: &[(String, String, String)]) -> Vec<(Command, String)> {
+        let mut commands = Vec::new();
+
+        // Get XDG_DATA_HOME
+        commands.push((
+            Command::new("sh").args(["-c", "echo $XDG_DATA_HOME"]),
+            String::new()
+        ));
+
+        // Get HOME if XDG_DATA_HOME is empty
+        commands.push((
+            Command::new("sh").args(["-c", "echo $HOME"]),
+            "/home/me".to_string()
+        ));
+
+        // List desktop files
+        let file_list = apps.iter()
+            .map(|(filename, _, _)| format!("ubuntu-{}", filename))
+            .collect::<Vec<_>>()
+            .join("\n");
+        commands.push((
+            Command::new("ls").arg("/home/me/.local/share/applications"),
+            file_list
+        ));
+
+        // Get desktop file contents
+        let mut contents = String::new();
+        for (filename, name, icon) in apps {
+            contents.push_str(&format!(
+                "# START FILE /usr/share/applications/{}\n\
+                [Desktop Entry]\n\
+                Type=Application\n\
+                Name={}\n\
+                Exec=/path/to/{}\n\
+                Icon={}\n\
+                Categories=Utility;Network;\n\n",
+                filename, name, name, icon
+            ));
+        }
+        commands.push((
+            Command::new("distrobox")
+                .args(["enter", "ubuntu", "--"])
+                .args(["sh", "-c", "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done"]),
+            contents
+        ));
+
+        commands
+    }
+
+    pub fn to_commands(&self) -> Vec<(Command, String)> {
+        match self {
+            Self::Version => vec![Self::build_version_response()],
+            Self::List(containers) => vec![Self::build_list_response(containers)],
+            Self::Compatibility(images) => vec![Self::build_compatibility_response(images)],
+            Self::ExportedApps(apps) => Self::build_exported_apps_commands(apps),
+        }
     }
 }
 
