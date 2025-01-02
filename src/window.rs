@@ -415,12 +415,27 @@ impl DistrohomeWindow {
             ));
         }
 
+        let assemble_row = Self::create_button_row(
+            "Assemble Container",
+            "document-import-symbolic",
+            "Create container from assemble file",
+        );
+        actions_group.add(&assemble_row);
+
         let clone_row = Self::create_button_row(
-            "Clone Container",
+            "Clone Container", 
             "edit-copy-symbolic",
             "Create a copy of this container",
         );
         actions_group.add(&clone_row);
+
+        assemble_row.connect_activated(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                this.build_assemble_dialog();
+            }
+        ));
 
         // Danger Zone Group
         let danger_group = adw::PreferencesGroup::new();
@@ -530,6 +545,38 @@ impl DistrohomeWindow {
             dialog.close();
         });
         dialog.present(Some(self));
+    }
+
+    fn build_assemble_dialog(&self) {
+        let file_dialog = gtk::FileDialog::builder()
+            .title("Select Assemble File")
+            .build();
+
+        file_dialog.open(
+            Some(self),
+            None::<&gio::Cancellable>,
+            clone!(
+                #[weak(rename_to = this)]
+                self,
+                move |res| {
+                    if let Ok(file) = res {
+                        if let Some(path) = file.path() {
+                            let task = this.distrobox_service().do_assemble(&path.to_string_lossy());
+                            let dialog = this.build_task_dialog(&task);
+                            task.connect_status_notify(clone!(
+                                #[weak]
+                                dialog,
+                                move |task| {
+                                    if task.status() == "successful" {
+                                        dialog.close();
+                                    }
+                                }
+                            ));
+                        }
+                    }
+                }
+            ),
+        );
     }
 
     fn build_install_package_dialog(&self) {

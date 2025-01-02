@@ -473,6 +473,12 @@ impl Distrobox {
         cmd.arg("assemble").arg("--file").arg(file_path);
         self.cmd_spawn(cmd)
     }
+
+    pub fn assemble_from_url(&self, url: &str) -> Result<Box<dyn Child + Send>, Error> {
+        let mut cmd = dbcmd();
+        cmd.arg("assemble").arg("--file").arg(url);
+        self.cmd_spawn(cmd)
+    }
     // create
     pub async fn create(&self, args: CreateArgs) -> Result<Box<dyn Child + Send>, Error> {
         let mut cmd = dbcmd();
