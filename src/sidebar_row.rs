@@ -134,6 +134,9 @@ impl SidebarRow {
 
         imp.title_label.set_text(&container.name());
         imp.subtitle_label.set_text(&container.image());
+        
+        // Update status indicator
+        self.set_status(container.status_str());
     }
 
     pub fn name(&self) -> String {
