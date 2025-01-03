@@ -59,7 +59,7 @@ mod imp {
         #[template_child]
         pub sidebar_slot: TemplateChild<adw::Bin>,
         #[template_child]
-        pub create_distrobox_btn: TemplateChild<gtk::Button>,
+        pub create_distrobox_btn: TemplateChild<gtk::MenuButton>,
         #[template_child]
         pub sidebar_bottom_slot: TemplateChild<adw::Bin>,
         pub sidebar_list_box: gtk::ListBox,
@@ -426,14 +426,6 @@ impl DistrohomeWindow {
             "Create a copy of this container",
         );
         actions_group.add(&clone_row);
-
-        assemble_row.connect_activated(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                this.build_assemble_dialog();
-            }
-        ));
 
         // Danger Zone Group
         let danger_group = adw::PreferencesGroup::new();
