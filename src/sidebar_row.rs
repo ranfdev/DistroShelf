@@ -17,9 +17,12 @@ mod imp {
         pub title_label: gtk::Label,
         pub subtitle_label: gtk::Label,
         pub text_box: gtk::Box,
+        pub status_overlay: gtk::Overlay,
+        pub status_dot: gtk::Box,
 
         // Data
         pub name: std::cell::RefCell<String>,
+        pub status: std::cell::RefCell<String>,
     }
 
     // The central trait for subclassing a GObject
@@ -40,7 +43,10 @@ mod imp {
                 title_label: gtk::Label::new(None),
                 subtitle_label: gtk::Label::new(None),
                 text_box: gtk::Box::new(gtk::Orientation::Vertical, 4),
+                status_overlay: gtk::Overlay::new(),
+                status_dot: gtk::Box::new(gtk::Orientation::Horizontal, 0),
                 name: std::cell::RefCell::new(String::new()),
+                status: std::cell::RefCell::new("inactive".to_string()),
             }
         }
     }
@@ -75,12 +81,27 @@ mod imp {
             self.title_label.set_ellipsize(pango::EllipsizeMode::Middle);
             self.subtitle_label.set_ellipsize(pango::EllipsizeMode::Middle);
 
+            // Configure status dot
+            self.status_dot.set_size_request(8, 8);
+            self.status_dot.add_css_class("status-dot");
+            self.status_dot.add_css_class("inactive");
+            self.status_dot.set_valign(gtk::Align::Start);
+            self.status_dot.set_halign(gtk::Align::End);
+            self.status_dot.set_margin_end(2);
+            self.status_dot.set_margin_top(2);
+
             // Build the widget hierarchy
             self.text_box.append(&self.title_label);
             self.text_box.append(&self.subtitle_label);
 
-            obj.append(&self.icon);
-            obj.append(&self.text_box);
+            let content_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+            content_box.append(&self.icon);
+            content_box.append(&self.text_box);
+
+            self.status_overlay.set_child(Some(&content_box));
+            self.status_overlay.add_overlay(&self.status_dot);
+
+            obj.append(&self.status_overlay);
         }
     }
 
@@ -125,5 +146,22 @@ impl SidebarRow {
 
     pub fn subtitle(&self) -> String {
         self.imp().subtitle_label.text().to_string()
+    }
+
+    pub fn set_status(&self, status: &str) {
+        let imp = self.imp();
+        imp.status.replace(status.to_string());
+        
+        // Remove all status classes
+        imp.status_dot.remove_css_class("active");
+        imp.status_dot.remove_css_class("inactive");
+        imp.status_dot.remove_css_class("error");
+        
+        // Add the appropriate class
+        imp.status_dot.add_css_class(status);
+    }
+
+    pub fn status(&self) -> String {
+        self.imp().status.borrow().clone()
     }
 }

@@ -88,6 +88,20 @@ mod imp {
                 .combo popover label {{
                     min-width: 300px;
                 }}
+                
+                .status-dot {{
+                    border-radius: 9999px;
+                    background-color: @error_color;
+                }}
+                .status-dot.inactive {{
+                    background-color: alpha(@borders, 0.5);
+                }}
+                .status-dot.active {{
+                    background-color: @success_color;
+                }}
+                .status-dot.error {{
+                    background-color: @error_color;
+                }}
             "));
             // We give the CssProvided to the default screen so the CSS rules we added
             // can be applied to our window.
