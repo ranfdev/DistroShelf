@@ -227,7 +227,8 @@ pub enum DistroboxCommandRunnerResponse {
 
 impl DistroboxCommandRunnerResponse {
     fn build_version_response() -> (Command, String) {
-        let cmd = Command::new("distrobox").arg("version");
+        let mut cmd = Command::new("distrobox");
+        cmd.arg("version");
         (cmd, "distrobox: 1.7.2.1".to_string())
     }
 
@@ -243,17 +244,15 @@ impl DistroboxCommandRunnerResponse {
             output.push_str(&container.image);
             output.push_str("\n");
         }
-        let cmd = Command::new("distrobox")
-            .arg("ls")
-            .arg("--no-color");
+        let mut cmd = Command::new("distrobox");
+        cmd.arg("ls").arg("--no-color");
         (cmd, output)
     }
 
     fn build_compatibility_response(images: &[String]) -> (Command, String) {
         let output = images.join("\n");
-        let cmd = Command::new("distrobox")
-            .arg("create")
-            .arg("--compatibility");
+        let mut cmd = Command::new("distrobox");
+        cmd.arg("create").arg("--compatibility");
         (cmd, output)
     }
 
@@ -262,24 +261,25 @@ impl DistroboxCommandRunnerResponse {
 
         // Get XDG_DATA_HOME
         commands.push((
-            Command::new("sh").args(["-c", "echo $XDG_DATA_HOME"]),
-            String::new()
+            Command::new_with_args("sh", ["-c", "echo $XDG_DATA_HOME"]),
+            String::new(),
         ));
 
         // Get HOME if XDG_DATA_HOME is empty
         commands.push((
-            Command::new("sh").args(["-c", "echo $HOME"]),
-            "/home/me".to_string()
+            Command::new_with_args("sh", ["-c", "echo $HOME"]),
+            "/home/me".to_string(),
         ));
 
         // List desktop files
-        let file_list = apps.iter()
+        let file_list = apps
+            .iter()
             .map(|(filename, _, _)| format!("ubuntu-{}", filename))
             .collect::<Vec<_>>()
             .join("\n");
         commands.push((
-            Command::new("ls").arg("/home/me/.local/share/applications"),
-            file_list
+            Command::new_with_args("ls", ["/home/me/.local/share/applications"]),
+            file_list,
         ));
 
         // Get desktop file contents
@@ -297,9 +297,8 @@ impl DistroboxCommandRunnerResponse {
             ));
         }
         commands.push((
-            Command::new("distrobox")
-                .args(["enter", "ubuntu", "--"])
-                .args(["sh", "-c", "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done"]),
+            Command::new_with_args("distrobox", 
+                ["enter", "Ubuntu", "--", "sh", "-c", "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done"]),
             contents
         ));
 
@@ -332,16 +331,15 @@ impl Distrobox {
         }
     }
 
-    pub fn new_null_with_responses(responses: &[DistroboxCommandRunnerResponse], is_in_flatpak: bool) -> Self {
-        
+    pub fn new_null_with_responses(
+        responses: &[DistroboxCommandRunnerResponse],
+        is_in_flatpak: bool,
+    ) -> Self {
         let cmd_runner = {
             let mut builder = NullCommandRunnerBuilder::new();
             for res in responses {
                 for (cmd, out) in res.to_commands() {
-                    let args: Vec<_> = std::iter::once(cmd.program.to_string_lossy().as_ref())
-                        .chain(cmd.args.iter().map(|arg| arg.to_string_lossy().as_ref()))
-                        .collect();
-                    builder.cmd(&args, out);
+                    builder.cmd_full(cmd, &out);
                 }
             }
             builder.build()
@@ -520,7 +518,11 @@ impl Distrobox {
 
         self.cmd_output_string(cmd).await
     }
-    pub async fn unexport_app(&self, container: &str, app: &ExportableApp) -> Result<String, Error> {
+    pub async fn unexport_app(
+        &self,
+        container: &str,
+        app: &ExportableApp,
+    ) -> Result<String, Error> {
         let mut cmd = dbcmd();
         cmd.args(["enter", "--name", container]).extend(
             "--",
