@@ -97,6 +97,10 @@ mod imp {
             klass.install_action("win.preferences", None, |win, _action, _target| {
                 win.build_preferences_dialog();
             });
+
+            klass.install_action("win.create-distrobox", None, |win, _action, _target| {
+                win.build_create_distrobox_dialog();
+            });
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {

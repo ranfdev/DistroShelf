@@ -25,6 +25,7 @@
                     <child type="start">
                       <object class="GtkButton" id="create_distrobox_btn">
                         <property name="icon-name">list-add-symbolic</property>
+                        <property name="action-name">win.create-distrobox</property>
                       </object>
                     </child>
                     <child type="end">
