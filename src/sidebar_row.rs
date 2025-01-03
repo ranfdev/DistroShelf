@@ -135,8 +135,12 @@ impl SidebarRow {
         imp.title_label.set_text(&container.name());
         imp.subtitle_label.set_text(&container.image());
         
-        // Update status indicator
-        self.set_status(container.status_str());
+        // Update status indicator based on container status
+        let status = match container.status() {
+            Status::Up(_) => "up",
+            _ => "exited",
+        };
+        self.set_status(status);
     }
 
     pub fn name(&self) -> String {
@@ -156,9 +160,8 @@ impl SidebarRow {
         imp.status.replace(status.to_string());
         
         // Remove all status classes
-        imp.status_dot.remove_css_class("active");
-        imp.status_dot.remove_css_class("inactive");
-        imp.status_dot.remove_css_class("error");
+        imp.status_dot.remove_css_class("up");
+        imp.status_dot.remove_css_class("exited");
         
         // Add the appropriate class
         imp.status_dot.add_css_class(status);

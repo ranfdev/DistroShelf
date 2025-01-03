@@ -93,14 +93,11 @@ mod imp {
                     border-radius: 9999px;
                     background-color: @error_color;
                 }}
-                .status-dot.inactive {{
-                    background-color: alpha(@borders, 0.5);
-                }}
-                .status-dot.active {{
+                .status-dot.up {{
                     background-color: @success_color;
                 }}
-                .status-dot.error {{
-                    background-color: @error_color;
+                .status-dot.exited {{
+                    background-color: alpha(@borders, 0.5);
                 }}
             "));
             // We give the CssProvided to the default screen so the CSS rules we added

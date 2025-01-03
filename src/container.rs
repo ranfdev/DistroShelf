@@ -47,13 +47,6 @@ impl Container {
         self.imp().status.borrow().clone()
     }
 
-    pub fn status_str(&self) -> &'static str {
-        match self.status() {
-            Status::Up(_) => "active",
-            Status::Created(_) | Status::Other(_) => "inactive",
-            Status::Exited(_) => "error",
-        }
-    }
 
     pub fn image(&self) -> String {
         self.imp().image.borrow().clone()
