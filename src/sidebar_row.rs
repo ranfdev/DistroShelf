@@ -4,7 +4,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{self, glib, pango};
 
-use crate::{container::Container, distro_icon, known_distros::KnownDistro};
+use crate::{container::Container, distro_icon, distrobox::Status, known_distros::KnownDistro};
 
 mod imp {
     use super::*;
@@ -87,8 +87,7 @@ mod imp {
             self.status_dot.add_css_class("inactive");
             self.status_dot.set_valign(gtk::Align::Start);
             self.status_dot.set_halign(gtk::Align::End);
-            self.status_dot.set_margin_end(2);
-            self.status_dot.set_margin_top(2);
+            self.status_dot.set_margin_top(4);
 
             // Build the widget hierarchy
             self.text_box.append(&self.title_label);
@@ -98,6 +97,7 @@ mod imp {
             content_box.append(&self.icon);
             content_box.append(&self.text_box);
 
+            self.status_overlay.set_hexpand(true);
             self.status_overlay.set_child(Some(&content_box));
             self.status_overlay.add_overlay(&self.status_dot);
 
