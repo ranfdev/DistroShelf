@@ -96,12 +96,8 @@
   <menu id="create_menu">
     <section>
       <item>
-        <attribute name="label" translatable="yes">_Create New Container</attribute>
+        <attribute name="label" translatable="yes">_Create Container</attribute>
         <attribute name="action">win.create</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_Assemble from File</attribute>
-        <attribute name="action">win.assemble</attribute>
       </item>
     </section>
   </menu>
