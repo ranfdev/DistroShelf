@@ -93,12 +93,4 @@
       </item>
     </section>
   </menu>
-  <menu id="create_menu">
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">_Create Container</attribute>
-        <attribute name="action">win.create</attribute>
-      </item>
-    </section>
-  </menu>
 </interface>

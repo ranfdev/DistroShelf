@@ -45,18 +45,24 @@ mod imp {
         }
         fn constructed(&self) {
             self.obj().set_title("Create a Distrobox");
-            self.obj().set_content_width(360);
+            self.obj().set_content_width(480);
 
             let toolbar_view = adw::ToolbarView::new();
-            toolbar_view.add_top_bar(&adw::HeaderBar::new());
+            let header = adw::HeaderBar::new();
+        
+            // Add view switcher
+            let view_switcher = adw::ViewSwitcher::new();
+            let view_stack = adw::ViewStack::new();
+        
+            // Create main content box
+            let main_content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+            main_content.set_margin_start(12);
+            main_content.set_margin_end(12);
+            main_content.set_margin_top(12);
+            main_content.set_margin_bottom(12);
 
-            self.content.set_spacing(12);
-            self.content.set_orientation(gtk::Orientation::Vertical);
-            self.content.set_margin_start(12);
-            self.content.set_margin_end(12);
-            self.content.set_margin_top(12);
-            self.content.set_margin_bottom(12);
-
+            // Create GUI creation page
+            let gui_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
             let preferences_group = adw::PreferencesGroup::new();
             preferences_group.set_title("Settings");
 
