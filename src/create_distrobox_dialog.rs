@@ -272,7 +272,7 @@ mod imp {
 
             let url_row = adw::EntryRow::new();
             url_row.set_title("URL");
-            url_row.set_placeholder_text("https://example.com/container.yaml");
+            url_row.set_text("https://example.com/container.yaml");
 
             let status_label = gtk::Label::new(None);
             status_label.set_wrap(true);
@@ -288,9 +288,9 @@ mod imp {
             url_page.append(&status_label);
 
             // Add pages to view stack
-            view_stack.add_titled(&gui_page, Some("create"), "Create New");
-            view_stack.add_titled(&assemble_page, Some("assemble"), "Assemble from File");
-            view_stack.add_titled(&url_page, Some("url"), "From URL");
+            view_stack.add_titled(&gui_page, Some("create"), "Guided");
+            view_stack.add_titled(&assemble_page, Some("assemble-file"), "From File");
+            view_stack.add_titled(&url_page, Some("assemble-url"), "From URL");
 
             // Create a box to hold the view switcher and content
             let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
