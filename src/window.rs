@@ -395,14 +395,14 @@ impl DistrohomeWindow {
 
         let upgrade_row = Self::create_button_row(
             "Upgrade Container",
-            "system-upgrade-symbolic",
+            "software-update-available-symbolic",
             "Update all packages",
         );
         actions_group.add(&upgrade_row);
 
         let apps_row = Self::create_button_row(
             "Applications",
-            "applications-all-symbolic",
+            "view-list-bullet-symbolic",
             "Manage exportable applications",
         );
         actions_group.add(&apps_row);
