@@ -51,7 +51,6 @@ mod imp {
             let header = adw::HeaderBar::new();
         
             // Create view switcher and stack
-            let view_switcher = adw::ViewSwitcher::new();
             let view_stack = adw::ViewStack::new();
             
             // Create GUI creation page
