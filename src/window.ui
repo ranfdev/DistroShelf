@@ -17,7 +17,7 @@
       <object class="AdwNavigationSplitView" id="split_view">
         <property name="sidebar">
           <object class="AdwNavigationPage">
-            <property name="title" translatable="yes">Distrobox</property>
+            <property name="title" translatable="yes">DistroHome</property>
             <property name="child">
                 <object class="AdwToolbarView">
                 <child type="top">
@@ -53,7 +53,7 @@
         </property>
         <property name="content">
           <object class="AdwNavigationPage">
-            <property name="title" translatable="yes">Content</property>
+            <property name="title" translatable="yes">Container</property>
             <property name="child">
               <object class="AdwToolbarView">
                 <child type="top">
