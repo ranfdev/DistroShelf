@@ -189,23 +189,28 @@ mod imp {
             assemble_page.set_margin_top(12);
             assemble_page.set_margin_bottom(12);
 
-            let assemble_label = gtk::Label::new(Some("Select an assemble file to create a container from:"));
-            assemble_label.set_xalign(0.0);
-            assemble_label.set_wrap(true);
-            assemble_page.append(&assemble_label);
+            let assemble_group = adw::PreferencesGroup::new();
+            assemble_group.set_title("Assemble from File");
+            assemble_group.set_description(Some("Create a container from an assemble file"));
 
-            let assemble_btn = gtk::Button::with_label("Select File");
-            assemble_btn.add_css_class("suggested-action");
-            assemble_btn.set_halign(gtk::Align::Center);
-            assemble_page.append(&assemble_btn);
+            let file_row = adw::ActionRow::new();
+            file_row.set_title("Select File");
+            file_row.set_subtitle("No file selected");
+            file_row.set_activatable(true);
+
+            let file_icon = gtk::Image::from_icon_name("document-open-symbolic");
+            file_row.add_suffix(&file_icon);
 
             let obj = self.obj();
-            assemble_btn.connect_clicked(clone!(
+            file_row.connect_activated(clone!(
                 #[weak]
                 obj,
+                #[weak]
+                file_row,
                 move |_| {
                     let file_dialog = gtk::FileDialog::builder()
                         .title("Select Assemble File")
+                        .modal(true)
                         .build();
 
                     file_dialog.open(
@@ -214,9 +219,13 @@ mod imp {
                         clone!(
                             #[weak]
                             obj,
+                            #[weak]
+                            file_row,
                             move |res| {
                                 if let Ok(file) = res {
                                     if let Some(path) = file.path() {
+                                        file_row.set_subtitle(&path.display().to_string());
+                                        
                                         let service = obj.imp().distrobox_service.get().unwrap().clone();
                                         let task = service.do_assemble(&path.to_string_lossy());
                                         let dialog = obj.clone();
@@ -236,6 +245,20 @@ mod imp {
                     );
                 }
             ));
+
+            assemble_group.add(&file_row);
+            assemble_page.append(&assemble_group);
+
+            // Add a status label
+            let status_label = gtk::Label::new(None);
+            status_label.set_wrap(true);
+            status_label.set_xalign(0.0);
+            status_label.set_margin_top(12);
+            status_label.set_margin_start(12);
+            status_label.set_margin_end(12);
+            status_label.add_css_class("dim-label");
+            status_label.set_text("Select an assemble file to create a container. The file should be in YAML format.");
+            assemble_page.append(&status_label);
 
             // Add pages to view stack
             view_stack.add_titled(&gui_page, Some("create"), "Create New");
