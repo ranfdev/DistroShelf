@@ -50,19 +50,16 @@ mod imp {
             let toolbar_view = adw::ToolbarView::new();
             let header = adw::HeaderBar::new();
         
-            // Add view switcher
+            // Create view switcher and stack
             let view_switcher = adw::ViewSwitcher::new();
             let view_stack = adw::ViewStack::new();
-        
-            // Create main content box
-            let main_content = gtk::Box::new(gtk::Orientation::Vertical, 12);
-            main_content.set_margin_start(12);
-            main_content.set_margin_end(12);
-            main_content.set_margin_top(12);
-            main_content.set_margin_bottom(12);
-
+            
             // Create GUI creation page
             let gui_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
+            gui_page.set_margin_start(12);
+            gui_page.set_margin_end(12);
+            gui_page.set_margin_top(12);
+            gui_page.set_margin_bottom(12);
             let preferences_group = adw::PreferencesGroup::new();
             preferences_group.set_title("Settings");
 
@@ -158,8 +155,8 @@ mod imp {
             preferences_group.add(&init_row);
 
             let volumes_group = self.obj().build_volumes_group();
-            self.content.append(&preferences_group);
-            self.content.append(&volumes_group);
+            gui_page.append(&preferences_group);
+            gui_page.append(&volumes_group);
 
             let create_btn = gtk::Button::with_label("Create");
             create_btn.set_halign(gtk::Align::Center);
@@ -183,12 +180,76 @@ mod imp {
             create_btn.add_css_class("pill");
             create_btn.set_margin_top(12);
 
-            self.content.append(&create_btn);
+            gui_page.append(&create_btn);
 
-            self.scrolled_window.set_child(Some(&self.content));
-            self.scrolled_window.set_propagate_natural_height(true);
-            self.scrolled_window.set_vexpand(true);
-            toolbar_view.set_content(Some(&self.scrolled_window));
+            // Create page for assemble from file
+            let assemble_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
+            assemble_page.set_margin_start(12);
+            assemble_page.set_margin_end(12);
+            assemble_page.set_margin_top(12);
+            assemble_page.set_margin_bottom(12);
+
+            let assemble_label = gtk::Label::new(Some("Select an assemble file to create a container from:"));
+            assemble_label.set_xalign(0.0);
+            assemble_label.set_wrap(true);
+            assemble_page.append(&assemble_label);
+
+            let assemble_btn = gtk::Button::with_label("Select File");
+            assemble_btn.add_css_class("suggested-action");
+            assemble_btn.set_halign(gtk::Align::Center);
+            assemble_page.append(&assemble_btn);
+
+            let obj = self.obj();
+            assemble_btn.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    let file_dialog = gtk::FileDialog::builder()
+                        .title("Select Assemble File")
+                        .build();
+
+                    file_dialog.open(
+                        None::<&gtk::Window>,
+                        None::<&gio::Cancellable>,
+                        clone!(
+                            #[weak]
+                            obj,
+                            move |res| {
+                                if let Ok(file) = res {
+                                    if let Some(path) = file.path() {
+                                        let service = obj.imp().distrobox_service.get().unwrap().clone();
+                                        let task = service.do_assemble(&path.to_string_lossy());
+                                        let dialog = obj.clone();
+                                        task.connect_status_notify(clone!(
+                                            #[weak]
+                                            dialog,
+                                            move |task| {
+                                                if task.status() == "successful" {
+                                                    dialog.close();
+                                                }
+                                            }
+                                        ));
+                                    }
+                                }
+                            }
+                        ),
+                    );
+                }
+            ));
+
+            // Add pages to view stack
+            view_stack.add_titled(&gui_page, Some("create"), "Create New");
+            view_stack.add_titled(&assemble_page, Some("assemble"), "Assemble from File");
+
+            // Add switcher and stack to toolbar
+            let switcher_bar = adw::ViewSwitcherBar::new();
+            switcher_bar.set_stack(Some(&view_stack));
+            switcher_bar.set_reveal(true);
+
+            toolbar_view.add_top_bar(&view_switcher);
+            toolbar_view.add_top_bar(&switcher_bar);
+            toolbar_view.set_content(Some(&view_stack));
+
             self.obj().set_child(Some(&toolbar_view));
         }
     }

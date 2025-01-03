@@ -518,21 +518,9 @@ impl DistrohomeWindow {
     }
 
     fn build_create_distrobox_dialog(&self) {
-        let dialog = adw::Dialog::new();
-        dialog.set_title("Create Container");
-        dialog.set_content_width(480);
-
-        let toolbar_view = adw::ToolbarView::new();
-        toolbar_view.add_top_bar(&adw::HeaderBar::builder().build());
-
-        // Create view switcher and stack
-        let view_switcher = adw::ViewSwitcher::new();
-        let view_stack = adw::ViewStack::new();
-        
-        // Create page for GUI creation
-        let create_page = CreateDistroboxDialog::new(self.distrobox_service().clone());
+        let dialog = CreateDistroboxDialog::new(self.distrobox_service().clone());
         let this = self.clone();
-        create_page.connect_create_requested(move |dialog, args| {
+        dialog.connect_create_requested(move |dialog, args| {
             let task = this.distrobox_service().do_create(args);
             let create_dialog = this.build_task_dialog(&task);
             let dialog = dialog.clone();
@@ -543,79 +531,6 @@ impl DistrohomeWindow {
                 }
             });
         });
-        view_stack.add_titled(&create_page, Some("create"), "Create New");
-
-        // Create page for assemble from file
-        let assemble_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
-        assemble_page.set_margin_top(12);
-        assemble_page.set_margin_bottom(12);
-        assemble_page.set_margin_start(12);
-        assemble_page.set_margin_end(12);
-
-        let assemble_label = gtk::Label::new(Some("Select an assemble file to create a container from:"));
-        assemble_label.set_xalign(0.0);
-        assemble_label.set_wrap(true);
-        assemble_page.append(&assemble_label);
-
-        let assemble_btn = gtk::Button::with_label("Select File");
-        assemble_btn.add_css_class("suggested-action");
-        assemble_btn.set_halign(gtk::Align::Center);
-        assemble_page.append(&assemble_btn);
-
-        let this = self.clone();
-        assemble_btn.connect_clicked(clone!(
-            #[weak]
-            dialog,
-            move |_| {
-                let file_dialog = gtk::FileDialog::builder()
-                    .title("Select Assemble File")
-                    .build();
-
-                file_dialog.open(
-                    None::<&gtk::Window>,
-                    None::<&gio::Cancellable>,
-                    clone!(
-                        #[weak(rename_to = this)]
-                        this,
-                        #[weak]
-                        dialog,
-                        move |res| {
-                            if let Ok(file) = res {
-                                if let Some(path) = file.path() {
-                                    let task = this.distrobox_service().do_assemble(&path.to_string_lossy());
-                                    let task_dialog = this.build_task_dialog(&task);
-                                    task.connect_status_notify(clone!(
-                                        #[weak]
-                                        dialog,
-                                        #[weak]
-                                        task_dialog,
-                                        move |task| {
-                                            if task.status() == "successful" {
-                                                task_dialog.close();
-                                                dialog.close();
-                                            }
-                                        }
-                                    ));
-                                }
-                            }
-                        }
-                    ),
-                );
-            }
-        ));
-
-        view_stack.add_titled(&assemble_page, Some("assemble"), "Assemble from File");
-
-        // Add switcher and stack to toolbar
-        let switcher_bar = adw::ViewSwitcherBar::new();
-        switcher_bar.set_stack(Some(&view_stack));
-        switcher_bar.set_reveal(true);
-
-        toolbar_view.add_top_bar(&view_switcher);
-        toolbar_view.add_top_bar(&switcher_bar);
-        toolbar_view.set_content(Some(&view_stack));
-
-        dialog.set_child(Some(&toolbar_view));
         dialog.present(Some(self));
     }
 
