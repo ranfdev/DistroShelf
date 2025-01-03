@@ -268,11 +268,11 @@ mod imp {
             create_btn.set_sensitive(false);
 
             // Enable button when file is selected
-            file_row.connect_notify(Some("subtitle"), clone!(
+            file_row.connect_subtitle_notify(clone!(
                 #[weak]
                 create_btn,
-                move |row, _| {
-                    create_btn.set_sensitive(row.subtitle() != "No file selected");
+                move |row| {
+                    create_btn.set_sensitive(row.subtitle().map(|x| x.to_string()) != Some("No file selected".to_string()));
                 }
             ));
 

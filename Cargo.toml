@@ -15,8 +15,8 @@ regex = "1.11.1"
 
 [dependencies.adw]
 package = "libadwaita"
-version = "0.7"
-features = ["v1_6"]
+version = "0.7.1"
+features = ["v1_7"]
 
 [dev-dependencies]
 smol = "2.0.2"

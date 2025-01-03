@@ -56,6 +56,10 @@ impl NullCommandRunnerBuilder {
         let args: Vec<_> = args.iter().map(|x| x.as_ref()).collect();
         let mut cmd = Command::new(args[0]);
         cmd.args(&args[1..]);
+        self.cmd_full(cmd, out)
+    }
+    pub fn cmd_full<T: AsRef<str>>(&mut self, cmd: Command, out: T) -> &mut Self {
+        
         let key = NullCommandRunner::key_for_cmd(&cmd);
         dbg!(&key);
         self.responses
