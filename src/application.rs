@@ -113,7 +113,7 @@ mod imp {
 
             // Get the current window or create one if necessary
             let window = application.active_window().unwrap_or_else(|| {
-                let window = DistrohomeWindow::new(&*application, DistroboxService::new_null());
+                let window = DistrohomeWindow::new(&*application, DistroboxService::new());
 
                 window.upcast()
             });

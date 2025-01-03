@@ -49,9 +49,9 @@ impl Container {
 
     pub fn status_str(&self) -> &'static str {
         match self.status() {
-            Status::Running => "active",
-            Status::Stopped => "inactive",
-            Status::Error => "error",
+            Status::Up(_) => "active",
+            Status::Created(_) | Status::Other(_) => "inactive",
+            Status::Exited(_) => "error",
         }
     }
 
