@@ -259,9 +259,38 @@ mod imp {
             status_label.set_text("Select an assemble file to create a container. The file should be in YAML format.");
             assemble_page.append(&status_label);
 
+            // Create page for URL creation
+            let url_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
+            url_page.set_margin_start(12);
+            url_page.set_margin_end(12);
+            url_page.set_margin_top(12);
+            url_page.set_margin_bottom(12);
+
+            let url_group = adw::PreferencesGroup::new();
+            url_group.set_title("From URL");
+            url_group.set_description(Some("Create a container from a remote URL"));
+
+            let url_row = adw::EntryRow::new();
+            url_row.set_title("URL");
+            url_row.set_placeholder_text("https://example.com/container.yaml");
+
+            let status_label = gtk::Label::new(None);
+            status_label.set_wrap(true);
+            status_label.set_xalign(0.0);
+            status_label.set_margin_top(12);
+            status_label.set_margin_start(12);
+            status_label.set_margin_end(12);
+            status_label.add_css_class("dim-label");
+            status_label.set_text("Enter the URL of a remote assemble file to create a container.");
+
+            url_group.add(&url_row);
+            url_page.append(&url_group);
+            url_page.append(&status_label);
+
             // Add pages to view stack
             view_stack.add_titled(&gui_page, Some("create"), "Create New");
             view_stack.add_titled(&assemble_page, Some("assemble"), "Assemble from File");
+            view_stack.add_titled(&url_page, Some("url"), "From URL");
 
             // Create a box to hold the view switcher and content
             let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
