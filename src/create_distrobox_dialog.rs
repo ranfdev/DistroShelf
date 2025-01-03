@@ -269,9 +269,9 @@ mod imp {
             switcher_bar.set_stack(Some(&view_stack));
             switcher_bar.set_reveal(true);
 
-            toolbar_view.add_top_bar(&view_switcher);
-            toolbar_view.add_top_bar(&switcher_bar);
+            toolbar_view.add_top_bar(&header);
             toolbar_view.set_content(Some(&view_stack));
+            toolbar_view.add_bottom_bar(&switcher_bar);
 
             self.obj().set_child(Some(&toolbar_view));
         }
