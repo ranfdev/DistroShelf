@@ -149,7 +149,7 @@ impl DistroboxService {
                 DistroboxCommandRunnerResponse::Version,
                 DistroboxCommandRunnerResponse::List(dummy_containers.clone()),
                 DistroboxCommandRunnerResponse::Compatibility(dummy_containers.into_iter().map(|x| x.image).collect()),
-                DistroboxCommandRunnerResponse::ExportedApps(dummy_exported_apps),
+                DistroboxCommandRunnerResponse::ExportedApps("ubuntu".into(), dummy_exported_apps),
             ],
             false,
         );

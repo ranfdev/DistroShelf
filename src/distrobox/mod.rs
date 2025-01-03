@@ -222,7 +222,7 @@ pub enum DistroboxCommandRunnerResponse {
     Version,
     List(Vec<ContainerInfo>),
     Compatibility(Vec<String>),
-    ExportedApps(Vec<(String, String, String)>), // (filename, name, icon)
+    ExportedApps(String, Vec<(String, String, String)>), // (distrobox_name, [(filename, name, icon)])
 }
 
 impl DistroboxCommandRunnerResponse {
@@ -256,7 +256,7 @@ impl DistroboxCommandRunnerResponse {
         (cmd, output)
     }
 
-    fn build_exported_apps_commands(apps: &[(String, String, String)]) -> Vec<(Command, String)> {
+    fn build_exported_apps_commands(box_name: &str, apps: &[(String, String, String)]) -> Vec<(Command, String)> {
         let mut commands = Vec::new();
 
         // Get XDG_DATA_HOME
@@ -298,7 +298,7 @@ impl DistroboxCommandRunnerResponse {
         }
         commands.push((
             Command::new_with_args("distrobox", 
-                ["enter", "Ubuntu", "--", "sh", "-c", "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done"]),
+                ["enter", box_name, "--", "sh", "-c", "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done"]),
             contents
         ));
 
@@ -310,7 +310,7 @@ impl DistroboxCommandRunnerResponse {
             Self::Version => vec![Self::build_version_response()],
             Self::List(containers) => vec![Self::build_list_response(containers)],
             Self::Compatibility(images) => vec![Self::build_compatibility_response(images)],
-            Self::ExportedApps(apps) => Self::build_exported_apps_commands(apps),
+            Self::ExportedApps(box_name, apps) => Self::build_exported_apps_commands(box_name, apps),
         }
     }
 }
