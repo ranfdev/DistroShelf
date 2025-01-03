@@ -214,7 +214,10 @@ impl DistroboxService {
         &self,
         name: &str,
     ) -> Result<Vec<crate::distrobox::ExportableApp>, crate::distrobox::Error> {
-        self.distrobox().list_apps(name).await
+        let result = self.distrobox().list_apps(name).await;
+        // Refresh container list to update status
+        self.load_container_infos();
+        result
     }
 
     fn push_operation(&self, operation: DistroboxTask) {
