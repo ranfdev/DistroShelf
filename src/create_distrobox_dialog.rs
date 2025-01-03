@@ -263,14 +263,22 @@ mod imp {
             view_stack.add_titled(&gui_page, Some("create"), "Create New");
             view_stack.add_titled(&assemble_page, Some("assemble"), "Assemble from File");
 
-            // Add switcher and stack to toolbar
-            let switcher_bar = adw::ViewSwitcherBar::new();
-            switcher_bar.set_stack(Some(&view_stack));
-            switcher_bar.set_reveal(true);
-
+            // Create a box to hold the view switcher and content
+            let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            
+            // Add inline view switcher
+            let view_switcher = adw::InlineViewSwitcher::new();
+            view_switcher.set_stack(Some(&view_stack));
+            view_switcher.set_margin_start(12);
+            view_switcher.set_margin_end(12);
+            view_switcher.set_margin_top(12);
+            view_switcher.set_margin_bottom(12);
+            
+            content_box.append(&view_switcher);
+            content_box.append(&view_stack);
+            
             toolbar_view.add_top_bar(&header);
-            toolbar_view.set_content(Some(&view_stack));
-            toolbar_view.add_bottom_bar(&switcher_bar);
+            toolbar_view.set_content(Some(&content_box));
 
             self.obj().set_child(Some(&toolbar_view));
         }
