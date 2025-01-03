@@ -142,6 +142,14 @@ impl DistroboxService {
             ("vim.desktop".into(), "Vim".into(), "vim".into()),
             ("fish.desktop".into(), "Fish Shell".into(), "fish".into()),
             ("htop.desktop".into(), "Htop".into(), "htop".into()),
+            ("matlab.desktop".into(), "MATLAB".into(), "matlab".into()),
+            ("vscode.desktop".into(), "Visual Studio Code".into(), "code".into()),
+            ("rstudio.desktop".into(), "RStudio".into(), "rstudio".into()),
+            ("sublime_text.desktop".into(), "Sublime Text".into(), "subl".into()),
+            ("zoom.desktop".into(), "Zoom".into(), "zoom".into()),
+            ("slack.desktop".into(), "Slack".into(), "slack".into()),
+            ("postman.desktop".into(), "Postman".into(), "postman".into()),
+            ("docker.desktop".into(), "Docker".into(), "docker".into()),
         ];
 
         let distrobox = Distrobox::new_null_with_responses(
