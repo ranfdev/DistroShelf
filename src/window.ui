@@ -23,9 +23,8 @@
                 <child type="top">
                   <object class="AdwHeaderBar">
                     <child type="start">
-                      <object class="GtkMenuButton" id="create_distrobox_btn">
+                      <object class="GtkButton" id="create_distrobox_btn">
                         <property name="icon-name">list-add-symbolic</property>
-                        <property name="menu-model">create_menu</property>
                       </object>
                     </child>
                     <child type="end">

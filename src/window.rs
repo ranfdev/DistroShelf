@@ -59,7 +59,7 @@ mod imp {
         #[template_child]
         pub sidebar_slot: TemplateChild<adw::Bin>,
         #[template_child]
-        pub create_distrobox_btn: TemplateChild<gtk::MenuButton>,
+        pub create_distrobox_btn: TemplateChild<gtk::Button>,
         #[template_child]
         pub sidebar_bottom_slot: TemplateChild<adw::Bin>,
         pub sidebar_list_box: gtk::ListBox,
@@ -96,14 +96,6 @@ mod imp {
 
             klass.install_action("win.preferences", None, |win, _action, _target| {
                 win.build_preferences_dialog();
-            });
-
-            klass.install_action("win.create", None, |win, _action, _target| {
-                win.build_create_distrobox_dialog();
-            });
-
-            klass.install_action("win.assemble", None, |win, _action, _target| {
-                win.build_assemble_dialog();
             });
         }
 
@@ -539,6 +531,7 @@ impl DistrohomeWindow {
         create_page.connect_create_requested(move |dialog, args| {
             let task = this.distrobox_service().do_create(args);
             let create_dialog = this.build_task_dialog(&task);
+            let dialog = dialog.clone();
             task.connect_status_notify(move |task| {
                 if task.status() == "successful" {
                     create_dialog.close();
@@ -575,7 +568,7 @@ impl DistrohomeWindow {
                     .build();
 
                 file_dialog.open(
-                    Some(&dialog),
+                    None::<&gtk::Window>,
                     None::<&gio::Cancellable>,
                     clone!(
                         #[weak(rename_to = this)]
