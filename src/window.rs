@@ -98,6 +98,14 @@ mod imp {
                 win.build_preferences_dialog();
             });
 
+            klass.install_action("win.learn-more", None, |win, _action, _target| {
+                gtk::UriLauncher::new(&"https://distrobox.it").launch(None::<&gtk::Window>, None::<&gio::Cancellable>, |res| {
+                    if let Err(e) = res {
+                        println!("error opening external uri {:?}", e);
+                    }
+                });
+            });
+
             klass.install_action("win.create-distrobox", None, |win, _action, _target| {
                 win.build_create_distrobox_dialog();
             });
