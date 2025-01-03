@@ -259,6 +259,50 @@ mod imp {
             status_label.set_text("Select an assemble file to create a container. The file should be in YAML format.");
             assemble_page.append(&status_label);
 
+            // Add create button for assemble file
+            let create_btn = gtk::Button::with_label("Create");
+            create_btn.set_halign(gtk::Align::Center);
+            create_btn.add_css_class("suggested-action");
+            create_btn.add_css_class("pill");
+            create_btn.set_margin_top(12);
+            create_btn.set_sensitive(false);
+
+            // Enable button when file is selected
+            file_row.connect_notify(Some("subtitle"), clone!(
+                #[weak]
+                create_btn,
+                move |row, _| {
+                    create_btn.set_sensitive(row.subtitle() != "No file selected");
+                }
+            ));
+
+            // Handle create click
+            let obj = self.obj();
+            create_btn.connect_clicked(clone!(
+                #[weak]
+                obj,
+                #[weak]
+                file_row,
+                move |_| {
+                    if let Some(path) = file_row.subtitle() {
+                        let service = obj.imp().distrobox_service.get().unwrap().clone();
+                        let task = service.do_assemble(&path.to_string());
+                        let dialog = obj.clone();
+                        task.connect_status_notify(clone!(
+                            #[weak]
+                            dialog,
+                            move |task| {
+                                if task.status() == "successful" {
+                                    dialog.close();
+                                }
+                            }
+                        ));
+                    }
+                }
+            ));
+
+            assemble_page.append(&create_btn);
+
             // Create page for URL creation
             let url_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
             url_page.set_margin_start(12);
@@ -286,6 +330,49 @@ mod imp {
             url_group.add(&url_row);
             url_page.append(&url_group);
             url_page.append(&status_label);
+
+            // Add create button for URL
+            let create_btn = gtk::Button::with_label("Create");
+            create_btn.set_halign(gtk::Align::Center);
+            create_btn.add_css_class("suggested-action");
+            create_btn.add_css_class("pill");
+            create_btn.set_margin_top(12);
+            create_btn.set_sensitive(false);
+
+            // Enable button when URL is entered
+            url_row.connect_changed(clone!(
+                #[weak]
+                create_btn,
+                move |entry| {
+                    create_btn.set_sensitive(!entry.text().is_empty());
+                }
+            ));
+
+            // Handle create click
+            let obj = self.obj();
+            create_btn.connect_clicked(clone!(
+                #[weak]
+                obj,
+                #[weak]
+                url_row,
+                move |_| {
+                    let url = url_row.text();
+                    let service = obj.imp().distrobox_service.get().unwrap().clone();
+                    let task = service.do_assemble(&url);
+                    let dialog = obj.clone();
+                    task.connect_status_notify(clone!(
+                        #[weak]
+                        dialog,
+                        move |task| {
+                            if task.status() == "successful" {
+                                dialog.close();
+                            }
+                        }
+                    ));
+                }
+            ));
+
+            url_page.append(&create_btn);
 
             // Add pages to view stack
             view_stack.add_titled(&gui_page, Some("create"), "Guided");
