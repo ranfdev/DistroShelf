@@ -24,6 +24,8 @@ use gettextrs::gettext;
 use gtk::{gio, glib};
 
 use crate::config::VERSION;
+use crate::distrobox::DistroboxCommandRunnerResponse;
+use crate::distrobox_service::DistroboxService;
 use crate::DistrohomeWindow;
 
 mod imp {
@@ -108,9 +110,12 @@ mod imp {
                 gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
             );
 
+            let this = self.obj().clone();
             // Get the current window or create one if necessary
             let window = application.active_window().unwrap_or_else(|| {
-                let window = DistrohomeWindow::new(&*application, DistroboxService::new());
+                // change this to test various scenarios
+                let window = this.create_window_null_working_empty();
+
 
                 window.upcast()
             });
@@ -136,6 +141,33 @@ impl DistrohomeApplication {
             .property("application-id", application_id)
             .property("flags", flags)
             .build()
+    }
+
+
+    // window factory functions
+    pub fn create_window_real(&self) -> DistrohomeWindow {
+        DistrohomeWindow::new(self, DistroboxService::new())
+    } 
+    pub fn create_window_null_working(&self) -> DistrohomeWindow {
+        DistrohomeWindow::new(self, DistroboxService::new_null_with_responses(
+            &[
+                DistroboxCommandRunnerResponse::Version,
+                DistroboxCommandRunnerResponse::new_list_common_distros(),
+                DistroboxCommandRunnerResponse::new_common_images(),
+                DistroboxCommandRunnerResponse::new_common_exported_apps(),
+            ],
+            false
+        ))
+    }
+    pub fn create_window_null_working_empty(&self) -> DistrohomeWindow {
+        DistrohomeWindow::new(self, DistroboxService::new_null_with_responses(
+            &[
+                DistroboxCommandRunnerResponse::Version,
+                DistroboxCommandRunnerResponse::List(vec![]),
+                DistroboxCommandRunnerResponse::new_common_images(),
+            ],
+            false
+        ))
     }
 
     fn setup_gactions(&self) {

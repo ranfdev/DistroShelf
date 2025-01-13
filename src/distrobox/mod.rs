@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell,
+    cell::{LazyCell, RefCell},
     collections::HashMap,
     convert::Infallible,
     io::{self, BufRead, BufReader, Cursor, Read, Write},
@@ -226,6 +226,57 @@ pub enum DistroboxCommandRunnerResponse {
 }
 
 impl DistroboxCommandRunnerResponse {
+    pub fn common_distros() -> LazyCell<Vec<ContainerInfo>> {
+        LazyCell::new(|| {
+            [
+                ("1", "Ubuntu", "docker.io/library/ubuntu:latest"),
+                ("2", "Fedora", "docker.io/library/fedora:latest"),
+                ("3", "Kali", "docker.io/kalilinux/kali-rolling"),
+                ("4", "Debian", "docker.io/library/debian:latest"),
+                ("5", "Arch Linux", "docker.io/library/archlinux:latest"),
+                ("6", "CentOS", "docker.io/library/centos:latest"),
+                ("7", "Alpine", "docker.io/library/alpine:latest"),
+                ("8", "OpenSUSE", "docker.io/library/opensuse:latest"),
+                ("9", "Gentoo", "docker.io/library/gentoo:latest"),
+                ("10", "Slackware", "docker.io/library/slackware:latest"),
+                ("11", "Void Linux", "docker.io/library/voidlinux:latest"),
+                ("13", "Deepin", "docker.io/library/deepin:latest"),
+                ("16", "Rocky Linux", "docker.io/library/rockylinux:latest"),
+                ("17", "Crystal Linux", "docker.io/library/crystal-linux:latest"),
+            ]
+            .iter()
+            .map(|(id, name, image)| ContainerInfo {
+                id: id.to_string(),
+                name: name.to_string(),
+                status: Status::Created("Created".into()),
+                image: image.to_string(),
+            })
+            .collect()
+        })
+    }
+
+    pub fn new_list_common_distros() -> Self {
+        Self::List(Self::common_distros().to_owned())
+    }
+
+    pub fn new_common_exported_apps() -> Self {
+        let dummy_exported_apps = vec![
+            ("vim.desktop".into(), "Vim".into(), "vim".into()),
+            ("matlab.desktop".into(), "MATLAB".into(), "matlab".into()),
+            ("vscode.desktop".into(), "Visual Studio Code".into(), "code".into()),
+            ("rstudio.desktop".into(), "RStudio".into(), "rstudio".into()),
+            ("sublime_text.desktop".into(), "Sublime Text".into(), "subl".into()),
+            ("zoom.desktop".into(), "Zoom".into(), "zoom".into()),
+            ("slack.desktop".into(), "Slack".into(), "slack".into()),
+            ("postman.desktop".into(), "Postman".into(), "postman".into()),
+        ];
+        DistroboxCommandRunnerResponse::ExportedApps("Ubuntu".into(), dummy_exported_apps)
+    }
+
+    pub fn new_common_images() -> Self {
+        DistroboxCommandRunnerResponse::Compatibility(Self::common_distros().iter().map(|x| x.image.clone()).collect())
+    }
+
     fn build_version_response() -> (Command, String) {
         let mut cmd = Command::new("distrobox");
         cmd.arg("version");
@@ -411,7 +462,7 @@ impl Distrobox {
         Ok(s.to_string())
     }
 
-    async fn host_applications_path(&self, box_name: &str) -> Result<PathBuf, Error> {
+    async fn host_applications_path(&self) -> Result<PathBuf, Error> {
         let mut cmd = Command::new("sh");
         cmd.args(["-c", "echo $XDG_DATA_HOME"]);
         let xdg_data_home = self.cmd_output_string(cmd).await?;
@@ -427,11 +478,11 @@ impl Distrobox {
         let apps_path = xdg_data_home.join("applications");
         Ok(apps_path)
     }
-    async fn get_exported_desktop_files(&self, box_name: &str) -> Result<Vec<String>, Error> {
+    async fn get_exported_desktop_files(&self) -> Result<Vec<String>, Error> {
         // We do everything with the command line to ensure we can access the files and environment variables
         // even when inside a flatpak sandbox, with only the permissions to run `flatpak-spawn`
         let mut cmd = Command::new("ls");
-        cmd.arg(self.host_applications_path(box_name).await?);
+        cmd.arg(self.host_applications_path().await?);
         let ls_out = self.cmd_output_string(cmd).await?;
         let apps = ls_out
             .trim()
@@ -470,7 +521,7 @@ impl Distrobox {
     pub async fn list_apps(&self, box_name: &str) -> Result<Vec<ExportableApp>, Error> {
         let files = self.get_desktop_files(box_name).await?;
         dbg!(&files);
-        let exported = self.get_exported_desktop_files(box_name).await?;
+        let exported = self.get_exported_desktop_files().await?;
         let res: Vec<ExportableApp> = files
             .into_iter()
             .map(|(path, content)| -> Option<ExportableApp> {
@@ -805,5 +856,25 @@ Categories=Utility;Network;
             "\"distrobox\" [\"rm\", \"--force\", \"ubuntu\"]"
         );
         Ok(())
+    }
+
+    #[test]
+    fn stub_responses() {
+        let cmd_outputs = DistroboxCommandRunnerResponse::new_list_common_distros().to_commands();
+        assert_eq!(cmd_outputs[0].1, "ID           | NAME                 | STATUS             | IMAGE  
+1 | Ubuntu | Created | docker.io/library/ubuntu:latest
+2 | Fedora | Created | docker.io/library/fedora:latest
+3 | Kali | Created | docker.io/kalilinux/kali-rolling
+4 | Debian | Created | docker.io/library/debian:latest
+5 | Arch Linux | Created | docker.io/library/archlinux:latest
+6 | CentOS | Created | docker.io/library/centos:latest
+7 | Alpine | Created | docker.io/library/alpine:latest
+8 | OpenSUSE | Created | docker.io/library/opensuse:latest
+9 | Gentoo | Created | docker.io/library/gentoo:latest
+10 | Slackware | Created | docker.io/library/slackware:latest
+11 | Void Linux | Created | docker.io/library/voidlinux:latest
+13 | Deepin | Created | docker.io/library/deepin:latest
+16 | Rocky Linux | Created | docker.io/library/rockylinux:latest
+17 | Crystal Linux | Created | docker.io/library/crystal-linux:latest\n");
     }
 }

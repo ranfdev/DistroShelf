@@ -102,62 +102,13 @@ impl DistroboxService {
         this
     }
 
-    pub fn new_null() -> Self {
+    pub fn new_null_with_responses(
+        responses: &[DistroboxCommandRunnerResponse],
+        is_in_flatpak: bool,
+    ) -> Self {
         let this: Self = glib::Object::builder().build();
 
-        let dummy_containers = [
-            ("1", "Ubuntu", "docker.io/library/ubuntu:latest"),
-            ("2", "Fedora", "docker.io/library/fedora:latest"),
-            ("3", "Kali", "docker.io/kalilinux/kali-rolling"),
-            ("4", "Debian", "docker.io/library/debian:latest"),
-            ("5", "Arch Linux", "docker.io/library/archlinux:latest"),
-            ("6", "CentOS", "docker.io/library/centos:latest"),
-            ("7", "Alpine", "docker.io/library/alpine:latest"),
-            ("8", "OpenSUSE", "docker.io/library/opensuse:latest"),
-            ("9", "Gentoo", "docker.io/library/gentoo:latest"),
-            ("10", "Slackware", "docker.io/library/slackware:latest"),
-            ("11", "Void Linux", "docker.io/library/voidlinux:latest"),
-            ("13", "Deepin", "docker.io/library/deepin:latest"),
-            // Alma logo doesn't look good in screenshot, low contrast with white background
-            // ("14", "AlmaLinux", "docker.io/library/almalinux:latest"),
-            // Amazon Linux logo not available right now
-            // ("15", "Amazon Linux", "docker.io/library/amazonlinux:latest"),
-            ("16", "Rocky Linux", "docker.io/library/rockylinux:latest"),
-            (
-                "17",
-                "Crystal Linux",
-                "docker.io/library/crystal-linux:latest",
-            ),
-        ]
-        .iter()
-        .map(|(id, name, image)| ContainerInfo {
-            id: id.to_string(),
-            name: name.to_string(),
-            status: Status::Created("Created".into()),
-            image: image.to_string(),
-        })
-        .collect::<Vec<_>>();
-
-        let dummy_exported_apps = vec![
-            ("vim.desktop".into(), "Vim".into(), "vim".into()),
-            ("matlab.desktop".into(), "MATLAB".into(), "matlab".into()),
-            ("vscode.desktop".into(), "Visual Studio Code".into(), "code".into()),
-            ("rstudio.desktop".into(), "RStudio".into(), "rstudio".into()),
-            ("sublime_text.desktop".into(), "Sublime Text".into(), "subl".into()),
-            ("zoom.desktop".into(), "Zoom".into(), "zoom".into()),
-            ("slack.desktop".into(), "Slack".into(), "slack".into()),
-            ("postman.desktop".into(), "Postman".into(), "postman".into()),
-        ];
-
-        let distrobox = Distrobox::new_null_with_responses(
-            &[
-                DistroboxCommandRunnerResponse::Version,
-                DistroboxCommandRunnerResponse::List(dummy_containers.clone()),
-                DistroboxCommandRunnerResponse::Compatibility(dummy_containers.into_iter().map(|x| x.image).collect()),
-                DistroboxCommandRunnerResponse::ExportedApps("Ubuntu".into(), dummy_exported_apps),
-            ],
-            false,
-        );
+        let distrobox = Distrobox::new_null_with_responses(responses, is_in_flatpak);
         this.imp().distrobox.set(distrobox);
 
         this.connect_version();
@@ -496,7 +447,7 @@ impl DistroboxService {
             }
             Err(e) => return Err(e.into()),
         };
-        
+
         if !child.status().await?.success() {
             return Err(anyhow::anyhow!(
                 "Terminal validation failed. '{}' did not run successfully.",
