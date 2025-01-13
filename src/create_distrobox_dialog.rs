@@ -248,17 +248,6 @@ mod imp {
             assemble_group.add(&file_row);
             assemble_page.append(&assemble_group);
 
-            // Add a status label
-            let status_label = gtk::Label::new(None);
-            status_label.set_wrap(true);
-            status_label.set_xalign(0.0);
-            status_label.set_margin_top(12);
-            status_label.set_margin_start(12);
-            status_label.set_margin_end(12);
-            status_label.add_css_class("dim-label");
-            status_label.set_text("Select an assemble file to create a container. The file should be in YAML format.");
-            assemble_page.append(&status_label);
-
             // Add create button for assemble file
             let create_btn = gtk::Button::with_label("Create");
             create_btn.set_halign(gtk::Align::Center);
@@ -318,18 +307,8 @@ mod imp {
             url_row.set_title("URL");
             url_row.set_text("https://example.com/container.yaml");
 
-            let status_label = gtk::Label::new(None);
-            status_label.set_wrap(true);
-            status_label.set_xalign(0.0);
-            status_label.set_margin_top(12);
-            status_label.set_margin_start(12);
-            status_label.set_margin_end(12);
-            status_label.add_css_class("dim-label");
-            status_label.set_text("Enter the URL of a remote assemble file to create a container.");
-
             url_group.add(&url_row);
             url_page.append(&url_group);
-            url_page.append(&status_label);
 
             // Add create button for URL
             let create_btn = gtk::Button::with_label("Create");
