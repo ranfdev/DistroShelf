@@ -7,7 +7,7 @@ use std::{
     io::{self},
     os::unix::process::ExitStatusExt,
     pin::Pin,
-    process::ExitStatus,
+    process::ExitStatus, rc::Rc,
 };
 
 use crate::distrobox::Command;
@@ -42,9 +42,9 @@ impl CommandRunner for RealCommandRunner {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Clone)]
 pub struct NullCommandRunnerBuilder {
-    responses: HashMap<Vec<String>, (Vec<u8>, ExitStatus)>,
+    responses: HashMap<Vec<String>, Rc<dyn Fn() -> Result<String, io::Error>>>,
     fallback_exit_status: ExitStatus,
 }
 
@@ -56,14 +56,14 @@ impl NullCommandRunnerBuilder {
         let args: Vec<_> = args.iter().map(|x| x.as_ref()).collect();
         let mut cmd = Command::new(args[0]);
         cmd.args(&args[1..]);
-        self.cmd_full(cmd, out)
+        let out_text = out.as_ref().to_string();
+        self.cmd_full(cmd, Rc::new(move || Ok(out_text.clone())))
     }
-    pub fn cmd_full<T: AsRef<str>>(&mut self, cmd: Command, out: T) -> &mut Self {
-        
+    pub fn cmd_full(&mut self, cmd: Command, out: Rc<dyn Fn() -> Result<String, io::Error>>) -> &mut Self {
         let key = NullCommandRunner::key_for_cmd(&cmd);
         dbg!(&key);
         self.responses
-            .insert(key, (out.as_ref().as_bytes().to_vec(), ExitStatus::from_raw(0)));
+            .insert(key, out);
         self
     }
     pub fn fallback(&mut self, status: ExitStatus) -> &mut Self {
@@ -80,7 +80,7 @@ impl NullCommandRunnerBuilder {
 
 #[derive(Default, Clone)]
 pub struct NullCommandRunner {
-    responses: HashMap<Vec<String>, (Vec<u8>, ExitStatus)>,
+    responses: HashMap<Vec<String>, Rc<dyn Fn() -> Result<String, io::Error>>>,
     fallback_exit_status: ExitStatus,
 }
 
@@ -99,12 +99,12 @@ impl NullCommandRunner {
 impl CommandRunner for NullCommandRunner {
     fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
         let key = Self::key_for_cmd(&command);
-        let (response, exit_status) = self
+        let response = self
             .responses
             .get(&key[..])
             .cloned()
-            .unwrap_or((vec![], self.fallback_exit_status));
-        let stub = StubChild::new_null(vec![], Cursor::new(response), Ok(exit_status));
+            .unwrap_or(Rc::new(|| Ok(String::new())));
+        let stub = StubChild::new_null(vec![], Cursor::new(response()?), Ok(ExitStatus::from_raw(0)));
         Ok(Box::new(stub))
     }
     fn output(
@@ -113,18 +113,18 @@ impl CommandRunner for NullCommandRunner {
     ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
         let key = Self::key_for_cmd(&command);
         dbg!(&key);
-        let (response, exit_status) = self
+        let response = self
             .responses
             .get(&key[..])
             .cloned()
-            .unwrap_or((vec![], self.fallback_exit_status));
+            .unwrap_or(Rc::new(|| Ok(String::new())));
 
-        futures::future::ok(Output {
-            status: exit_status,
-            stdout: response.into(),
+        async move {Ok(Output {
+            status: ExitStatus::from_raw(0),
+            stdout: response()?.into(),
             stderr: vec![],
-        })
-        .boxed()
+        })}
+        .boxed_local()
     }
 }
 

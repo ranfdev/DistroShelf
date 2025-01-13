@@ -52,6 +52,15 @@ impl<T, E> Resource<T, E> {
     }
 }
 
+impl<T, E> From<Result<T, E>> for Resource<T, E> {
+    fn from(value: Result<T, E>) -> Self {
+        match value {
+            Ok(v) => Resource::Loaded(v),
+            Err(e) => Resource::Error(Rc::new(e), None)
+        }
+    }
+}
+
 impl<T: Clone, E> Clone for Resource<T, E> {
     fn clone(&self) -> Self {
         match self {

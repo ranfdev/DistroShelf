@@ -40,8 +40,45 @@
                   </object>
                 </child>
                 <property name="content">
-                  <object class="AdwBin" id="sidebar_slot">
-                  <!-- ... -->
+                  <object class="GtkStack" id="sidebar_stack">
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">no-distroboxes</property>
+                        <property name="child">
+                          <object class="AdwStatusPage">
+                            <property name="title" translatable="yes">Create First Distrobox</property>
+                            <property name="description" translatable="yes">You haven't created a distrobox yet</property>
+                            <property name="child">
+                              <object class="GtkButton">
+                                <style>
+                                <class name="pill"/>
+                                <class name="suggested-action"/>
+                                </style>
+                                <property name="label" translatable="yes">Create Distrobox</property>
+                                <property name="action-name">win.create-distrobox</property>
+                              </object>
+                            </property>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">distroboxes</property>
+                        <property name="child">
+                          <object class="GtkScrolledWindow">
+                            <property name="child">
+                              <object class="GtkListBox" id="sidebar_list_box">
+                                <property name="selection-mode">single</property>
+                                <style>
+                                  <class name="navigation-sidebar"/>
+                                </style>
+                              </object>
+                            </property>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
                   </object>
                 </property>
                 <child type="bottom">

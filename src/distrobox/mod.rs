@@ -218,10 +218,13 @@ fn dbcmd() -> Command {
     Command::new("distrobox")
 }
 
+#[derive(Clone)]
 pub enum DistroboxCommandRunnerResponse {
     Version,
+    NoVersion,
     List(Vec<ContainerInfo>),
     Compatibility(Vec<String>),
+    // The exported apps commands is complex, it may fail, but we don't want the app to crash
     ExportedApps(String, Vec<(String, String, String)>), // (distrobox_name, [(filename, name, icon)])
 }
 
@@ -242,7 +245,11 @@ impl DistroboxCommandRunnerResponse {
                 ("11", "Void Linux", "docker.io/library/voidlinux:latest"),
                 ("13", "Deepin", "docker.io/library/deepin:latest"),
                 ("16", "Rocky Linux", "docker.io/library/rockylinux:latest"),
-                ("17", "Crystal Linux", "docker.io/library/crystal-linux:latest"),
+                (
+                    "17",
+                    "Crystal Linux",
+                    "docker.io/library/crystal-linux:latest",
+                ),
             ]
             .iter()
             .map(|(id, name, image)| ContainerInfo {
@@ -263,9 +270,17 @@ impl DistroboxCommandRunnerResponse {
         let dummy_exported_apps = vec![
             ("vim.desktop".into(), "Vim".into(), "vim".into()),
             ("matlab.desktop".into(), "MATLAB".into(), "matlab".into()),
-            ("vscode.desktop".into(), "Visual Studio Code".into(), "code".into()),
+            (
+                "vscode.desktop".into(),
+                "Visual Studio Code".into(),
+                "code".into(),
+            ),
             ("rstudio.desktop".into(), "RStudio".into(), "rstudio".into()),
-            ("sublime_text.desktop".into(), "Sublime Text".into(), "subl".into()),
+            (
+                "sublime_text.desktop".into(),
+                "Sublime Text".into(),
+                "subl".into(),
+            ),
             ("zoom.desktop".into(), "Zoom".into(), "zoom".into()),
             ("slack.desktop".into(), "Slack".into(), "slack".into()),
             ("postman.desktop".into(), "Postman".into(), "postman".into()),
@@ -274,13 +289,24 @@ impl DistroboxCommandRunnerResponse {
     }
 
     pub fn new_common_images() -> Self {
-        DistroboxCommandRunnerResponse::Compatibility(Self::common_distros().iter().map(|x| x.image.clone()).collect())
+        DistroboxCommandRunnerResponse::Compatibility(
+            Self::common_distros()
+                .iter()
+                .map(|x| x.image.clone())
+                .collect(),
+        )
     }
 
     fn build_version_response() -> (Command, String) {
         let mut cmd = Command::new("distrobox");
         cmd.arg("version");
         (cmd, "distrobox: 1.7.2.1".to_string())
+    }
+
+    fn build_no_version_response() -> (Command, Rc<dyn Fn() -> io::Result<String>>) {
+        let mut cmd = Command::new("distrobox");
+        cmd.arg("version");
+        (cmd, Rc::new(|| Err(io::Error::from_raw_os_error(0))))
     }
 
     fn build_list_response(containers: &[ContainerInfo]) -> (Command, String) {
@@ -297,7 +323,7 @@ impl DistroboxCommandRunnerResponse {
         }
         let mut cmd = Command::new("distrobox");
         cmd.arg("ls").arg("--no-color");
-        (cmd, output)
+        (cmd, output.clone())
     }
 
     fn build_compatibility_response(images: &[String]) -> (Command, String) {
@@ -307,7 +333,10 @@ impl DistroboxCommandRunnerResponse {
         (cmd, output)
     }
 
-    fn build_exported_apps_commands(box_name: &str, apps: &[(String, String, String)]) -> Vec<(Command, String)> {
+    fn build_exported_apps_commands(
+        box_name: &str,
+        apps: &[(String, String, String)],
+    ) -> Vec<(Command, String)> {
         let mut commands = Vec::new();
 
         // Get XDG_DATA_HOME
@@ -356,12 +385,31 @@ impl DistroboxCommandRunnerResponse {
         commands
     }
 
-    pub fn to_commands(&self) -> Vec<(Command, String)> {
+    fn wrap_err_fn(output: (Command, String)) -> (Command, Rc<dyn Fn() -> io::Result<String>>) {
+        (output.0, Rc::new(move || Ok(output.1.clone())))
+    }
+
+    pub fn to_commands(self) -> Vec<(Command, Rc<dyn Fn() -> Result<String, io::Error>>)> {
         match self {
-            Self::Version => vec![Self::build_version_response()],
-            Self::List(containers) => vec![Self::build_list_response(containers)],
-            Self::Compatibility(images) => vec![Self::build_compatibility_response(images)],
-            Self::ExportedApps(box_name, apps) => Self::build_exported_apps_commands(box_name, apps),
+            Self::Version => {
+                let working_response = Self::build_version_response();
+                vec![Self::wrap_err_fn(working_response)]
+            },  
+            Self::NoVersion => {
+                vec![Self::build_no_version_response()]
+            },                
+            Self::List(containers) => {
+                vec![Self::wrap_err_fn(Self::build_list_response(&containers))]
+            }
+            Self::Compatibility(images) => vec![Self::wrap_err_fn(
+                Self::build_compatibility_response(&images),
+            )],
+            Self::ExportedApps(box_name, apps) => {
+                Self::build_exported_apps_commands(&box_name, &apps)
+                    .into_iter()
+                    .map(Self::wrap_err_fn)
+                    .collect()
+            }
         }
     }
 }
@@ -389,8 +437,8 @@ impl Distrobox {
         let cmd_runner = {
             let mut builder = NullCommandRunnerBuilder::new();
             for res in responses {
-                for (cmd, out) in res.to_commands() {
-                    builder.cmd_full(cmd, &out);
+                for (cmd, out) in res.clone().to_commands() {
+                    builder.cmd_full(cmd, out.clone());
                 }
             }
             builder.build()
@@ -848,7 +896,7 @@ Categories=Utility;Network;
 
     #[test]
     fn remove() -> Result<(), Error> {
-        let mut db = Distrobox::new_null(NullCommandRunner::default(), false);
+        let db = Distrobox::new_null(NullCommandRunner::default(), false);
         let output_tracker = db.output_tracker();
         block_on(db.remove("ubuntu"))?;
         assert_eq!(
@@ -861,7 +909,9 @@ Categories=Utility;Network;
     #[test]
     fn stub_responses() {
         let cmd_outputs = DistroboxCommandRunnerResponse::new_list_common_distros().to_commands();
-        assert_eq!(cmd_outputs[0].1, "ID           | NAME                 | STATUS             | IMAGE  
+        assert_eq!(
+            cmd_outputs[0].1().unwrap(),
+            "ID           | NAME                 | STATUS             | IMAGE  
 1 | Ubuntu | Created | docker.io/library/ubuntu:latest
 2 | Fedora | Created | docker.io/library/fedora:latest
 3 | Kali | Created | docker.io/kalilinux/kali-rolling
@@ -875,6 +925,7 @@ Categories=Utility;Network;
 11 | Void Linux | Created | docker.io/library/voidlinux:latest
 13 | Deepin | Created | docker.io/library/deepin:latest
 16 | Rocky Linux | Created | docker.io/library/rockylinux:latest
-17 | Crystal Linux | Created | docker.io/library/crystal-linux:latest\n");
+17 | Crystal Linux | Created | docker.io/library/crystal-linux:latest\n"
+        );
     }
 }

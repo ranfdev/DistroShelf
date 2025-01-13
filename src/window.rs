@@ -43,7 +43,6 @@ use gtk::{gio, glib, pango};
 mod imp {
     use std::{
         cell::{OnceCell, RefCell},
-        collections::{HashMap, HashSet}, sync::Once,
     };
 
     use gtk::gdk;
@@ -57,12 +56,13 @@ mod imp {
     pub struct DistrohomeWindow {
         // Template widgets
         #[template_child]
-        pub sidebar_slot: TemplateChild<adw::Bin>,
+        pub sidebar_stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub create_distrobox_btn: TemplateChild<gtk::Button>,
         #[template_child]
         pub sidebar_bottom_slot: TemplateChild<adw::Bin>,
-        pub sidebar_list_box: gtk::ListBox,
+        #[template_child]
+        pub sidebar_list_box: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub main_slot: TemplateChild<adw::Bin>,
         #[template_child]
@@ -99,11 +99,15 @@ mod imp {
             });
 
             klass.install_action("win.learn-more", None, |win, _action, _target| {
-                gtk::UriLauncher::new(&"https://distrobox.it").launch(None::<&gtk::Window>, None::<&gio::Cancellable>, |res| {
-                    if let Err(e) = res {
-                        println!("error opening external uri {:?}", e);
-                    }
-                });
+                gtk::UriLauncher::new(&"https://distrobox.it").launch(
+                    None::<&gtk::Window>,
+                    None::<&gio::Cancellable>,
+                    |res| {
+                        if let Err(e) = res {
+                            println!("error opening external uri {:?}", e);
+                        }
+                    },
+                );
             });
 
             klass.install_action("win.create-distrobox", None, |win, _action, _target| {
@@ -129,7 +133,10 @@ glib::wrapper! {
 }
 
 impl DistrohomeWindow {
-    pub fn new<P: IsA<gtk::Application>>(application: &P, distrobox_service: DistroboxService) -> Self {
+    pub fn new<P: IsA<gtk::Application>>(
+        application: &P,
+        distrobox_service: DistroboxService,
+    ) -> Self {
         let this: Self = glib::Object::builder()
             .property("application", application)
             .build();
@@ -149,11 +156,12 @@ impl DistrohomeWindow {
         this.distrobox_service()
             .connect_version_changed(move |service| match service.version() {
                 Resource::Error(err, _) => {
-                    this_clone.show_error_page(&err.to_string());
+                    // this_clone.show_error_page(&err.to_string());
+
+                    this_clone.build_welcome_dialog();
                 }
                 _ => {}
             });
-        this.build_welcome_dialog();
 
         this
     }
@@ -187,12 +195,6 @@ impl DistrohomeWindow {
 
     fn build_sidebar(&self) {
         let imp = self.imp();
-
-
-        imp.sidebar_list_box.add_css_class("navigation-sidebar");
-        imp.sidebar_list_box
-            .set_selection_mode(gtk::SelectionMode::Single);
-
         let this = self.clone();
 
         imp.sidebar_list_box.connect_row_activated(move |_, _| {
@@ -220,15 +222,6 @@ impl DistrohomeWindow {
                     .selected_container
                     .replace(Some(row.name().clone()));
             });
-
-        // Create a scrolled window for the sidebar
-        let scrolled_window = gtk::ScrolledWindow::builder()
-            .hscrollbar_policy(gtk::PolicyType::Never)
-            .min_content_width(200)
-            .child(&imp.sidebar_list_box)
-            .build();
-
-        self.imp().sidebar_slot.set_child(Some(&scrolled_window));
 
         // Add tasks button to the bottom of the sidebar
         let tasks_button = TasksButton::new();
@@ -259,33 +252,40 @@ impl DistrohomeWindow {
                 imp.sidebar_list_box.remove(&row);
             }
 
-            let mut sorted_containers = containers.iter().collect::<Vec<_>>();
-            sorted_containers.sort_by_key(|x| x.0);
+            // Container list empty
+            if containers.len() == 0 {
+                imp.sidebar_stack.set_visible_child_name("no-distroboxes");
+            } else {
+                // Container list full
+                let mut sorted_containers = containers.iter().collect::<Vec<_>>();
+                sorted_containers.sort_by_key(|x| x.0);
 
-            let selected_container = self.selected_container_name();
+                let selected_container = self.selected_container_name();
 
-            for (name, info) in sorted_containers {
-                // build the row
-                let row = gtk::ListBoxRow::new();
-                let sidebar_row = SidebarRow::new(&info);
-                row.set_child(Some(&sidebar_row));
-                imp.sidebar_list_box.append(&row);
+                for (name, info) in sorted_containers {
+                    // build the row
+                    let row = gtk::ListBoxRow::new();
+                    let sidebar_row = SidebarRow::new(&info);
+                    row.set_child(Some(&sidebar_row));
+                    imp.sidebar_list_box.append(&row);
 
-                // select it if it was selected before
-                if let Some(selected) = &selected_container {
-                    if selected == name {
-                        dbg!(selected);
-                        imp.sidebar_list_box.select_row(Some(&row));
+                    // select it if it was selected before
+                    if let Some(selected) = &selected_container {
+                        if selected == name {
+                            dbg!(selected);
+                            imp.sidebar_list_box.select_row(Some(&row));
+                        }
                     }
                 }
-            }
 
-            // select the first is nothing was selected
-            if selected_container.is_none() {
-                if let Some(row) = imp.sidebar_list_box.first_child() {
-                    let row = row.downcast_ref::<gtk::ListBoxRow>();
-                    imp.sidebar_list_box.select_row(row);
+                // select the first is nothing was selected
+                if selected_container.is_none() {
+                    if let Some(row) = imp.sidebar_list_box.first_child() {
+                        let row = row.downcast_ref::<gtk::ListBoxRow>();
+                        imp.sidebar_list_box.select_row(row);
+                    }
                 }
+                imp.sidebar_stack.set_visible_child_name("distroboxes");
             }
         } else {
             dbg!("Loading containers...");
@@ -423,9 +423,8 @@ impl DistrohomeWindow {
             ));
         }
 
-
         let clone_row = Self::create_button_row(
-            "Clone Container", 
+            "Clone Container",
             "edit-copy-symbolic",
             "Create a copy of this container",
         );
@@ -470,8 +469,6 @@ impl DistrohomeWindow {
                 }
             }
         ));
-
-        
 
         /*install_deb_row.connect_activated(clone!(@weak widget => move |_| {
             // TODO: Show file chooser
@@ -685,10 +682,7 @@ impl DistrohomeWindow {
         dialog.set_title("Setup");
 
         let toolbar_view = adw::ToolbarView::new();
-        toolbar_view.add_top_bar(
-            &adw::HeaderBar::builder()
-            .build(),
-        );
+        toolbar_view.add_top_bar(&adw::HeaderBar::builder().build());
 
         let clamp = adw::Clamp::new();
         clamp.set_margin_top(12);
@@ -705,7 +699,6 @@ impl DistrohomeWindow {
 
         let terminal_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
 
-
         // Page 1: Welcome message
         if self.distrobox_service().version().error().is_some() {
             let welcome_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
@@ -715,31 +708,35 @@ impl DistrohomeWindow {
             welcome_label.set_xalign(0.5);
             welcome_page.append(&welcome_label);
 
-            let welcome_description = gtk::Label::new(Some("This application helps you manage your distroboxes easily."));
+            let welcome_description = gtk::Label::new(Some(
+                "This application helps you manage your distroboxes easily.",
+            ));
             welcome_description.set_wrap(true);
             welcome_description.set_xalign(0.5);
             welcome_page.append(&welcome_description);
 
-            let link_button = gtk::LinkButton::with_label("https://distrobox.it/", "Learn more about Distrobox");
+            let link_button =
+                gtk::LinkButton::with_label("https://distrobox.it/", "Learn more about Distrobox");
             link_button.set_halign(gtk::Align::Center);
             welcome_page.append(&link_button);
 
             let install_button = gtk::Button::with_label("Install Distrobox");
             install_button.set_halign(gtk::Align::Center);
             install_button.add_css_class("suggested-action");
+            install_button.add_css_class("pill");
             install_button.connect_clicked(clone!(
-            #[weak(rename_to = this)]
-            self,
-            #[weak]
-            carousel,
-            #[weak]
-            terminal_page,
-            move |_| {
-            // this.distrobox_service().install_distrobox();
-            if this.distrobox_service().version().error().is_none() {
-                carousel.scroll_to(&terminal_page, true);
-            }
-            }
+                #[weak(rename_to = this)]
+                self,
+                #[weak]
+                carousel,
+                #[weak]
+                terminal_page,
+                move |_| {
+                    // this.distrobox_service().install_distrobox();
+                    if this.distrobox_service().version().error().is_none() {
+                        carousel.scroll_to(&terminal_page, true);
+                    }
+                }
             ));
             welcome_page.append(&install_button);
 
@@ -766,11 +763,11 @@ impl DistrohomeWindow {
         done_button.set_halign(gtk::Align::Center);
         done_button.add_css_class("suggested-action");
         done_button.add_css_class("pill");
-        
+
         // Enable/disable button based on terminal selection
         let terminal_valid = self.distrobox_service().selected_terminal().is_some();
         done_button.set_sensitive(terminal_valid);
-        
+
         // Watch for terminal changes
         let done_button_clone = done_button.clone();
         self.distrobox_service().connect_containers_changed(clone!(

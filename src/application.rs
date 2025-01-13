@@ -114,7 +114,7 @@ mod imp {
             // Get the current window or create one if necessary
             let window = application.active_window().unwrap_or_else(|| {
                 // change this to test various scenarios
-                let window = this.create_window_null_working_empty();
+                let window = this.create_window_null_no_distrobox();
 
 
                 window.upcast()
@@ -165,6 +165,14 @@ impl DistrohomeApplication {
                 DistroboxCommandRunnerResponse::Version,
                 DistroboxCommandRunnerResponse::List(vec![]),
                 DistroboxCommandRunnerResponse::new_common_images(),
+            ],
+            false
+        ))
+    }
+    pub fn create_window_null_no_distrobox(&self) -> DistrohomeWindow {
+        DistrohomeWindow::new(self, DistroboxService::new_null_with_responses(
+            &[
+                DistroboxCommandRunnerResponse::NoVersion,
             ],
             false
         ))

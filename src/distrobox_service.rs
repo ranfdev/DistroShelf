@@ -119,8 +119,9 @@ impl DistroboxService {
         let this = self.clone();
         *self.imp().version.borrow_mut() = Resource::Loading(None);
         glib::MainContext::ref_thread_default().spawn_local(async move {
-            let version = this.distrobox().version().await.unwrap();
-            *this.imp().version.borrow_mut() = Resource::Loaded(version);
+            let version = this.distrobox().version().await;
+            
+            *this.imp().version.borrow_mut() = Resource::from(version.map_err(|x| x.into()));
             this.emit_by_name::<()>("version-changed", &[]);
         });
     }
