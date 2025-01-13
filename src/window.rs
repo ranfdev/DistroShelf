@@ -64,9 +64,25 @@ mod imp {
         #[template_child]
         pub sidebar_list_box: TemplateChild<gtk::ListBox>,
         #[template_child]
+        pub main_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
         pub main_slot: TemplateChild<adw::Bin>,
         #[template_child]
         pub split_view: TemplateChild<adw::NavigationSplitView>,
+        #[template_child]
+        pub carousel_child_terminal_preferences_page: TemplateChild<adw::Clamp>,
+        #[template_child]
+        pub terminal_preferences_page: TemplateChild<adw::PreferencesPage>,
+        #[template_child]
+        pub welcome_carousel: TemplateChild<adw::Carousel>,
+        #[template_child]
+        pub welcome_continue_btn: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub terminal_continue_btn: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub terminal_error_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub distrobox_command_missing_label: TemplateChild<gtk::Label>,
         pub distrobox_service: OnceCell<DistroboxService>,
         pub selected_container: RefCell<Option<String>>,
     }
@@ -157,8 +173,8 @@ impl DistrohomeWindow {
             .connect_version_changed(move |service| match service.version() {
                 Resource::Error(err, _) => {
                     // this_clone.show_error_page(&err.to_string());
-
-                    this_clone.build_welcome_dialog();
+                    this_clone.imp().main_stack.set_visible_child_name("welcome");
+                    this_clone.setup_welcome_screen();
                 }
                 _ => {}
             });
@@ -676,143 +692,41 @@ impl DistrohomeWindow {
         dialog
     }
 
-    fn build_welcome_dialog(&self) {
-        let dialog = adw::Dialog::new();
-        dialog.set_content_width(360);
-        dialog.set_title("Setup");
+    fn setup_welcome_screen(&self) {
+        let imp = self.imp();
 
-        let toolbar_view = adw::ToolbarView::new();
-        toolbar_view.add_top_bar(&adw::HeaderBar::builder().build());
+        imp.terminal_preferences_page.add(&self.build_terminal_combo_row());
 
-        let clamp = adw::Clamp::new();
-        clamp.set_margin_top(12);
-        clamp.set_margin_bottom(12);
-        clamp.set_margin_start(12);
-        clamp.set_margin_end(12);
-
-        let carousel = adw::Carousel::new();
-        carousel.set_vexpand(true);
-
-        let indicator = adw::CarouselIndicatorDots::new();
-        indicator.set_carousel(Some(&carousel));
-        toolbar_view.add_bottom_bar(&indicator);
-
-        let terminal_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
-
-        // Page 1: Welcome message
-        if self.distrobox_service().version().error().is_some() {
-            let welcome_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
-            let welcome_label = gtk::Label::new(Some("Welcome to DistroHome!"));
-            welcome_label.set_wrap(true);
-            welcome_label.add_css_class("title-1");
-            welcome_label.set_xalign(0.5);
-            welcome_page.append(&welcome_label);
-
-            let welcome_description = gtk::Label::new(Some(
-                "This application helps you manage your distroboxes easily.",
-            ));
-            welcome_description.set_wrap(true);
-            welcome_description.set_xalign(0.5);
-            welcome_page.append(&welcome_description);
-
-            let link_button =
-                gtk::LinkButton::with_label("https://distrobox.it/", "Learn more about Distrobox");
-            link_button.set_halign(gtk::Align::Center);
-            welcome_page.append(&link_button);
-
-            let install_button = gtk::Button::with_label("Install Distrobox");
-            install_button.set_halign(gtk::Align::Center);
-            install_button.add_css_class("suggested-action");
-            install_button.add_css_class("pill");
-            install_button.connect_clicked(clone!(
-                #[weak(rename_to = this)]
-                self,
-                #[weak]
-                carousel,
-                #[weak]
-                terminal_page,
-                move |_| {
-                    // this.distrobox_service().install_distrobox();
-                    if this.distrobox_service().version().error().is_none() {
-                        carousel.scroll_to(&terminal_page, true);
-                    }
-                }
-            ));
-            welcome_page.append(&install_button);
-
-            carousel.append(&welcome_page);
-        }
-
-        // Page 2: Choose preferred terminal emulator
-        let explanation_label = gtk::Label::new(Some("Please select your preferred terminal emulator. This will be used to open terminal sessions within your containers."));
-        explanation_label.set_wrap(true);
-        explanation_label.set_xalign(0.0);
-        terminal_page.append(&explanation_label);
-
-        let terminal_group = self.build_terminal_combo_row();
-        terminal_page.append(&terminal_group);
-
-        let error_label = gtk::Label::new(None);
-        error_label.set_wrap(true);
-        error_label.set_xalign(0.0);
-        error_label.add_css_class("error");
-        error_label.set_visible(false);
-        terminal_page.append(&error_label);
-
-        let done_button = gtk::Button::with_label("Done");
-        done_button.set_halign(gtk::Align::Center);
-        done_button.add_css_class("suggested-action");
-        done_button.add_css_class("pill");
-
-        // Enable/disable button based on terminal selection
-        let terminal_valid = self.distrobox_service().selected_terminal().is_some();
-        done_button.set_sensitive(terminal_valid);
-
-        // Watch for terminal changes
-        let done_button_clone = done_button.clone();
-        self.distrobox_service().connect_containers_changed(clone!(
-            #[weak]
-            done_button_clone,
-            move |service| {
-                let valid = service.selected_terminal().is_some();
-                done_button_clone.set_sensitive(valid);
+        let this = self.clone();
+        imp.welcome_continue_btn.connect_clicked(move |_| {
+            if let Some(e) = this.distrobox_service().version().error() {
+                this.imp().distrobox_command_missing_label.set_visible(true);
+                this.imp().distrobox_command_missing_label.set_label(&e.to_string());
+            } else {
+                this.imp().welcome_carousel.scroll_to(&*this.imp().carousel_child_terminal_preferences_page, true);
             }
-        ));
+        });
 
-        done_button.connect_clicked(clone!(
+        imp.terminal_continue_btn.connect_clicked(clone!(
             #[weak(rename_to = this)]
             self,
-            #[weak]
-            dialog,
-            #[weak]
-            error_label,
             move |_| {
                 if this.distrobox_service().selected_terminal().is_some() {
                     let this_clone = this.clone();
-                    let dialog_clone = dialog.clone();
                     glib::MainContext::ref_thread_default().spawn_local(async move {
                         match this_clone.distrobox_service().validate_terminal().await {
                             Ok(_) => {
-                                dialog_clone.close();
+                                this_clone.imp().main_stack.set_visible_child_name("main");
                             }
                             Err(err) => {
-                                error_label.set_text(&format!("{}", err));
-                                error_label.set_visible(true);
+                                this_clone.imp().terminal_error_label.set_text(&format!("{}", err));
+                                this_clone.imp().terminal_error_label.set_visible(true);
                             }
                         }
                     });
                 }
             }
         ));
-        terminal_page.append(&done_button);
-
-        carousel.append(&terminal_page);
-
-        clamp.set_child(Some(&carousel));
-        toolbar_view.set_content(Some(&clamp));
-        dialog.set_child(Some(&toolbar_view));
-
-        dialog.present(Some(self));
     }
 
     fn build_preferences_dialog(&self) {
