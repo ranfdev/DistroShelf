@@ -52,16 +52,31 @@
                                 <property name="name">no-distroboxes</property>
                                 <property name="child">
                                   <object class="AdwStatusPage">
-                                    <property name="title" translatable="yes">Create First Distrobox</property>
-                                    <property name="description" translatable="yes">You haven't created a distrobox yet</property>
+                                    <property name="title" translatable="yes">No Distroboxes Found</property>
+                                    <property name="description">Distrobox lets you run any Linux distribution inside your terminal.</property>
                                     <property name="child">
-                                      <object class="GtkButton">
-                                        <style>
-                                        <class name="pill"/>
-                                        <class name="suggested-action"/>
-                                        </style>
-                                        <property name="label" translatable="yes">Create Distrobox</property>
-                                        <property name="action-name">win.create-distrobox</property>
+                                      <object class="GtkBox">
+                                        <property name="orientation">vertical</property>
+                                        <property name="spacing">6</property>
+                                        <child>
+                                          <object class="GtkButton">
+                                            <style>
+                                              <class name="pill"/>
+                                            </style>
+                                            <property name="label" translatable="yes">Learn More</property>
+                                            <property name="action-name">win.learn-more</property>
+                                          </object>
+                                        </child>
+                                        <child>
+                                          <object class="GtkButton">
+                                            <style>
+                                            <class name="pill"/>
+                                            <class name="suggested-action"/>
+                                            </style>
+                                            <property name="label" translatable="yes">Create Distrobox</property>
+                                            <property name="action-name">win.create-distrobox</property>
+                                          </object>
+                                        </child>
                                       </object>
                                     </property>
                                   </object>
@@ -142,7 +157,7 @@
                               <style>
                                 <class name="pill"/>
                               </style>
-                              <property name="label" translatable="yes">Learn More About Distrobox</property>
+                              <property name="label" translatable="yes">Learn More</property>
                               <property name="action-name">win.learn-more</property>
                             </object>
                           </child>
