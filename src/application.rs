@@ -28,15 +28,43 @@ use crate::distrobox::DistroboxCommandRunnerResponse;
 use crate::distrobox_service::DistroboxService;
 use crate::DistrohomeWindow;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
+#[enum_type(name = "DistroboxServiceTy")]
+enum DistroboxServiceTy {
+    #[default]
+    Real,
+    NullWorking,
+    NullEmpty,
+    NullNoVersion
+}
+
 mod imp {
+    use std::{cell::RefCell, collections::HashMap};
+
+    use glib::{property, Properties};
     use gtk::gdk;
 
     use crate::{distrobox_service::DistroboxService, known_distros};
 
     use super::*;
 
-    #[derive(Debug, Default)]
-    pub struct DistrohomeApplication {}
+    #[derive(Debug, Default, Properties)]
+    #[properties(wrapper_type = super::DistrohomeApplication)]
+    pub struct DistrohomeApplication {
+        #[property(get, set = Self::set_distrobox_service_ty, builder(DistroboxServiceTy::Real))]
+        pub distrobox_service_ty: RefCell<DistroboxServiceTy>,
+    }
+
+    impl DistrohomeApplication {
+        fn set_distrobox_service_ty(&self, value: DistroboxServiceTy) {
+            self.distrobox_service_ty.replace(value);
+            if let Some(w) = self.obj().active_window() {
+                w.close();
+            }
+            let w = self.obj().recreate_window();
+            w.present();
+        }
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for DistrohomeApplication {
@@ -45,6 +73,7 @@ mod imp {
         type ParentType = adw::Application;
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for DistrohomeApplication {
         fn constructed(&self) {
             self.parent_constructed();
@@ -112,12 +141,8 @@ mod imp {
 
             let this = self.obj().clone();
             // Get the current window or create one if necessary
-            let window = application.active_window().unwrap_or_else(|| {
-                // change this to test various scenarios
-                let window = this.create_window_null_no_distrobox();
-
-
-                window.upcast()
+            let window = this.active_window().unwrap_or_else(|| {
+                this.recreate_window().upcast()
             });
 
             // Ask the window manager/compositor to present the window
@@ -143,39 +168,37 @@ impl DistrohomeApplication {
             .build()
     }
 
+    fn recreate_window(&self) -> adw::ApplicationWindow {
+        let distrobox_service = match {self.imp().distrobox_service_ty.borrow().to_owned()} {
+            DistroboxServiceTy::NullWorking => DistroboxService::new_null_with_responses(
+                &[
+                    DistroboxCommandRunnerResponse::Version,
+                    DistroboxCommandRunnerResponse::new_list_common_distros(),
+                    DistroboxCommandRunnerResponse::new_common_images(),
+                    DistroboxCommandRunnerResponse::new_common_exported_apps(),
+                ],
+                false
+            ),
+            DistroboxServiceTy::NullEmpty => DistroboxService::new_null_with_responses(
+                &[
+                    DistroboxCommandRunnerResponse::Version,
+                    DistroboxCommandRunnerResponse::List(vec![]),
+                    DistroboxCommandRunnerResponse::new_common_images(),
+                ],
+                false
+            ),
+            DistroboxServiceTy::NullNoVersion => DistroboxService::new_null_with_responses(
+                &[
+                    DistroboxCommandRunnerResponse::NoVersion,
+                ],
+                false
+            ),
+            _ => DistroboxService::new()
+        };
 
-    // window factory functions
-    pub fn create_window_real(&self) -> DistrohomeWindow {
-        DistrohomeWindow::new(self, DistroboxService::new())
-    } 
-    pub fn create_window_null_working(&self) -> DistrohomeWindow {
-        DistrohomeWindow::new(self, DistroboxService::new_null_with_responses(
-            &[
-                DistroboxCommandRunnerResponse::Version,
-                DistroboxCommandRunnerResponse::new_list_common_distros(),
-                DistroboxCommandRunnerResponse::new_common_images(),
-                DistroboxCommandRunnerResponse::new_common_exported_apps(),
-            ],
-            false
-        ))
-    }
-    pub fn create_window_null_working_empty(&self) -> DistrohomeWindow {
-        DistrohomeWindow::new(self, DistroboxService::new_null_with_responses(
-            &[
-                DistroboxCommandRunnerResponse::Version,
-                DistroboxCommandRunnerResponse::List(vec![]),
-                DistroboxCommandRunnerResponse::new_common_images(),
-            ],
-            false
-        ))
-    }
-    pub fn create_window_null_no_distrobox(&self) -> DistrohomeWindow {
-        DistrohomeWindow::new(self, DistroboxService::new_null_with_responses(
-            &[
-                DistroboxCommandRunnerResponse::NoVersion,
-            ],
-            false
-        ))
+        
+        let window = DistrohomeWindow::new(self.upcast_ref::<adw::Application>(), distrobox_service);
+        window.upcast()
     }
 
     fn setup_gactions(&self) {
