@@ -33,6 +33,7 @@ use crate::resource::{Resource, SharedResource};
 use crate::sidebar_row::SidebarRow;
 use crate::supported_terminals::SUPPORTED_TERMINALS;
 use crate::tasks_button::TasksButton;
+use crate::terminal_combo_row::TerminalComboRow;
 use crate::{known_distros, supported_terminals};
 use adw::prelude::*;
 use adw::subclass::{preferences_group, prelude::*};
@@ -41,19 +42,23 @@ use gtk::glib::clone;
 use gtk::{gio, glib, pango};
 
 mod imp {
-    use std::{
-        cell::{OnceCell, RefCell},
-    };
+    use std::cell::{OnceCell, RefCell};
 
+    use glib::{derived_properties, Properties};
     use gtk::gdk;
 
     use crate::{distrobox_service::DistroboxService, resource::Resource};
 
     use super::*;
 
-    #[derive(Default, gtk::CompositeTemplate)]
+    #[derive(Default, gtk::CompositeTemplate, Properties)]
+    #[properties(wrapper_type = super::DistrohomeWindow)]
     #[template(resource = "/com/ranfdev/DistroHome/window.ui")]
     pub struct DistrohomeWindow {
+        #[property(get, set)]
+        pub distrobox_service: RefCell<DistroboxService>,
+        pub selected_container: RefCell<Option<String>>,
+
         // Template widgets
         #[template_child]
         pub sidebar_stack: TemplateChild<gtk::Stack>,
@@ -70,21 +75,7 @@ mod imp {
         #[template_child]
         pub split_view: TemplateChild<adw::NavigationSplitView>,
         #[template_child]
-        pub carousel_child_terminal_preferences_page: TemplateChild<adw::Clamp>,
-        #[template_child]
-        pub terminal_preferences_page: TemplateChild<adw::PreferencesPage>,
-        #[template_child]
-        pub welcome_carousel: TemplateChild<adw::Carousel>,
-        #[template_child]
-        pub welcome_continue_btn: TemplateChild<gtk::Button>,
-        #[template_child]
-        pub terminal_continue_btn: TemplateChild<gtk::Button>,
-        #[template_child]
-        pub terminal_error_label: TemplateChild<gtk::Label>,
-        #[template_child]
-        pub distrobox_command_missing_label: TemplateChild<gtk::Label>,
-        pub distrobox_service: OnceCell<DistroboxService>,
-        pub selected_container: RefCell<Option<String>>,
+        pub welcome_view: TemplateChild<crate::welcome_view::WelcomeView>,
     }
 
     #[glib::object_subclass]
@@ -136,6 +127,7 @@ mod imp {
         }
     }
 
+    #[derived_properties]
     impl ObjectImpl for DistrohomeWindow {}
     impl WidgetImpl for DistrohomeWindow {}
     impl WindowImpl for DistrohomeWindow {}
@@ -155,9 +147,8 @@ impl DistrohomeWindow {
     ) -> Self {
         let this: Self = glib::Object::builder()
             .property("application", application)
+            .property("distrobox-service", distrobox_service)
             .build();
-
-        this.imp().distrobox_service.set(distrobox_service);
 
         this.build_sidebar();
 
@@ -173,8 +164,17 @@ impl DistrohomeWindow {
             .connect_version_changed(move |service| match service.version() {
                 Resource::Error(err, _) => {
                     // this_clone.show_error_page(&err.to_string());
-                    this_clone.imp().main_stack.set_visible_child_name("welcome");
-                    this_clone.setup_welcome_screen();
+                    this_clone
+                        .imp()
+                        .main_stack
+                        .set_visible_child_name("welcome");
+                    let this = this_clone.clone();
+                    this_clone
+                        .imp()
+                        .welcome_view
+                        .connect_setup_finished(move || {
+                            this.imp().main_stack.set_visible_child_name("main");
+                        });
                 }
                 _ => {}
             });
@@ -190,10 +190,6 @@ impl DistrohomeWindow {
             .build();
 
         self.imp().main_slot.set_child(Some(&status_page));
-    }
-
-    fn distrobox_service(&self) -> &DistroboxService {
-        &self.imp().distrobox_service.get().unwrap()
     }
 
     fn selected_container_name(&self) -> Option<String> {
@@ -692,43 +688,6 @@ impl DistrohomeWindow {
         dialog
     }
 
-    fn setup_welcome_screen(&self) {
-        let imp = self.imp();
-
-        imp.terminal_preferences_page.add(&self.build_terminal_combo_row());
-
-        let this = self.clone();
-        imp.welcome_continue_btn.connect_clicked(move |_| {
-            if let Some(e) = this.distrobox_service().version().error() {
-                this.imp().distrobox_command_missing_label.set_visible(true);
-                this.imp().distrobox_command_missing_label.set_label(&e.to_string());
-            } else {
-                this.imp().welcome_carousel.scroll_to(&*this.imp().carousel_child_terminal_preferences_page, true);
-            }
-        });
-
-        imp.terminal_continue_btn.connect_clicked(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                if this.distrobox_service().selected_terminal().is_some() {
-                    let this_clone = this.clone();
-                    glib::MainContext::ref_thread_default().spawn_local(async move {
-                        match this_clone.distrobox_service().validate_terminal().await {
-                            Ok(_) => {
-                                this_clone.imp().main_stack.set_visible_child_name("main");
-                            }
-                            Err(err) => {
-                                this_clone.imp().terminal_error_label.set_text(&format!("{}", err));
-                                this_clone.imp().terminal_error_label.set_visible(true);
-                            }
-                        }
-                    });
-                }
-            }
-        ));
-    }
-
     fn build_preferences_dialog(&self) {
         let dialog = adw::PreferencesDialog::new();
         dialog.set_title("Preferences");
@@ -738,57 +697,14 @@ impl DistrohomeWindow {
         let preferences_group = adw::PreferencesGroup::new();
         preferences_group.set_title("General");
 
-        let terminal_group = self.build_terminal_combo_row();
+        let terminal_group = adw::PreferencesGroup::new();
+        terminal_group.set_title("Terminal Settings");
+        terminal_group.add(&TerminalComboRow::new_with_params(self.distrobox_service()));
         page.add(&terminal_group);
 
         page.add(&preferences_group);
         dialog.add(&page);
         dialog.present(Some(self));
-    }
-
-    fn build_terminal_combo_row(&self) -> adw::PreferencesGroup {
-        let group = adw::PreferencesGroup::new();
-        group.set_title("Terminal Settings");
-
-        let terminal_combo = adw::ComboRow::new();
-        terminal_combo.set_title("Preferred Terminal");
-        terminal_combo.set_use_subtitle(true);
-
-        let terminals = SUPPORTED_TERMINALS
-            .iter()
-            .map(|x| x.name.as_ref())
-            .collect::<Vec<&str>>();
-        let selected_position = terminals.iter().position(|x| {
-            Some(x)
-                == self
-                    .distrobox_service()
-                    .selected_terminal()
-                    .as_ref()
-                    .map(|x| x.name.as_str())
-                    .as_ref()
-        });
-
-        let terminal_list = gtk::StringList::new(&terminals);
-        terminal_combo.set_model(Some(&terminal_list));
-        if let Some(selected_position) = selected_position {
-            terminal_combo.set_selected(selected_position as u32);
-        }
-        terminal_combo.connect_selected_item_notify(clone!(
-            #[weak(rename_to = this)]
-            self,
-            #[weak]
-            terminal_combo,
-            move |combo| {
-                let selected: gtk::StringObject = combo.selected_item().and_downcast().unwrap();
-                supported_terminals::terminal_by_name(&selected.string()).map(|x| {
-                    this.distrobox_service()
-                        .set_selected_terminal_program(&x.program)
-                });
-            }
-        ));
-
-        group.add(&terminal_combo);
-        group
     }
 
     fn build_exportable_apps_dialog(&self, box_name: &str) {

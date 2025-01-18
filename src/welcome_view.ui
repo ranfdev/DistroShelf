@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1.0"/>
+  <template class="WelcomeView" parent="AdwBin">
+    <property name="child">
+      <object class="AdwCarousel" id="carousel">
+        <property name="interactive">false</property>
+        <property name="spacing">12</property>
+        <child>
+          <object class="AdwClamp">
+            <property name="maximum-size">500</property>
+            <property name="hexpand">true</property>
+            <property name="child">
+              <object class="AdwStatusPage">
+                <property name="title" translatable="yes">Welcome to DistroHome</property>
+                <property name="description" translatable="yes">Please install Distrobox to continue</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">12</property>
+                    <property name="halign">center</property>
+                    <child>
+                      <object class="GtkButton">
+                        <style>
+                          <class name="pill"/>
+                        </style>
+                        <property name="label" translatable="yes">Learn More</property>
+                        <property name="action-name">win.learn-more</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton">
+                        <style>
+                          <class name="pill"/>
+                          <class name="suggested-action"/>
+                        </style>
+                        <property name="label" translatable="yes">Continue</property>
+                        <signal name="clicked" swapped="true" handler="continue_to_terminal_page"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="distrobox_command_missing_label">
+                        <property name="wrap">true</property>
+                        <style>
+                          <class name="error"/>
+                        </style>
+                        <binding name="label">
+                          <lookup name="distrobox-not-installed-error">WelcomeView</lookup>
+                        </binding>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwClamp" id="terminal_preferences_page">
+            <property name="maximum-size">500</property>
+            <property name="hexpand">true</property>
+            <property name="child">
+              <object class="GtkBox">
+                <property name="spacing">12</property>
+                <property name="orientation">vertical</property>
+                <property name="valign">center</property>
+                <child>
+                  <object class="AdwPreferencesPage">
+                    <child>
+                      <object class="AdwPreferencesGroup">
+                        <property name="title" translatable="yes">Preferred terminal</property>
+                          <child>
+                          <object class="TerminalComboRow" id="terminal_combo_row">
+                            <property name="distrobox-service"
+                              bind-source="WelcomeView"
+                              bind-property="distrobox-service"
+                              bind-flags="sync-create" />
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton">
+                    <style>
+                      <class name="pill"/>
+                      <class name="suggested-action"/>
+                    </style>
+                    <property name="margin-top">24</property>
+                    <property name="halign">center</property>
+                    <property name="label" translatable="yes">Continue</property>
+                    <signal name="clicked" swapped="true" handler="continue_to_app"/>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="terminal_error_label">
+                    <property name="wrap">true</property>
+                    <style>
+                      <class name="error"/>
+                    </style>
+                    <binding name="label">
+                      <lookup name="terminal-not-valid-error">WelcomeView</lookup>
+                    </binding>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
+        </child>
+      </object>
+    </property>
+  </template>
+</interface>
