@@ -1,11 +1,11 @@
 use crate::distrobox_task::DistroboxTask;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{self, glib::{self, clone}, pango, prelude::*};
+use gtk::{self, glib::{self, clone}, pango};
 use std::sync::OnceLock;
 
 mod imp {
-    use std::{cell::{Cell, RefCell}, rc::Rc};
+    use std::cell::{Cell, RefCell};
 
     use glib::clone;
 
@@ -190,9 +190,13 @@ impl TasksButton {
         title_label.add_css_class("title");
 
         let subtitle_label = gtk::Label::new(Some(&task.status()));
-        task.connect_status_notify(glib::clone!(@weak subtitle_label => move |task| {
-            subtitle_label.set_text(&task.status());
-        }));
+        task.connect_status_notify(clone!(
+            #[weak]
+            subtitle_label,
+            move |task| {
+                subtitle_label.set_text(&task.status());
+            }
+        ));
         subtitle_label.set_halign(gtk::Align::Start);
         subtitle_label.set_ellipsize(pango::EllipsizeMode::End);
         subtitle_label.add_css_class("subtitle");
@@ -202,11 +206,16 @@ impl TasksButton {
 
         let gesture = gtk::GestureClick::new();
         gesture.connect_released(
-            glib::clone!(@weak self as tasks_button, @weak task => move |_, _, _, _| {
-                // Emit the task-clicked signal
-                tasks_button.emit_by_name::<()>("task-clicked", &[&task]);
-                println!("Task clicked: {}", task.name());
-            }),
+            clone!(
+                #[weak(rename_to=this)]
+                self,
+                #[weak]
+                task,
+                move |_, _, _, _| {
+                    this.emit_by_name::<()>("task-clicked", &[&task]);
+                    println!("Task clicked: {}", task.name());
+                }
+            ),
         );
         vbox.add_controller(gesture);
 
