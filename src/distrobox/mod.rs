@@ -667,29 +667,6 @@ impl Distrobox {
         }
         self.cmd_spawn(cmd)
     }
-    // enter
-    pub fn enter_cmd(&self, name: &str) -> Command {
-        let mut cmd = dbcmd();
-        cmd.arg("enter").arg(name);
-        cmd
-    }
-
-    // list | ls
-    pub async fn list(&self) -> Result<Vec<ContainerInfo>, Error> {
-        let mut cmd = dbcmd();
-        cmd.arg("ls").arg("--no-color");
-        let text = self.cmd_output_string(cmd).await?;
-        dbg!(&text);
-        let lines = text.lines().skip(1);
-        let mut out = vec![];
-        for line in lines {
-            dbg!(&line);
-            let item: ContainerInfo = line.parse()?;
-            dbg!(&item);
-            out.push(item);
-        }
-        Ok(out)
-    }
     // create --compatibility
     pub async fn list_images(&self) -> Result<Vec<String>, Error> {
         let mut cmd = dbcmd();
@@ -706,6 +683,34 @@ impl Distrobox {
             })
             .collect();
         Ok(lines)
+    }
+    // enter
+    pub fn enter_cmd(&self, name: &str) -> Command {
+        let mut cmd = dbcmd();
+        cmd.arg("enter").arg(name);
+        cmd
+    }
+    // clone
+    pub async fn clone_to(&self, source_name: &str, target_name: &str) -> Result<Box<dyn Child + Send>, Error> {
+        let mut cmd = dbcmd();
+        cmd.arg("create").arg("--name").arg(target_name).arg("--clone").arg(source_name);
+        self.cmd_spawn(cmd)
+    }
+    // list | ls
+    pub async fn list(&self) -> Result<Vec<ContainerInfo>, Error> {
+        let mut cmd = dbcmd();
+        cmd.arg("ls").arg("--no-color");
+        let text = self.cmd_output_string(cmd).await?;
+        dbg!(&text);
+        let lines = text.lines().skip(1);
+        let mut out = vec![];
+        for line in lines {
+            dbg!(&line);
+            let item: ContainerInfo = line.parse()?;
+            dbg!(&item);
+            out.push(item);
+        }
+        Ok(out)
     }
     // rm
     pub async fn remove(&self, name: &str) -> Result<String, Error> {

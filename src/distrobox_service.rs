@@ -11,15 +11,14 @@ use gtk::prelude::TextBufferExt;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
+use std::process::ExitStatus;
 use std::sync::OnceLock;
 use std::time::Duration;
 
 use crate::container::Container;
-use crate::distrobox;
 use crate::distrobox::wrap_flatpak_cmd;
 use crate::distrobox::Child;
 use crate::distrobox::Command;
-use crate::distrobox::ContainerInfo;
 use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::DistroboxCommandRunnerResponse;
@@ -176,6 +175,8 @@ impl DistroboxService {
         self.imp().tasks.borrow_mut().push(operation);
         self.emit_by_name::<()>("tasks-changed", &[]);
     }
+
+    // I'd like this to show some output in the task, but the distrobox create command doesn't show any output...
     pub fn do_upgrade(&self, name: &str) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
@@ -270,8 +271,17 @@ impl DistroboxService {
         self.push_operation(task.clone());
         task
     }
-    pub fn do_clone(&self, source_name: &str, target_name: &str) {
-        todo!()
+    pub fn do_clone(&self, source_name: &str, target_name: &str) -> DistroboxTask {
+        let this = self.clone();
+        let source_name_clone = source_name.to_string();
+        let target_name_clone = target_name.to_string();
+        let task = DistroboxTask::new(source_name, "clone", move |task| async move {
+            let child = this.distrobox().clone_to(&source_name_clone, &target_name_clone).await?;
+            this.handle_child_output_for_task(child, &task).await?;
+            Ok(())
+        });
+        self.push_operation(task.clone());
+        task
     }
     pub fn do_delete(&self, name: &str) {
         let this = self.clone();
@@ -377,6 +387,16 @@ impl DistroboxService {
             task.output().insert(&mut task.output().end_iter(), "\n");
         }
 
+        match child.wait().await {
+            Ok(e) => {
+                if !e.success() {
+                    anyhow::bail!("Status: {:?}", e.code());
+                }
+            }
+            Err(e) => {
+                return Err(e.into());
+            }
+        }
         self.load_container_infos();
         Ok(())
     }

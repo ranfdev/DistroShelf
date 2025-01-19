@@ -132,6 +132,7 @@ pub trait Child {
     fn take_stdin(&mut self) -> Option<Box<dyn AsyncWrite + Send + Unpin>>;
     fn take_stdout(&mut self) -> Option<Box<dyn AsyncRead + Send + Unpin>>;
     fn kill(&mut self) -> Result<(), io::Error>;
+    fn wait(&mut self) -> Pin<Box<dyn Future<Output = Result<ExitStatus, io::Error>>>>;
 }
 
 struct StubChild {
@@ -144,7 +145,7 @@ impl StubChild {
     fn new_null(
         stdin: impl AsyncWrite + Send + Unpin + 'static,
         stdout: impl AsyncRead + Send + Unpin + 'static,
-        exit_status: io::Result<ExitStatus>,
+        exit_status: io::Result<ExitStatus>, // TODO: replace with a closure, so that we can use it multiple times
     ) -> StubChild {
         StubChild {
             stdin: Some(Box::new(stdin)),
@@ -164,6 +165,9 @@ impl Child for StubChild {
     fn kill(&mut self) -> Result<(), io::Error> {
         unimplemented!()
     }
+    fn wait(&mut self) -> Pin<Box<dyn Future<Output = Result<ExitStatus, io::Error>>>> {
+        async {Ok(ExitStatus::from_raw(0))}.boxed_local()
+    }
 }
 
 impl Child for async_process::Child {
@@ -180,5 +184,9 @@ impl Child for async_process::Child {
 
     fn kill(&mut self) -> Result<(), io::Error> {
         self.kill()
+    }
+
+    fn wait(&mut self) -> Pin<Box<dyn Future<Output = Result<ExitStatus, io::Error>>>> {
+        self.status().boxed_local()
     }
 }
