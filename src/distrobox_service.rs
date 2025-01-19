@@ -505,6 +505,11 @@ impl DistroboxService {
             None
         })
     }
+
+    pub fn clear_ended_tasks(&self) {
+        self.imp().tasks.borrow_mut().retain(|task| !task.ended());
+        self.emit_by_name::<()>("tasks-changed", &[]);
+    }
 }
 
 impl Default for DistroboxService {

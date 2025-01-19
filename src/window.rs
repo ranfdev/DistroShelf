@@ -239,8 +239,12 @@ impl DistrohomeWindow {
         let tasks_button = TasksButton::new();
         tasks_button.add_css_class("flat");
         let this = self.clone();
-        tasks_button.connect_task_clicked(move |button, task| {
+        tasks_button.connect_task_clicked(move |_button, task| {
             this.build_task_dialog(task);
+        });
+        let this = self.clone();
+        tasks_button.connect_clear_tasks_clicked(move |_| {
+            this.distrobox_service().clear_ended_tasks();
         });
         self.imp()
             .sidebar_bottom_slot

@@ -15,6 +15,7 @@ mod imp {
     pub struct TasksButton {
         pub menu_button: gtk::MenuButton,
         pub popover: gtk::Popover,
+        pub main_content_box: gtk::Box,
         pub list_box: gtk::ListBox,
         pub status_page: adw::StatusPage,
         pub tasks: RefCell<Vec<DistroboxTask>>,
@@ -43,6 +44,29 @@ mod imp {
             obj.set_margin_bottom(12);
 
             self.list_box.set_selection_mode(gtk::SelectionMode::None);
+
+            // Box to hold the list and clear button
+            self.main_content_box.set_orientation(gtk::Orientation::Vertical);
+            self.main_content_box.set_spacing(6);
+
+            let clear_button = gtk::Button::builder()
+                .label("Clear All Tasks")
+                .css_classes(["flat"])
+                .margin_start(6)
+                .margin_end(6)
+                .margin_bottom(6)
+                .build();
+            clear_button.connect_clicked(clone!(
+                #[weak(rename_to=this)]
+                self,
+                move |_| {
+                    this.obj().emit_by_name::<()>("clear-tasks-clicked", &[]);
+                }
+            ));
+
+            self.main_content_box.append(&self.list_box);
+            self.main_content_box.append(&clear_button);
+
 
             // Configure the menu button
             let obj= self.obj().clone();
@@ -75,9 +99,7 @@ mod imp {
 
             // Configure the popover
             self.popover.set_position(gtk::PositionType::Bottom);
-
             self.popover.add_css_class("tasks-popover");
-
 
             // Add the menu button to the main widget
             obj.set_child(Some(&self.menu_button));
@@ -105,9 +127,13 @@ mod imp {
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: OnceLock<Vec<glib::subclass::Signal>> = OnceLock::new();
             SIGNALS.get_or_init(|| {
-                vec![glib::subclass::Signal::builder("task-clicked")
-                    .param_types([DistroboxTask::static_type()])
-                    .build()]
+                vec![
+                    glib::subclass::Signal::builder("task-clicked")
+                        .param_types([DistroboxTask::static_type()])
+                        .build(),
+                    glib::subclass::Signal::builder("clear-tasks-clicked")
+                        .build(),
+                ]
             })
         }
     }
@@ -174,7 +200,7 @@ impl TasksButton {
         if tasks.is_empty() {
             imp.popover.set_child(Some(&imp.status_page));
         } else {
-            imp.popover.set_child(Some(&imp.list_box));
+            imp.popover.set_child(Some(&imp.main_content_box));
             for task in tasks {
                 self.add_task(task);
             }
@@ -230,6 +256,17 @@ impl TasksButton {
             let obj = values[0].get::<Self>().unwrap();
             let task = values[1].get::<DistroboxTask>().unwrap();
             f(&obj, &task);
+            None
+        })
+    }
+
+    pub fn connect_clear_tasks_clicked<F: Fn(&Self) + 'static>(
+        &self,
+        f: F,
+    ) -> glib::SignalHandlerId {
+        self.connect_local("clear-tasks-clicked", false, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
             None
         })
     }
