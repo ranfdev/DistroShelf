@@ -56,7 +56,7 @@ impl<T, E> From<Result<T, E>> for Resource<T, E> {
     fn from(value: Result<T, E>) -> Self {
         match value {
             Ok(v) => Resource::Loaded(v),
-            Err(e) => Resource::Error(Rc::new(e), None)
+            Err(e) => Resource::Error(Rc::new(e), None),
         }
     }
 }

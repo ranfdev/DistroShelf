@@ -18,8 +18,8 @@ pub use command::*;
 pub use command_runner::*;
 pub use desktop_file::*;
 use gtk::gdk::Display;
-use im_rc::{vector, Vector};
 use im_rc as im;
+use im_rc::{vector, Vector};
 
 use crate::container::{self, Container};
 
@@ -396,10 +396,10 @@ impl DistroboxCommandRunnerResponse {
             Self::Version => {
                 let working_response = Self::build_version_response();
                 vec![Self::wrap_err_fn(working_response)]
-            },  
+            }
             Self::NoVersion => {
                 vec![Self::build_no_version_response()]
-            },                
+            }
             Self::List(containers) => {
                 vec![Self::wrap_err_fn(Self::build_list_response(&containers))]
             }
@@ -693,9 +693,17 @@ impl Distrobox {
         cmd
     }
     // clone
-    pub async fn clone_to(&self, source_name: &str, target_name: &str) -> Result<Box<dyn Child + Send>, Error> {
+    pub async fn clone_to(
+        &self,
+        source_name: &str,
+        target_name: &str,
+    ) -> Result<Box<dyn Child + Send>, Error> {
         let mut cmd = dbcmd();
-        cmd.arg("create").arg("--name").arg(target_name).arg("--clone").arg(source_name);
+        cmd.arg("create")
+            .arg("--name")
+            .arg(target_name)
+            .arg("--clone")
+            .arg(source_name);
         self.cmd_spawn(cmd)
     }
     // list | ls

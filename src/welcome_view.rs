@@ -25,7 +25,7 @@ mod imp {
         distrobox_not_installed_error: RefCell<Option<String>>,
         #[property(get, set, nullable)]
         terminal_not_valid_error: RefCell<Option<String>>,
-        
+
         #[template_child]
         carousel: TemplateChild<adw::Carousel>,
         #[template_child]
@@ -85,10 +85,10 @@ mod imp {
         fn continue_to_terminal_page(&self, _: &gtk::Button) {
             let obj = self.obj();
             if let Some(e) = obj.distrobox_service().version().error() {
-                obj
-                    .set_distrobox_not_installed_error(Some(e.to_string()));
+                obj.set_distrobox_not_installed_error(Some(e.to_string()));
             } else {
-                self.carousel.scroll_to(&*self.terminal_preferences_page, true);
+                self.carousel
+                    .scroll_to(&*self.terminal_preferences_page, true);
             }
         }
         #[template_callback]

@@ -49,10 +49,10 @@ mod imp {
 
             let toolbar_view = adw::ToolbarView::new();
             let header = adw::HeaderBar::new();
-        
+
             // Create view switcher and stack
             let view_stack = adw::ViewStack::new();
-            
+
             // Create GUI creation page
             let gui_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
             gui_page.set_margin_start(12);
@@ -224,8 +224,9 @@ mod imp {
                                 if let Ok(file) = res {
                                     if let Some(path) = file.path() {
                                         file_row.set_subtitle(&path.display().to_string());
-                                        
-                                        let service = obj.imp().distrobox_service.get().unwrap().clone();
+
+                                        let service =
+                                            obj.imp().distrobox_service.get().unwrap().clone();
                                         let task = service.do_assemble(&path.to_string_lossy());
                                         let dialog = obj.clone();
                                         task.connect_status_notify(clone!(
@@ -261,7 +262,10 @@ mod imp {
                 #[weak]
                 create_btn,
                 move |row| {
-                    create_btn.set_sensitive(row.subtitle().map(|x| x.to_string()) != Some("No file selected".to_string()));
+                    create_btn.set_sensitive(
+                        row.subtitle().map(|x| x.to_string())
+                            != Some("No file selected".to_string()),
+                    );
                 }
             ));
 
@@ -360,7 +364,7 @@ mod imp {
 
             // Create a box to hold the view switcher and content
             let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-            
+
             // Add inline view switcher
             let view_switcher = adw::InlineViewSwitcher::new();
             view_switcher.set_stack(Some(&view_stack));
@@ -368,10 +372,10 @@ mod imp {
             view_switcher.set_margin_end(12);
             view_switcher.set_margin_top(12);
             view_switcher.set_margin_bottom(12);
-            
+
             content_box.append(&view_switcher);
             content_box.append(&view_stack);
-            
+
             toolbar_view.add_top_bar(&header);
             toolbar_view.set_content(Some(&content_box));
 

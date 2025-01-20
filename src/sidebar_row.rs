@@ -79,7 +79,8 @@ mod imp {
 
             // Configure ellipsization for both labels
             self.title_label.set_ellipsize(pango::EllipsizeMode::Middle);
-            self.subtitle_label.set_ellipsize(pango::EllipsizeMode::Middle);
+            self.subtitle_label
+                .set_ellipsize(pango::EllipsizeMode::Middle);
 
             // Configure status dot
             self.status_dot.set_size_request(8, 8);
@@ -134,7 +135,7 @@ impl SidebarRow {
 
         imp.title_label.set_text(&container.name());
         imp.subtitle_label.set_text(&container.image());
-        
+
         // Update status indicator based on container status
         let status = match container.status() {
             Status::Up(_) => "up",
@@ -158,11 +159,11 @@ impl SidebarRow {
     pub fn set_status(&self, status: &str) {
         let imp = self.imp();
         imp.status.replace(status.to_string());
-        
+
         // Remove all status classes
         imp.status_dot.remove_css_class("up");
         imp.status_dot.remove_css_class("exited");
-        
+
         // Add the appropriate class
         imp.status_dot.add_css_class(status);
     }

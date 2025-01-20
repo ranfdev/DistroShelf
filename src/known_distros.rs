@@ -1,52 +1,52 @@
 use crate::distrobox::Command;
+use std::cell::{LazyCell, OnceCell};
 use std::path::Path;
-use std::{
-    cell::{LazyCell, OnceCell},
-};
 
 use im_rc as im;
 
-pub const DISTROS: LazyCell<im::HashMap<String, KnownDistro>, fn() -> im::HashMap<String, KnownDistro>> =
-    LazyCell::new(|| {
-        [
-            ("alma", "#dadada", Some(PackageManager::Dnf)),
-            ("alpine", "#2147ea", None),
-            ("amazon", "#de5412", Some(PackageManager::Dnf)),
-            ("arch", "#12aaff", None),
-            ("centos", "#ff6600", Some(PackageManager::Dnf)),
-            ("clearlinux", "#56bbff", None),
-            ("crystal", "#8839ef", None),
-            ("debian", "#da5555", Some(PackageManager::Apt)),
-            ("deepin", "#0050ff", Some(PackageManager::Apt)),
-            ("fedora", "#3b6db3", Some(PackageManager::Dnf)),
-            ("gentoo", "#daaada", None),
-            ("kali", "#000000", Some(PackageManager::Apt)),
-            ("mageia", "#b612b6", Some(PackageManager::Dnf)),
-            ("mint", "#6fbd20", Some(PackageManager::Apt)),
-            ("neon", "#27ae60", Some(PackageManager::Apt)),
-            ("opensuse", "#daff00", Some(PackageManager::Dnf)),
-            ("oracle", "#ff0000", Some(PackageManager::Dnf)),
-            ("redhat", "#ff6662", Some(PackageManager::Dnf)),
-            ("rhel", "#ff6662", Some(PackageManager::Dnf)),
-            ("rocky", "#91ff91", Some(PackageManager::Dnf)),
-            ("slackware", "#6145a7", None),
-            ("ubuntu", "#FF4400", Some(PackageManager::Apt)),
-            ("vanilla", "#7f11e0", None),
-            ("void", "#abff12", None),
-        ]
-        .iter()
-        .map(|(name, color, package_manager)| {
-            (
-                name.to_string(),
-                KnownDistro {
-                    name,
-                    color,
-                    package_manager: package_manager.clone(),
-                },
-            )
-        })
-        .collect()
-    });
+pub const DISTROS: LazyCell<
+    im::HashMap<String, KnownDistro>,
+    fn() -> im::HashMap<String, KnownDistro>,
+> = LazyCell::new(|| {
+    [
+        ("alma", "#dadada", Some(PackageManager::Dnf)),
+        ("alpine", "#2147ea", None),
+        ("amazon", "#de5412", Some(PackageManager::Dnf)),
+        ("arch", "#12aaff", None),
+        ("centos", "#ff6600", Some(PackageManager::Dnf)),
+        ("clearlinux", "#56bbff", None),
+        ("crystal", "#8839ef", None),
+        ("debian", "#da5555", Some(PackageManager::Apt)),
+        ("deepin", "#0050ff", Some(PackageManager::Apt)),
+        ("fedora", "#3b6db3", Some(PackageManager::Dnf)),
+        ("gentoo", "#daaada", None),
+        ("kali", "#000000", Some(PackageManager::Apt)),
+        ("mageia", "#b612b6", Some(PackageManager::Dnf)),
+        ("mint", "#6fbd20", Some(PackageManager::Apt)),
+        ("neon", "#27ae60", Some(PackageManager::Apt)),
+        ("opensuse", "#daff00", Some(PackageManager::Dnf)),
+        ("oracle", "#ff0000", Some(PackageManager::Dnf)),
+        ("redhat", "#ff6662", Some(PackageManager::Dnf)),
+        ("rhel", "#ff6662", Some(PackageManager::Dnf)),
+        ("rocky", "#91ff91", Some(PackageManager::Dnf)),
+        ("slackware", "#6145a7", None),
+        ("ubuntu", "#FF4400", Some(PackageManager::Apt)),
+        ("vanilla", "#7f11e0", None),
+        ("void", "#abff12", None),
+    ]
+    .iter()
+    .map(|(name, color, package_manager)| {
+        (
+            name.to_string(),
+            KnownDistro {
+                name,
+                color,
+                package_manager: package_manager.clone(),
+            },
+        )
+    })
+    .collect()
+});
 
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub enum PackageManager {

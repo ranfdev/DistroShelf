@@ -33,9 +33,9 @@ mod resource;
 mod sidebar_row;
 mod supported_terminals;
 mod tasks_button;
-mod window;
-mod welcome_view;
 mod terminal_combo_row;
+mod welcome_view;
+mod window;
 
 use self::application::DistrohomeApplication;
 use self::window::DistrohomeWindow;

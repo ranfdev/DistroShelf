@@ -502,7 +502,8 @@ impl DistrohomeWindow {
                 content.set_margin_top(12);
                 content.set_margin_bottom(12);
 
-                let info_label = gtk::Label::new(Some("Cloning a container may take several minutes."));
+                let info_label =
+                    gtk::Label::new(Some("Cloning a container may take several minutes."));
                 info_label.add_css_class("dim-label");
                 info_label.set_wrap(true);
                 content.append(&info_label);
@@ -551,7 +552,9 @@ impl DistrohomeWindow {
                                 if matches!(container.status(), Status::Up(_)) {
                                     this.distrobox_service().do_stop(&container.name());
                                 }
-                                let task = this.distrobox_service().do_clone(&container.name(), &new_name);
+                                let task = this
+                                    .distrobox_service()
+                                    .do_clone(&container.name(), &new_name);
                                 this.build_task_dialog(&task);
                                 dialog.close();
                             }

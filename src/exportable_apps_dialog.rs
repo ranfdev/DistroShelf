@@ -43,26 +43,30 @@ mod imp {
             self.scrolled_window.set_propagate_natural_height(true);
 
             let obj = self.obj().clone();
-            self.apps.set_callback(
-                move |res: Resource<Vector<ExportableApp>, anyhow::Error>| match res {
-                    Resource::Error(err, _) => {
-                        obj.imp()
-                            .scrolled_window
-                            .set_child(Some(&gtk::Label::new(Some(&format!("Error: {}", err)))));
-                    }
-                    Resource::Loading(_) => {
-                        obj.imp()
-                            .scrolled_window
-                            .set_child(Some(&obj.handle_ui_loading()));
-                    }
-                    Resource::Loaded(res) => {
-                        obj.imp()
-                            .scrolled_window
-                            .set_child(Some(&obj.handle_ui_loaded(&res)));
-                    }
-                    Resource::Unitialized => {}
-                },
-            );
+            self.apps
+                .set_callback(
+                    move |res: Resource<Vector<ExportableApp>, anyhow::Error>| match res {
+                        Resource::Error(err, _) => {
+                            obj.imp()
+                                .scrolled_window
+                                .set_child(Some(&gtk::Label::new(Some(&format!(
+                                    "Error: {}",
+                                    err
+                                )))));
+                        }
+                        Resource::Loading(_) => {
+                            obj.imp()
+                                .scrolled_window
+                                .set_child(Some(&obj.handle_ui_loading()));
+                        }
+                        Resource::Loaded(res) => {
+                            obj.imp()
+                                .scrolled_window
+                                .set_child(Some(&obj.handle_ui_loaded(&res)));
+                        }
+                        Resource::Unitialized => {}
+                    },
+                );
 
             self.content.append(&self.scrolled_window);
             self.toolbar_view.set_content(Some(&self.content));

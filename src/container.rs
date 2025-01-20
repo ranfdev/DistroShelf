@@ -14,7 +14,6 @@ use std::sync::OnceLock;
 mod imp {
     use super::*;
 
-
     // This contains all the container informations given by distrobox, plus an associated KnownDistro struct
     #[derive(Default)]
     pub struct Container {
@@ -48,7 +47,6 @@ impl Container {
     pub fn status(&self) -> Status {
         self.imp().status.borrow().clone()
     }
-
 
     pub fn image(&self) -> String {
         self.imp().image.borrow().clone()

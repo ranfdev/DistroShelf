@@ -1,7 +1,11 @@
 use crate::distrobox_task::DistroboxTask;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{self, glib::{self, clone}, pango};
+use gtk::{
+    self,
+    glib::{self, clone},
+    pango,
+};
 use im_rc::Vector;
 use std::sync::OnceLock;
 
@@ -47,7 +51,8 @@ mod imp {
             self.list_box.set_selection_mode(gtk::SelectionMode::None);
 
             // Box to hold the list and clear button
-            self.main_content_box.set_orientation(gtk::Orientation::Vertical);
+            self.main_content_box
+                .set_orientation(gtk::Orientation::Vertical);
             self.main_content_box.set_spacing(6);
 
             let clear_button = gtk::Button::builder()
@@ -68,9 +73,8 @@ mod imp {
             self.main_content_box.append(&self.list_box);
             self.main_content_box.append(&clear_button);
 
-
             // Configure the menu button
-            let obj= self.obj().clone();
+            let obj = self.obj().clone();
             self.menu_button.set_popover(Some(&self.popover));
             self.menu_button.connect_active_notify(move |_| {
                 obj.imp().pending_warning.set(false);
@@ -81,19 +85,20 @@ mod imp {
             let content = gtk::Box::new(gtk::Orientation::Horizontal, 6);
             content.append(&gtk::Label::new(Some("Tasks")));
 
-            
             let empty_bin = adw::Bin::new();
             self.status_stack.add_named(&empty_bin, Some("empty-bin"));
-            self.status_stack.set_transition_type(gtk::StackTransitionType::Crossfade);
-            
-            self.warning_icon.set_icon_name(Some("dialog-warning-symbolic"));
+            self.status_stack
+                .set_transition_type(gtk::StackTransitionType::Crossfade);
+
+            self.warning_icon
+                .set_icon_name(Some("dialog-warning-symbolic"));
             self.warning_icon.set_halign(gtk::Align::End);
-            self.status_stack.add_named(&self.warning_icon, Some("warning-icon"));
+            self.status_stack
+                .add_named(&self.warning_icon, Some("warning-icon"));
 
             self.spinner.set_hexpand(true);
             self.spinner.set_halign(gtk::Align::End);
             self.status_stack.add_named(&self.spinner, Some("spinner"));
-
 
             content.append(&self.status_stack);
             self.menu_button.set_child(Some(&content));
@@ -132,8 +137,7 @@ mod imp {
                     glib::subclass::Signal::builder("task-clicked")
                         .param_types([DistroboxTask::static_type()])
                         .build(),
-                    glib::subclass::Signal::builder("clear-tasks-clicked")
-                        .build(),
+                    glib::subclass::Signal::builder("clear-tasks-clicked").build(),
                 ]
             })
         }
@@ -164,21 +168,33 @@ impl TasksButton {
 
         task.connect_status_notify(clone!(
             #[weak(rename_to=this)]
-            self, 
+            self,
             move |task| {
-            if task.ended() {
-                if task.is_failed() {
-                    this.imp().pending_warning.set(true);
+                if task.ended() {
+                    if task.is_failed() {
+                        this.imp().pending_warning.set(true);
+                    }
+                    this.update_status_stack();
                 }
-                this.update_status_stack();
             }
-        }));
+        ));
     }
 
-
     fn update_status_stack(&self) {
-        let count_running = self.imp().tasks.borrow().iter().filter(|task| task.status() == "running").count();
-        let count_failed = self.imp().tasks.borrow().iter().filter(|task| task.status() == "failed").count();
+        let count_running = self
+            .imp()
+            .tasks
+            .borrow()
+            .iter()
+            .filter(|task| task.status() == "running")
+            .count();
+        let count_failed = self
+            .imp()
+            .tasks
+            .borrow()
+            .iter()
+            .filter(|task| task.status() == "failed")
+            .count();
 
         let imp = self.imp();
 
@@ -232,18 +248,16 @@ impl TasksButton {
         vbox.append(&subtitle_label);
 
         let gesture = gtk::GestureClick::new();
-        gesture.connect_released(
-            clone!(
-                #[weak(rename_to=this)]
-                self,
-                #[weak]
-                task,
-                move |_, _, _, _| {
-                    this.emit_by_name::<()>("task-clicked", &[&task]);
-                    println!("Task clicked: {}", task.name());
-                }
-            ),
-        );
+        gesture.connect_released(clone!(
+            #[weak(rename_to=this)]
+            self,
+            #[weak]
+            task,
+            move |_, _, _, _| {
+                this.emit_by_name::<()>("task-clicked", &[&task]);
+                println!("Task clicked: {}", task.name());
+            }
+        ));
         vbox.add_controller(gesture);
 
         vbox

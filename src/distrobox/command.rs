@@ -42,10 +42,16 @@ impl Command {
         }
     }
 
-    pub fn new_with_args(program: impl AsRef<OsStr>, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Self {
+    pub fn new_with_args(
+        program: impl AsRef<OsStr>,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    ) -> Self {
         Self {
             program: program.as_ref().to_owned(),
-            args: args.into_iter().map(|arg| arg.as_ref().to_owned()).collect(),
+            args: args
+                .into_iter()
+                .map(|arg| arg.as_ref().to_owned())
+                .collect(),
             stdin: FdMode::Inherit,
             stdout: FdMode::Inherit,
             stderr: FdMode::Inherit,

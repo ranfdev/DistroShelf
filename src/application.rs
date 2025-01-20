@@ -35,7 +35,7 @@ enum DistroboxServiceTy {
     Real,
     NullWorking,
     NullEmpty,
-    NullNoVersion
+    NullNoVersion,
 }
 
 mod imp {
@@ -141,9 +141,9 @@ mod imp {
 
             let this = self.obj().clone();
             // Get the current window or create one if necessary
-            let window = this.active_window().unwrap_or_else(|| {
-                this.recreate_window().upcast()
-            });
+            let window = this
+                .active_window()
+                .unwrap_or_else(|| this.recreate_window().upcast());
 
             // Ask the window manager/compositor to present the window
             window.present();
@@ -169,7 +169,7 @@ impl DistrohomeApplication {
     }
 
     fn recreate_window(&self) -> adw::ApplicationWindow {
-        let distrobox_service = match {self.imp().distrobox_service_ty.borrow().to_owned()} {
+        let distrobox_service = match { self.imp().distrobox_service_ty.borrow().to_owned() } {
             DistroboxServiceTy::NullWorking => DistroboxService::new_null_with_responses(
                 &[
                     DistroboxCommandRunnerResponse::Version,
@@ -177,7 +177,7 @@ impl DistrohomeApplication {
                     DistroboxCommandRunnerResponse::new_common_images(),
                     DistroboxCommandRunnerResponse::new_common_exported_apps(),
                 ],
-                false
+                false,
             ),
             DistroboxServiceTy::NullEmpty => DistroboxService::new_null_with_responses(
                 &[
@@ -185,19 +185,17 @@ impl DistrohomeApplication {
                     DistroboxCommandRunnerResponse::List(vec![]),
                     DistroboxCommandRunnerResponse::new_common_images(),
                 ],
-                false
+                false,
             ),
             DistroboxServiceTy::NullNoVersion => DistroboxService::new_null_with_responses(
-                &[
-                    DistroboxCommandRunnerResponse::NoVersion,
-                ],
-                false
+                &[DistroboxCommandRunnerResponse::NoVersion],
+                false,
             ),
-            _ => DistroboxService::new()
+            _ => DistroboxService::new(),
         };
 
-        
-        let window = DistrohomeWindow::new(self.upcast_ref::<adw::Application>(), distrobox_service);
+        let window =
+            DistrohomeWindow::new(self.upcast_ref::<adw::Application>(), distrobox_service);
         window.upcast()
     }
 

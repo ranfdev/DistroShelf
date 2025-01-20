@@ -7,7 +7,8 @@ use std::{
     io::{self},
     os::unix::process::ExitStatusExt,
     pin::Pin,
-    process::ExitStatus, rc::Rc,
+    process::ExitStatus,
+    rc::Rc,
 };
 
 use crate::distrobox::Command;
@@ -59,11 +60,14 @@ impl NullCommandRunnerBuilder {
         let out_text = out.as_ref().to_string();
         self.cmd_full(cmd, Rc::new(move || Ok(out_text.clone())))
     }
-    pub fn cmd_full(&mut self, cmd: Command, out: Rc<dyn Fn() -> Result<String, io::Error>>) -> &mut Self {
+    pub fn cmd_full(
+        &mut self,
+        cmd: Command,
+        out: Rc<dyn Fn() -> Result<String, io::Error>>,
+    ) -> &mut Self {
         let key = NullCommandRunner::key_for_cmd(&cmd);
         dbg!(&key);
-        self.responses
-            .insert(key, out);
+        self.responses.insert(key, out);
         self
     }
     pub fn fallback(&mut self, status: ExitStatus) -> &mut Self {
@@ -104,7 +108,11 @@ impl CommandRunner for NullCommandRunner {
             .get(&key[..])
             .cloned()
             .unwrap_or(Rc::new(|| Ok(String::new())));
-        let stub = StubChild::new_null(vec![], Cursor::new(response()?), Ok(ExitStatus::from_raw(0)));
+        let stub = StubChild::new_null(
+            vec![],
+            Cursor::new(response()?),
+            Ok(ExitStatus::from_raw(0)),
+        );
         Ok(Box::new(stub))
     }
     fn output(
@@ -119,11 +127,13 @@ impl CommandRunner for NullCommandRunner {
             .cloned()
             .unwrap_or(Rc::new(|| Ok(String::new())));
 
-        async move {Ok(Output {
-            status: ExitStatus::from_raw(0),
-            stdout: response()?.into(),
-            stderr: vec![],
-        })}
+        async move {
+            Ok(Output {
+                status: ExitStatus::from_raw(0),
+                stdout: response()?.into(),
+                stderr: vec![],
+            })
+        }
         .boxed_local()
     }
 }
@@ -166,7 +176,7 @@ impl Child for StubChild {
         unimplemented!()
     }
     fn wait(&mut self) -> Pin<Box<dyn Future<Output = Result<ExitStatus, io::Error>>>> {
-        async {Ok(ExitStatus::from_raw(0))}.boxed_local()
+        async { Ok(ExitStatus::from_raw(0)) }.boxed_local()
     }
 }
 
