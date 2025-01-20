@@ -10,7 +10,7 @@ use adw::subclass::prelude::*;
 use glib::clone;
 use glib::subclass::Signal;
 use glib::Properties;
-use gtk::{glib, subclass::prelude::*};
+use gtk::glib;
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
@@ -54,8 +54,6 @@ mod imp {
                 obj.set_selected(selected_position as u32);
             }
             obj.connect_selected_item_notify(clone!(
-                #[weak(rename_to = this)]
-                self,
                 #[weak]
                 obj,
                 move |combo| {

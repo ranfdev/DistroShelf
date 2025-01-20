@@ -10,9 +10,7 @@ use gtk::glib::SignalHandlerId;
 use gtk::prelude::TextBufferExt;
 use im_rc::Vector;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::path::Path;
-use std::process::ExitStatus;
 use std::sync::OnceLock;
 use std::time::Duration;
 
@@ -94,7 +92,7 @@ impl DistroboxService {
         let this: Self = glib::Object::builder().build();
 
         let distrobox = Distrobox::new();
-        this.imp().distrobox.set(distrobox);
+        this.imp().distrobox.set(distrobox).unwrap();
 
         this.connect_version();
         this
@@ -107,7 +105,7 @@ impl DistroboxService {
         let this: Self = glib::Object::builder().build();
 
         let distrobox = Distrobox::new_null_with_responses(responses, is_in_flatpak);
-        this.imp().distrobox.set(distrobox);
+        this.imp().distrobox.set(distrobox).unwrap();
 
         this.connect_version();
         this
@@ -200,7 +198,7 @@ impl DistroboxService {
     pub fn do_export(&self, name: &str, app: ExportableApp) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
-        let task = DistroboxTask::new(name, "export", move |task| async move {
+        let task = DistroboxTask::new(name, "export", move |_task| async move {
             this.distrobox().export_app(&name_clone, &app).await?;
             Ok(())
         });
@@ -210,7 +208,7 @@ impl DistroboxService {
     pub fn do_unexport(&self, name: &str, app: ExportableApp) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
-        let task = DistroboxTask::new(name, "unexport", move |task| async move {
+        let task = DistroboxTask::new(name, "unexport", move |_task| async move {
             this.distrobox().unexport_app(&name_clone, &app).await?;
             Ok(())
         });
@@ -244,7 +242,7 @@ impl DistroboxService {
         };
         let path_clone = path.to_owned();
         let name_clone = name.to_string();
-        let task = DistroboxTask::new(&name, "install", move |task| async move {
+        let task = DistroboxTask::new(&name, "install", move |_task| async move {
             // The file provided from the portal is under /run/user/1000 which is not accessible by root.
             // We can copy the file as a normal user to /tmp and then install.
 
@@ -289,16 +287,20 @@ impl DistroboxService {
     pub fn do_delete(&self, name: &str) {
         let this = self.clone();
         let name_clone = name.to_string();
-        self.push_operation(DistroboxTask::new(name, "delete", move |task| async move {
-            this.distrobox().remove(&name_clone).await?;
-            this.load_container_infos();
-            Ok(())
-        }));
+        self.push_operation(DistroboxTask::new(
+            name,
+            "delete",
+            move |_task| async move {
+                this.distrobox().remove(&name_clone).await?;
+                this.load_container_infos();
+                Ok(())
+            },
+        ));
     }
     pub fn do_stop(&self, name: &str) {
         let this = self.clone();
         let name_clone = name.to_string();
-        self.push_operation(DistroboxTask::new(name, "stop", move |task| async move {
+        self.push_operation(DistroboxTask::new(name, "stop", move |_task| async move {
             this.distrobox().stop(&name_clone).await?;
             this.load_container_infos();
             Ok(())
@@ -335,7 +337,7 @@ impl DistroboxService {
         self.push_operation(DistroboxTask::new(
             name,
             "spawn-terminal",
-            move |task| async move {
+            move |_task| async move {
                 let enter_cmd = this.distrobox().enter_cmd(&name_clone);
                 this.spawn_terminal_cmd(name_clone, &enter_cmd).await
             },
@@ -406,21 +408,21 @@ impl DistroboxService {
     }
     pub fn connect_tasks_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
         let this = self.clone();
-        self.connect_local("tasks-changed", true, move |values| {
+        self.connect_local("tasks-changed", true, move |_values| {
             f(&this);
             None
         })
     }
     pub fn connect_containers_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
         let this = self.clone();
-        self.connect_local("containers-changed", true, move |values| {
+        self.connect_local("containers-changed", true, move |_values| {
             f(&this);
             None
         })
     }
     pub fn connect_images_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
         let this = self.clone();
-        self.connect_local("images-changed", true, move |values| {
+        self.connect_local("images-changed", true, move |_values| {
             f(&this);
             None
         })
@@ -489,7 +491,7 @@ impl DistroboxService {
     }
     pub fn connect_terminal_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
         let this = self.clone();
-        self.connect_local("terminal-changed", true, move |values| {
+        self.connect_local("terminal-changed", true, move |_values| {
             f(&this);
             None
         })
@@ -497,7 +499,7 @@ impl DistroboxService {
 
     pub fn connect_version_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
         let this = self.clone();
-        self.connect_local("version-changed", true, move |values| {
+        self.connect_local("version-changed", true, move |_values| {
             f(&this);
             None
         })

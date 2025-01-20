@@ -4,7 +4,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{self, glib, pango};
 
-use crate::{container::Container, distro_icon, distrobox::Status, known_distros::KnownDistro};
+use crate::{container::Container, distro_icon, distrobox::Status};
 
 mod imp {
     use super::*;

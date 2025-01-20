@@ -4,13 +4,11 @@
 use adw::subclass::prelude::*;
 use glib::subclass::Signal;
 use glib::Properties;
-use gtk::{glib, prelude::*, subclass::prelude::*};
+use gtk::{glib, prelude::*};
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
 mod imp {
-    use std::cell::OnceCell;
-
     use crate::{distrobox_service::DistroboxService, terminal_combo_row::TerminalComboRow};
 
     use super::*;
@@ -36,12 +34,6 @@ mod imp {
 
     #[glib::derived_properties]
     impl ObjectImpl for WelcomeView {
-        fn constructed(&self) {
-            self.parent_constructed();
-            let obj = self.obj();
-            // Initialize default state here if needed
-        }
-
         fn signals() -> &'static [Signal] {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
             SIGNALS.get_or_init(|| vec![Signal::builder("setup-finished").build()])
@@ -136,7 +128,7 @@ impl WelcomeView {
     }
 
     pub fn connect_setup_finished<F: Fn() -> () + 'static>(&self, f: F) -> glib::SignalHandlerId {
-        self.connect_local("setup-finished", false, move |values| {
+        self.connect_local("setup-finished", false, move |_values| {
             f();
             None
         })

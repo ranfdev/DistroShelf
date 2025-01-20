@@ -30,7 +30,7 @@ use crate::DistrohomeWindow;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
 #[enum_type(name = "DistroboxServiceTy")]
-enum DistroboxServiceTy {
+pub enum DistroboxServiceTy {
     #[default]
     Real,
     NullWorking,
@@ -39,12 +39,12 @@ enum DistroboxServiceTy {
 }
 
 mod imp {
-    use std::{cell::RefCell, collections::HashMap};
+    use std::cell::RefCell;
 
-    use glib::{property, Properties};
+    use glib::Properties;
     use gtk::gdk;
 
-    use crate::{distrobox_service::DistroboxService, known_distros};
+    use crate::known_distros;
 
     use super::*;
 
@@ -89,8 +89,6 @@ mod imp {
         // tries to launch a "second instance" of the application. When they try
         // to do that, we'll just present any existing window.
         fn activate(&self) {
-            let application = self.obj();
-
             let provider = gtk::CssProvider::new();
             let known_distro_colors = &known_distros::generate_css();
             provider.load_from_string(&format!("

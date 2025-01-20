@@ -18,31 +18,23 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-use std::cell::{Ref, RefCell};
-use std::collections::HashMap;
-use std::rc::Rc;
-
 use crate::container::Container;
 use crate::create_distrobox_dialog::CreateDistroboxDialog;
-use crate::distrobox::{self, CreateArgs, Distrobox, ExportableApp, Status};
+use crate::distrobox::Status;
 use crate::distrobox_service::DistroboxService;
 use crate::distrobox_task::DistroboxTask;
 use crate::exportable_apps_dialog::ExportableAppsDialog;
-use crate::known_distros::known_distro_by_image;
-use crate::resource::{Resource, SharedResource};
+use crate::resource::Resource;
 use crate::sidebar_row::SidebarRow;
-use crate::supported_terminals::SUPPORTED_TERMINALS;
 use crate::tasks_button::TasksButton;
 use crate::terminal_combo_row::TerminalComboRow;
-use crate::{known_distros, supported_terminals};
 use adw::prelude::*;
-use adw::subclass::{preferences_group, prelude::*};
-use anyhow::Context;
+use adw::subclass::prelude::*;
 use gtk::glib::clone;
 use gtk::{gio, glib, pango};
 
 mod imp {
-    use std::cell::{OnceCell, RefCell};
+    use std::cell::RefCell;
 
     use glib::{derived_properties, Properties};
     use gtk::gdk;
@@ -105,7 +97,7 @@ mod imp {
                 win.build_preferences_dialog();
             });
 
-            klass.install_action("win.learn-more", None, |win, _action, _target| {
+            klass.install_action("win.learn-more", None, |_win, _action, _target| {
                 gtk::UriLauncher::new(&"https://distrobox.it").launch(
                     None::<&gtk::Window>,
                     None::<&gio::Cancellable>,
@@ -154,7 +146,7 @@ impl DistrohomeWindow {
 
         let this_clone = this.clone();
         this.distrobox_service()
-            .connect_containers_changed(move |service| {
+            .connect_containers_changed(move |_service| {
                 this_clone.fill_sidebar();
             });
         this.distrobox_service().load_container_infos();
@@ -162,8 +154,7 @@ impl DistrohomeWindow {
         let this_clone = this.clone();
         this.distrobox_service()
             .connect_version_changed(move |service| match service.version() {
-                Resource::Error(err, _) => {
-                    // this_clone.show_error_page(&err.to_string());
+                Resource::Error(_, _) => {
                     this_clone
                         .imp()
                         .main_stack
@@ -180,16 +171,6 @@ impl DistrohomeWindow {
             });
 
         this
-    }
-
-    fn show_error_page(&self, error_message: &str) {
-        let status_page = adw::StatusPage::builder()
-            .title("Error")
-            .description(error_message)
-            .icon_name("dialog-error-symbolic")
-            .build();
-
-        self.imp().main_slot.set_child(Some(&status_page));
     }
 
     fn selected_container_name(&self) -> Option<String> {
@@ -628,7 +609,7 @@ impl DistrohomeWindow {
 
     fn build_install_package_dialog(&self) {
         if let Some(container) = self.selected_container() {
-            if let Some(pm) = container.distro().and_then(|distro| distro.package_manager) {
+            if let Some(_) = container.distro().and_then(|distro| distro.package_manager) {
                 // Show file chooser and install package using the appropriate command
                 let file_dialog = gtk::FileDialog::builder().title("Select Package").build();
 
@@ -737,6 +718,7 @@ impl DistrohomeWindow {
             #[weak]
             task,
             move |_| {
+                // TODO: implement this
                 // task.stop();
             }
         ));

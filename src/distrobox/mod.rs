@@ -1,11 +1,8 @@
 use std::{
     cell::{LazyCell, RefCell},
-    collections::HashMap,
-    convert::Infallible,
-    io::{self, BufRead, BufReader, Cursor, Read, Write},
-    os::unix::process::ExitStatusExt,
+    io,
     path::{Path, PathBuf},
-    process::{ExitStatus, Output},
+    process::Output,
     rc::Rc,
     str::FromStr,
 };
@@ -17,30 +14,27 @@ mod desktop_file;
 pub use command::*;
 pub use command_runner::*;
 pub use desktop_file::*;
-use gtk::gdk::Display;
 use im_rc as im;
-use im_rc::{vector, Vector};
+use im_rc::Vector;
 
-use crate::container::{self, Container};
-
-#[derive(Default, Clone)]
-struct OutputTracker<T> {
+#[derive(Default, Clone, Debug)]
+pub struct OutputTracker<T> {
     store: Rc<RefCell<Option<Vec<T>>>>,
 }
 
-impl<T: Clone> OutputTracker<T> {
-    fn enable(&self) {
+impl<T: Clone + std::fmt::Debug> OutputTracker<T> {
+    pub fn enable(&self) {
         let mut inner = self.store.borrow_mut();
         if inner.is_none() {
             *inner = Some(vec![]);
         }
     }
-    fn push(&self, item: T) {
+    pub fn push(&self, item: T) {
         if let Some(v) = &mut *self.store.borrow_mut() {
             v.push(item);
         }
     }
-    fn items(&self) -> Vec<T> {
+    pub fn items(&self) -> Vec<T> {
         if let Some(v) = &*self.store.borrow() {
             v.clone()
         } else {
@@ -53,6 +47,15 @@ pub struct Distrobox {
     cmd_runner: Box<dyn CommandRunner>,
     output_tracker: OutputTracker<String>,
     is_in_flatpak: bool,
+}
+
+impl std::fmt::Debug for Distrobox {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Distrobox")
+            .field("is_in_flatpak", &self.is_in_flatpak)
+            .field("output_tracker", &self.output_tracker)
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Hash)]
@@ -108,14 +111,6 @@ impl ContainerInfo {
     fn field_missing_error(text: &str) -> Error {
         Error::ParseOutput(format!("{text} missing"))
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-enum LsItemParseError {
-    #[error("Invalid input format")]
-    InvalidFormat,
-    #[error("Empty {0} field")]
-    EmptyField(String),
 }
 
 impl FromStr for ContainerInfo {
@@ -452,10 +447,11 @@ impl Distrobox {
         }
     }
 
-    fn output_tracker(&self) -> OutputTracker<String> {
+    pub fn output_tracker(&self) -> OutputTracker<String> {
         self.output_tracker.enable();
         self.output_tracker.clone()
     }
+
     fn get_is_in_flatpak() -> bool {
         let fp_env = std::env::var("FLATPAK_ID").is_ok();
         if fp_env {
@@ -804,7 +800,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
     fn version() -> Result<(), Error> {
         block_on(async {
             let output = "distrobox: 1.7.2.1";
-            let mut db = Distrobox::new_null(
+            let db = Distrobox::new_null(
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "version"], output)
                     .build(),
@@ -880,7 +876,7 @@ Categories=Utility;Network;
     }
     #[test]
     fn create() -> Result<(), Error> {
-        let mut db = Distrobox::new_null(NullCommandRunner::default(), false);
+        let db = Distrobox::new_null(NullCommandRunner::default(), false);
         let output_tracker = db.output_tracker();
         let args = CreateArgs {
             image: "docker.io/library/ubuntu:latest".into(),

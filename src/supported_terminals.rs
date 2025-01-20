@@ -1,4 +1,4 @@
-use std::{cell::LazyCell, sync::LazyLock};
+use std::sync::LazyLock;
 
 #[derive(Clone, Debug)]
 pub struct SupportedTerminal {

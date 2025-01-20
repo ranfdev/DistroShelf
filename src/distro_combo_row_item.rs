@@ -1,14 +1,10 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::Properties;
-use gtk::{gdk, glib};
+use gtk::glib;
 use std::cell::RefCell;
-use std::sync::OnceLock;
 
-use crate::{
-    distro_icon,
-    known_distros::{known_distro_by_image, KnownDistro},
-};
+use crate::{distro_icon, known_distros::known_distro_by_image};
 
 mod imp {
     use crate::known_distros::KnownDistro;

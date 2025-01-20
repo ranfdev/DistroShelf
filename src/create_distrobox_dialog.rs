@@ -3,7 +3,7 @@ use adw::subclass::prelude::*;
 use gtk::glib::SignalHandlerId;
 use gtk::{gio, glib};
 
-use crate::distrobox::{self, CreateArgName, CreateArgs, Error, ExportableApp};
+use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
 use crate::distrobox_service::DistroboxService;
 use crate::resource::{Resource, SharedResource};
 
@@ -15,7 +15,7 @@ use std::sync::OnceLock;
 
 mod imp {
 
-    use std::cell::{LazyCell, OnceCell};
+    use std::cell::OnceCell;
 
     use crate::distro_combo_row_item;
 

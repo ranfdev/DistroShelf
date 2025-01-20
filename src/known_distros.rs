@@ -1,5 +1,5 @@
 use crate::distrobox::Command;
-use std::cell::{LazyCell, OnceCell};
+use std::cell::LazyCell;
 use std::path::Path;
 
 use im_rc as im;
