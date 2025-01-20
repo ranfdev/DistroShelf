@@ -254,7 +254,7 @@ impl DistrohomeWindow {
         self.distrobox_service()
             .connect_tasks_changed(move |service| {
                 let tasks = service.tasks();
-                tasks_button_clone.update_tasks(&tasks[..]);
+                tasks_button_clone.update_tasks(tasks);
             });
     }
 

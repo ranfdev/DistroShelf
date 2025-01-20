@@ -2,10 +2,11 @@ use crate::distrobox::Command;
 use std::path::Path;
 use std::{
     cell::{LazyCell, OnceCell},
-    collections::HashMap,
 };
 
-pub const DISTROS: LazyCell<HashMap<String, KnownDistro>, fn() -> HashMap<String, KnownDistro>> =
+use im_rc as im;
+
+pub const DISTROS: LazyCell<im::HashMap<String, KnownDistro>, fn() -> im::HashMap<String, KnownDistro>> =
     LazyCell::new(|| {
         [
             ("alma", "#dadada", Some(PackageManager::Dnf)),

@@ -2,6 +2,7 @@ use crate::distrobox_task::DistroboxTask;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{self, glib::{self, clone}, pango};
+use im_rc::Vector;
 use std::sync::OnceLock;
 
 mod imp {
@@ -18,7 +19,7 @@ mod imp {
         pub main_content_box: gtk::Box,
         pub list_box: gtk::ListBox,
         pub status_page: adw::StatusPage,
-        pub tasks: RefCell<Vec<DistroboxTask>>,
+        pub tasks: RefCell<Vector<DistroboxTask>>,
         pub pending_warning: Cell<bool>,
 
         pub status_stack: gtk::Stack,
@@ -190,21 +191,21 @@ impl TasksButton {
         }
     }
 
-    pub fn update_tasks(&self, tasks: &[DistroboxTask]) {
+    pub fn update_tasks(&self, tasks: Vector<DistroboxTask>) {
         let imp = self.imp();
         while let Some(child) = imp.list_box.first_child() {
             imp.list_box.remove(&child);
         }
-        self.imp().tasks.replace(tasks.to_vec());
         self.update_status_stack();
         if tasks.is_empty() {
             imp.popover.set_child(Some(&imp.status_page));
         } else {
             imp.popover.set_child(Some(&imp.main_content_box));
-            for task in tasks {
+            for task in &tasks {
                 self.add_task(task);
             }
         }
+        self.imp().tasks.replace(tasks);
     }
 
     fn build_task_row(&self, task: &DistroboxTask) -> gtk::Box {

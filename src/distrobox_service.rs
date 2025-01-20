@@ -8,6 +8,7 @@ use glib::Properties;
 use gtk::glib;
 use gtk::glib::SignalHandlerId;
 use gtk::prelude::TextBufferExt;
+use im_rc::Vector;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
@@ -29,21 +30,19 @@ use crate::known_distros::KnownDistro;
 use crate::resource::Resource;
 use crate::supported_terminals::SupportedTerminal;
 use crate::supported_terminals::SUPPORTED_TERMINALS;
+use gtk::gio;
+use im_rc as im;
 
 mod imp {
-    use std::collections::HashMap;
-
-    use gtk::gio;
-
     use super::*;
 
     #[derive(Properties)]
     #[properties(wrapper_type = super::DistroboxService)]
     pub struct DistroboxService {
         pub distrobox: OnceLock<Distrobox>,
-        pub containers: RefCell<Resource<HashMap<String, Container>, anyhow::Error>>,
-        pub tasks: RefCell<Vec<DistroboxTask>>,
-        pub images: RefCell<Resource<Vec<String>, anyhow::Error>>,
+        pub containers: RefCell<Resource<im::HashMap<String, Container>, anyhow::Error>>,
+        pub tasks: RefCell<Vector<DistroboxTask>>,
+        pub images: RefCell<Resource<Vector<String>, anyhow::Error>>,
         pub settings: gio::Settings,
         pub version: RefCell<Resource<String, anyhow::Error>>,
     }
@@ -119,7 +118,7 @@ impl DistroboxService {
         *self.imp().version.borrow_mut() = Resource::Loading(None);
         glib::MainContext::ref_thread_default().spawn_local(async move {
             let version = this.distrobox().version().await;
-            
+
             *this.imp().version.borrow_mut() = Resource::from(version.map_err(|x| x.into()));
             this.emit_by_name::<()>("version-changed", &[]);
         });
@@ -128,7 +127,7 @@ impl DistroboxService {
     fn distrobox(&self) -> &Distrobox {
         self.imp().distrobox.get().unwrap()
     }
-    pub fn containers(&self) -> Resource<HashMap<String, Container>, anyhow::Error> {
+    pub fn containers(&self) -> Resource<im::HashMap<String, Container>, anyhow::Error> {
         self.imp().containers.borrow().clone()
     }
     pub fn load_container_infos(&self) {
@@ -139,11 +138,12 @@ impl DistroboxService {
             glib::Priority::LOW,
             async move {
                 let containers = this.distrobox().list().await.unwrap();
-                *this.imp().containers.borrow_mut() = Resource::Loaded(HashMap::from_iter(
+                *this.imp().containers.borrow_mut() = Resource::Loaded(
                     containers
                         .into_iter()
-                        .map(|x| (x.name.clone(), Container::from(x))),
-                ));
+                        .map(|(k, v)| (k, Container::from(v)))
+                        .collect(),
+                );
                 this.emit_by_name::<()>("containers-changed", &[]);
             },
         );
@@ -164,7 +164,7 @@ impl DistroboxService {
     pub async fn list_apps(
         &self,
         name: &str,
-    ) -> Result<Vec<crate::distrobox::ExportableApp>, crate::distrobox::Error> {
+    ) -> Result<Vector<crate::distrobox::ExportableApp>, crate::distrobox::Error> {
         let result = self.distrobox().list_apps(name).await;
         // Refresh container list to update status
         self.load_container_infos();
@@ -172,7 +172,7 @@ impl DistroboxService {
     }
 
     fn push_operation(&self, operation: DistroboxTask) {
-        self.imp().tasks.borrow_mut().push(operation);
+        self.imp().tasks.borrow_mut().push_back(operation);
         self.emit_by_name::<()>("tasks-changed", &[]);
     }
 
@@ -276,7 +276,10 @@ impl DistroboxService {
         let source_name_clone = source_name.to_string();
         let target_name_clone = target_name.to_string();
         let task = DistroboxTask::new(source_name, "clone", move |task| async move {
-            let child = this.distrobox().clone_to(&source_name_clone, &target_name_clone).await?;
+            let child = this
+                .distrobox()
+                .clone_to(&source_name_clone, &target_name_clone)
+                .await?;
             this.handle_child_output_for_task(child, &task).await?;
             Ok(())
         });
@@ -356,14 +359,8 @@ impl DistroboxService {
                 glib::timeout_future(Duration::from_millis(i as u64 * 300)).await;
 
                 // refresh the status of the container
-                let container = this
-                    .distrobox()
-                    .list()
-                    .await
-                    .unwrap()
-                    .into_iter()
-                    .find(|x| x.name == name)
-                    .unwrap();
+                let containers = this.distrobox().list().await.unwrap();
+                let container = containers.get(&name).unwrap();
 
                 // if the container is running, we finally update the UI
                 if let Status::Up(_) = &container.status {
@@ -401,10 +398,10 @@ impl DistroboxService {
         Ok(())
     }
 
-    pub fn tasks(&self) -> Vec<DistroboxTask> {
+    pub fn tasks(&self) -> Vector<DistroboxTask> {
         self.imp().tasks.borrow().clone()
     }
-    pub fn images(&self) -> Resource<Vec<String>, anyhow::Error> {
+    pub fn images(&self) -> Resource<Vector<String>, anyhow::Error> {
         self.imp().images.borrow().clone()
     }
     pub fn connect_tasks_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {

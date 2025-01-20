@@ -12,6 +12,7 @@ async-process = "2.3.0"
 futures = "0.3.31"
 anyhow = "1.0.92"
 regex = "1.11.1"
+im-rc = "15.1.0"
 
 [dependencies.adw]
 package = "libadwaita"

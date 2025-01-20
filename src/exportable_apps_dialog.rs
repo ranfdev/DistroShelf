@@ -7,13 +7,12 @@ use crate::distrobox::{self, ExportableApp};
 use crate::distrobox_service::DistroboxService;
 use crate::resource::{Resource, SharedResource};
 
-use glib::subclass::Signal;
-use std::sync::OnceLock;
+use std::cell::{OnceCell, RefCell};
+
+use glib::VariantTy;
+use im_rc::Vector;
 
 mod imp {
-    use std::cell::{OnceCell, RefCell};
-
-    use glib::VariantTy;
 
     use super::*;
 
@@ -23,7 +22,7 @@ mod imp {
         pub toolbar_view: adw::ToolbarView,
         pub content: gtk::Box,
         pub scrolled_window: gtk::ScrolledWindow,
-        pub apps: SharedResource<Vec<distrobox::ExportableApp>, anyhow::Error>,
+        pub apps: SharedResource<Vector<distrobox::ExportableApp>, anyhow::Error>,
         pub distrobox_service: OnceCell<DistroboxService>,
         pub container: RefCell<String>,
     }
@@ -45,7 +44,7 @@ mod imp {
 
             let obj = self.obj().clone();
             self.apps.set_callback(
-                move |res: Resource<Vec<ExportableApp>, anyhow::Error>| match res {
+                move |res: Resource<Vector<ExportableApp>, anyhow::Error>| match res {
                     Resource::Error(err, _) => {
                         obj.imp()
                             .scrolled_window
@@ -164,7 +163,7 @@ impl ExportableAppsDialog {
         ));
         status_page
     }
-    pub fn handle_ui_loaded(&self, apps: &Vec<ExportableApp>) -> impl IsA<gtk::Widget> {
+    pub fn handle_ui_loaded(&self, apps: &Vector<ExportableApp>) -> impl IsA<gtk::Widget> {
         let export_apps_group = adw::PreferencesGroup::new();
         export_apps_group.set_margin_start(12);
         export_apps_group.set_margin_end(12);

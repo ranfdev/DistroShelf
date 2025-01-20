@@ -18,6 +18,8 @@ pub use command::*;
 pub use command_runner::*;
 pub use desktop_file::*;
 use gtk::gdk::Display;
+use im_rc::{vector, Vector};
+use im_rc as im;
 
 use crate::container::{self, Container};
 
@@ -566,11 +568,11 @@ impl Distrobox {
         Ok(res)
     }
 
-    pub async fn list_apps(&self, box_name: &str) -> Result<Vec<ExportableApp>, Error> {
+    pub async fn list_apps(&self, box_name: &str) -> Result<Vector<ExportableApp>, Error> {
         let files = self.get_desktop_files(box_name).await?;
         dbg!(&files);
         let exported = self.get_exported_desktop_files().await?;
-        let res: Vec<ExportableApp> = files
+        let res: Vector<ExportableApp> = files
             .into_iter()
             .map(|(path, content)| -> Option<ExportableApp> {
                 let entry = parse_desktop_file(&content);
@@ -668,7 +670,7 @@ impl Distrobox {
         self.cmd_spawn(cmd)
     }
     // create --compatibility
-    pub async fn list_images(&self) -> Result<Vec<String>, Error> {
+    pub async fn list_images(&self) -> Result<Vector<String>, Error> {
         let mut cmd = dbcmd();
         cmd.arg("create").arg("--compatibility");
         let text = self.cmd_output_string(cmd).await?;
@@ -697,18 +699,16 @@ impl Distrobox {
         self.cmd_spawn(cmd)
     }
     // list | ls
-    pub async fn list(&self) -> Result<Vec<ContainerInfo>, Error> {
+    pub async fn list(&self) -> Result<im::HashMap<String, ContainerInfo>, Error> {
         let mut cmd = dbcmd();
         cmd.arg("ls").arg("--no-color");
         let text = self.cmd_output_string(cmd).await?;
         dbg!(&text);
         let lines = text.lines().skip(1);
-        let mut out = vec![];
+        let mut out = im::HashMap::new();
         for line in lines {
-            dbg!(&line);
             let item: ContainerInfo = line.parse()?;
-            dbg!(&item);
-            out.push(item);
+            out.insert(item.name.clone(), item);
         }
         Ok(out)
     }
@@ -765,6 +765,7 @@ impl Distrobox {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use im_rc::hashmap;
     use smol::block_on;
 
     #[test]
@@ -780,7 +781,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
             );
             assert_eq!(
                 db.list().await?,
-                vec![ContainerInfo {
+                hashmap!["ubuntu".into() => ContainerInfo {
                     id: "d24405b14180".into(),
                     name: "ubuntu".into(),
                     status: Status::Created("".into()),

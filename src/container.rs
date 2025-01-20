@@ -14,6 +14,8 @@ use std::sync::OnceLock;
 mod imp {
     use super::*;
 
+
+    // This contains all the container informations given by distrobox, plus an associated KnownDistro struct
     #[derive(Default)]
     pub struct Container {
         pub name: RefCell<String>,
