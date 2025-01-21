@@ -44,8 +44,15 @@ use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
 use gtk::prelude::*;
 use gtk::{gio, glib};
+use tracing::info;
 
 fn main() -> glib::ExitCode {
+    // Initialize tracing
+    tracing_subscriber::fmt()
+        .init();
+
+    info!("Starting DistroHome application");
+
     // Set up gettext translations
     bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
     bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8")
