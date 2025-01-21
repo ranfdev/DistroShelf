@@ -306,6 +306,29 @@ impl DistroboxService {
             Ok(())
         }));
     }
+    pub fn do_spawn_terminal(&self, name: &str) {
+        let this = self.clone();
+        let name_clone = name.to_string();
+
+        self.push_operation(DistroboxTask::new(
+            name,
+            "spawn-terminal",
+            move |_task| async move {
+                let enter_cmd = this.distrobox().enter_cmd(&name_clone);
+                this.spawn_terminal_cmd(name_clone, &enter_cmd).await
+            },
+        ));
+    }
+    pub fn do_assemble(&self, file_path: &str) -> DistroboxTask {
+        let this = self.clone();
+        let file_path = file_path.to_string();
+        let task = DistroboxTask::new("assemble", "assemble", move |task| async move {
+            let child = this.distrobox().assemble(&file_path)?;
+            this.handle_child_output_for_task(child, &task).await
+        });
+        self.push_operation(task.clone());
+        task
+    }
 
     async fn spawn_terminal_cmd(&self, name: String, cmd: &Command) -> Result<(), anyhow::Error> {
         let Some(supported_terminal) = self.selected_terminal() else {
@@ -329,30 +352,6 @@ impl DistroboxService {
             return Err(anyhow::anyhow!("Failed to spawn terminal"));
         }
         Ok(())
-    }
-    pub fn do_spawn_terminal(&self, name: &str) {
-        let this = self.clone();
-        let name_clone = name.to_string();
-
-        self.push_operation(DistroboxTask::new(
-            name,
-            "spawn-terminal",
-            move |_task| async move {
-                let enter_cmd = this.distrobox().enter_cmd(&name_clone);
-                this.spawn_terminal_cmd(name_clone, &enter_cmd).await
-            },
-        ));
-    }
-
-    pub fn do_assemble(&self, file_path: &str) -> DistroboxTask {
-        let this = self.clone();
-        let file_path = file_path.to_string();
-        let task = DistroboxTask::new("assemble", "assemble", move |task| async move {
-            let child = this.distrobox().assemble(&file_path)?;
-            this.handle_child_output_for_task(child, &task).await
-        });
-        self.push_operation(task.clone());
-        task
     }
     fn reload_till_up(&self, name: String, times: usize) {
         let this = self.clone();
@@ -406,27 +405,7 @@ impl DistroboxService {
     pub fn images(&self) -> Resource<Vector<String>, anyhow::Error> {
         self.imp().images.borrow().clone()
     }
-    pub fn connect_tasks_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
-        let this = self.clone();
-        self.connect_local("tasks-changed", true, move |_values| {
-            f(&this);
-            None
-        })
-    }
-    pub fn connect_containers_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
-        let this = self.clone();
-        self.connect_local("containers-changed", true, move |_values| {
-            f(&this);
-            None
-        })
-    }
-    pub fn connect_images_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
-        let this = self.clone();
-        self.connect_local("images-changed", true, move |_values| {
-            f(&this);
-            None
-        })
-    }
+
 
     pub fn set_selected_terminal_program(&self, program: &str) {
         if SUPPORTED_TERMINALS
@@ -489,6 +468,35 @@ impl DistroboxService {
     pub fn version(&self) -> Resource<String, anyhow::Error> {
         self.imp().version.borrow().clone()
     }
+
+
+    pub fn clear_ended_tasks(&self) {
+        self.imp().tasks.borrow_mut().retain(|task| !task.ended());
+        self.emit_by_name::<()>("tasks-changed", &[]);
+    }
+
+    pub fn connect_tasks_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
+        let this = self.clone();
+        self.connect_local("tasks-changed", true, move |_values| {
+            f(&this);
+            None
+        })
+    }
+    pub fn connect_containers_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
+        let this = self.clone();
+        self.connect_local("containers-changed", true, move |_values| {
+            f(&this);
+            None
+        })
+    }
+    pub fn connect_images_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
+        let this = self.clone();
+        self.connect_local("images-changed", true, move |_values| {
+            f(&this);
+            None
+        })
+    }
+    
     pub fn connect_terminal_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
         let this = self.clone();
         self.connect_local("terminal-changed", true, move |_values| {
@@ -505,10 +513,6 @@ impl DistroboxService {
         })
     }
 
-    pub fn clear_ended_tasks(&self) {
-        self.imp().tasks.borrow_mut().retain(|task| !task.ended());
-        self.emit_by_name::<()>("tasks-changed", &[]);
-    }
 }
 
 impl Default for DistroboxService {
