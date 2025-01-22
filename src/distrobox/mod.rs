@@ -6,7 +6,7 @@ use std::{
     rc::Rc,
     str::FromStr,
 };
-use tracing::{debug, error, info, instrument, warn};
+use tracing::{debug, error, info, warn};
 
 mod command;
 mod command_runner;
@@ -462,7 +462,6 @@ impl Distrobox {
         Path::new("/.flatpak-info").exists()
     }
 
-    #[instrument(skip(self), level = "debug")]
     pub fn cmd_spawn(&self, cmd: Command) -> Result<Box<dyn Child + Send>, Error> {
         let mut cmd = if self.is_in_flatpak {
             wrap_flatpak_cmd(cmd)
@@ -487,7 +486,6 @@ impl Distrobox {
         Ok(child)
     }
 
-    #[instrument(skip(self), level = "debug")]
     async fn cmd_output(&self, cmd: Command) -> Result<Output, Error> {
         let mut cmd = if self.is_in_flatpak {
             wrap_flatpak_cmd(cmd)
