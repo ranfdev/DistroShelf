@@ -104,7 +104,7 @@ mod imp {
                     None::<&gio::Cancellable>,
                     |res| {
                         if let Err(e) = res {
-                            println!("error opening external uri {:?}", e);
+                            tracing::error!(error = %e, "Failed to open Distrobox website");
                         }
                     },
                 );
@@ -622,7 +622,7 @@ impl DistrohomeWindow {
                         move |res| {
                             if let Ok(file) = res {
                                 if let Some(path) = file.path() {
-                                    info!(path=?path);
+                                    info!(container = %container.name(), path = %path.display(), "Installing package into container");
                                     this.distrobox_service()
                                         .do_install(&container.name(), &path);
                                 }
@@ -674,6 +674,7 @@ impl DistrohomeWindow {
 
         if task.is_failed() {
             if let Some(error) = task.take_error() {
+                tracing::error!(task = %task.name(), "Task failed: {}", error);
                 let error_label = gtk::Label::new(Some(&format!("Error: {}", error)));
                 error_label.set_xalign(0.0);
                 content.append(&error_label);
@@ -718,6 +719,7 @@ impl DistrohomeWindow {
             #[weak]
             task,
             move |_| {
+                tracing::warn!(task_id = %task.name(), "Stop requested but not implemented yet");
                 // TODO: implement this
                 // task.stop();
             }
