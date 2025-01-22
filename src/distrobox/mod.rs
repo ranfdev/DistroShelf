@@ -6,6 +6,7 @@ use std::{
     rc::Rc,
     str::FromStr,
 };
+use tracing::{debug, error, info, instrument, warn};
 
 mod command;
 mod command_runner;
@@ -461,6 +462,7 @@ impl Distrobox {
         Path::new("/.flatpak-info").exists()
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn cmd_spawn(&self, cmd: Command) -> Result<Box<dyn Child + Send>, Error> {
         let mut cmd = if self.is_in_flatpak {
             wrap_flatpak_cmd(cmd)
@@ -468,19 +470,24 @@ impl Distrobox {
             cmd
         };
         wrap_capture_cmd(&mut cmd);
-        let child = self.cmd_runner.spawn(cmd.clone()).map_err(Error::Spawn)?;
-
+        
         let program = cmd.program.to_string_lossy().to_string();
-        let args = cmd
-            .args
-            .iter()
+        let args = cmd.args.iter()
             .map(|arg| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
-        self.output_tracker
-            .push(format!("{:?} {:?}", program, args));
+            
+        debug!("Spawning command");
+        let child = self.cmd_runner.spawn(cmd.clone())
+            .map_err(|e| {
+                error!(error = %e, "Failed to spawn command");
+                Error::Spawn(e)
+            })?;
+
+        self.output_tracker.push(format!("{:?} {:?}", program, args));
         Ok(child)
     }
 
+    #[instrument(skip(self), level = "debug")]
     async fn cmd_output(&self, cmd: Command) -> Result<Output, Error> {
         let mut cmd = if self.is_in_flatpak {
             wrap_flatpak_cmd(cmd)
@@ -488,17 +495,21 @@ impl Distrobox {
             cmd
         };
         wrap_capture_cmd(&mut cmd);
+        
         let program = cmd.program.to_string_lossy().to_string();
-        let args = cmd
-            .args
-            .iter()
+        let args = cmd.args.iter()
             .map(|arg| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
 
-        let output = self.cmd_runner.output(cmd).await.map_err(Error::Spawn)?;
+        info!(command = %program, args = ?args, "Executing command");
+        let output = self.cmd_runner.output(cmd).await
+            .map_err(|e| {
+                error!(error = %e, "Command execution failed");
+                Error::Spawn(e)
+            })?;
 
-        self.output_tracker
-            .push(format!("{:?} {:?}", program, args));
+        self.output_tracker.push(format!("{:?} {:?}", program, args));
+        debug!(status = ?output.status, "Command completed");
         Ok(output)
     }
 
@@ -711,8 +722,16 @@ impl Distrobox {
         let lines = text.lines().skip(1);
         let mut out = im::HashMap::new();
         for line in lines {
-            let item: ContainerInfo = line.parse()?;
-            out.insert(item.name.clone(), item);
+            match line.parse::<ContainerInfo>() {
+                Ok(item) => {
+                    debug!(name = %item.name, "Found container");
+                    out.insert(item.name.clone(), item);
+                }
+                Err(e) => {
+                    error!(error = %e, line = %line, "Failed to parse container info");
+                    return Err(e);
+                }
+            }
         }
         Ok(out)
     }
@@ -755,8 +774,11 @@ impl Distrobox {
         dbg!(&text);
         let mut parts = text.split(':');
         if let Some(v) = parts.nth(1) {
-            Ok(v.trim().to_string())
+            let version = v.trim().to_string();
+            debug!(%version, "Parsed distrobox version");
+            Ok(version)
         } else {
+            warn!(output = %text, "Failed to parse version from output");
             Err(Error::ParseOutput(
                 "parsing version, trying to find ':'".to_string(),
             ))
@@ -876,8 +898,10 @@ Categories=Utility;Network;
     }
     #[test]
     fn create() -> Result<(), Error> {
+        let _ = tracing_subscriber::fmt().with_test_writer().try_init();
         let db = Distrobox::new_null(NullCommandRunner::default(), false);
         let output_tracker = db.output_tracker();
+        debug!("Testing container creation");
         let args = CreateArgs {
             image: "docker.io/library/ubuntu:latest".into(),
             init: true,
