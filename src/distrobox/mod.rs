@@ -218,7 +218,7 @@ pub enum Error {
     #[error("invalid field {0}: {1}")]
     InvalidField(String, String),
 
-    #[error("command failed with exit code {exit_code}: {command}\n{stderr}")]
+    #[error("command failed with exit code {exit_code:?}: {command}\n{stderr}")]
     CommandFailed {
         exit_code: Option<i32>,
         command: String,
@@ -518,20 +518,35 @@ impl Distrobox {
             .collect::<Vec<_>>();
 
         info!(command = %program, args = ?args, "Executing command");
+        let command_str = format!("{:?} {:?}", program, args);
+
         let output = self.cmd_runner.output(cmd).await
             .map_err(|e| {
                 error!(error = ?e, command = %program, "Command execution failed");
-                Error::Spawn(e)
+                Error::Spawn {
+                    source: e,
+                    command: command_str.clone()
+                }
             })?;
 
-        self.output_tracker.push(format!("{:?} {:?}", program, args));
+        self.output_tracker.push(command_str.clone());
         
         let exit_code = output.status.code();
-        let stderr_output = String::from_utf8_lossy(&output.stderr);
-        
+        debug!(
+            exit_code = ?exit_code,
+            "Command completed successfully"
+        );
+        Ok(output)
+    }
+
+    async fn cmd_output_string(&self, cmd: Command) -> Result<String, Error> {
+        let command_str = format!("{:?} {:?}", cmd.program, cmd.args);
+        let output = self.cmd_output(cmd).await?;
+        let s = String::from_utf8_lossy(&output.stdout);
+
         if !output.status.success() {
-            let command_str = format!("{:?} {:?}", program, args);
-            let stderr = stderr_output.into_owned();
+            let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+            let exit_code = output.status.code();
             error!(
                 exit_code = ?exit_code,
                 stderr = %stderr,
@@ -544,16 +559,6 @@ impl Distrobox {
             });
         }
 
-        debug!(
-            exit_code = ?exit_code,
-            "Command completed successfully"
-        );
-        Ok(output)
-    }
-
-    async fn cmd_output_string(&self, cmd: Command) -> Result<String, Error> {
-        let output = self.cmd_output(cmd).await?;
-        let s = String::from_utf8_lossy(&output.stdout);
         Ok(s.to_string())
     }
 
