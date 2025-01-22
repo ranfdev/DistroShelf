@@ -45,10 +45,13 @@ use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use tracing::info;
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 fn main() -> glib::ExitCode {
     // Initialize tracing
-    tracing_subscriber::fmt()
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
         .init();
 
     info!("Starting DistroHome application");

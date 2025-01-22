@@ -32,7 +32,7 @@ pub struct RealCommandRunner {}
 impl CommandRunner for RealCommandRunner {
     fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
         let mut command: AsyncCommand = command.into();
-        Ok(Box::new(dbg!(command.spawn()?)))
+        Ok(Box::new(command.spawn()?))
     }
     fn output(
         &self,
@@ -66,7 +66,6 @@ impl NullCommandRunnerBuilder {
         out: Rc<dyn Fn() -> Result<String, io::Error>>,
     ) -> &mut Self {
         let key = NullCommandRunner::key_for_cmd(&cmd);
-        dbg!(&key);
         self.responses.insert(key, out);
         self
     }
@@ -120,7 +119,6 @@ impl CommandRunner for NullCommandRunner {
         command: Command,
     ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
         let key = Self::key_for_cmd(&command);
-        dbg!(&key);
         let response = self
             .responses
             .get(&key[..])

@@ -269,7 +269,6 @@ impl DistrohomeWindow {
                     // select it if it was selected before
                     if let Some(selected) = &selected_container {
                         if selected == name {
-                            dbg!(selected);
                             imp.sidebar_list_box.select_row(Some(&row));
                         }
                     }

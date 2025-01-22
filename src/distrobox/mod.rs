@@ -476,10 +476,10 @@ impl Distrobox {
             .map(|arg| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
             
-        debug!("Spawning command");
+        debug!(command = %program, args = ?args, "Spawning command");
         let child = self.cmd_runner.spawn(cmd.clone())
             .map_err(|e| {
-                error!(error = %e, "Failed to spawn command");
+                error!(error = ?e, command = %program, "Command spawn failed");
                 Error::Spawn(e)
             })?;
 
@@ -504,12 +504,24 @@ impl Distrobox {
         info!(command = %program, args = ?args, "Executing command");
         let output = self.cmd_runner.output(cmd).await
             .map_err(|e| {
-                error!(error = %e, "Command execution failed");
+                error!(error = ?e, command = %program, "Command execution failed");
                 Error::Spawn(e)
             })?;
 
         self.output_tracker.push(format!("{:?} {:?}", program, args));
-        debug!(status = ?output.status, "Command completed");
+        
+        if !output.status.success() {
+            error!(
+                exit_code = ?output.status.code(),
+                stderr = %String::from_utf8_lossy(&output.stderr),
+                "Command failed"
+            );
+        } else {
+            debug!(
+                exit_code = ?output.status.code(),
+                "Command completed successfully"
+            );
+        }
         Ok(output)
     }
 
@@ -718,13 +730,18 @@ impl Distrobox {
         let mut cmd = dbcmd();
         cmd.arg("ls").arg("--no-color");
         let text = self.cmd_output_string(cmd).await?;
-        dbg!(&text);
         let lines = text.lines().skip(1);
         let mut out = im::HashMap::new();
         for line in lines {
             match line.parse::<ContainerInfo>() {
                 Ok(item) => {
-                    debug!(name = %item.name, "Found container");
+                    debug!(
+                        container_id = %item.id,
+                        container_name = %item.name, 
+                        image = %item.image,
+                        status = ?item.status,
+                        "Discovered container"
+                    );
                     out.insert(item.name.clone(), item);
                 }
                 Err(e) => {
@@ -771,11 +788,14 @@ impl Distrobox {
         let mut cmd = dbcmd();
         cmd.arg("version");
         let text = self.cmd_output_string(cmd).await?;
-        dbg!(&text);
         let mut parts = text.split(':');
         if let Some(v) = parts.nth(1) {
             let version = v.trim().to_string();
-            debug!(%version, "Parsed distrobox version");
+            info!(
+                distrobox_version = %version,
+                raw_output = %text,
+                "Successfully parsed distrobox version"
+            );
             Ok(version)
         } else {
             warn!(output = %text, "Failed to parse version from output");
