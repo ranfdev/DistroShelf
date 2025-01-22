@@ -567,7 +567,7 @@ impl Distrobox {
         cmd.args(["-c", "echo $XDG_DATA_HOME"]);
         let xdg_data_home = self.cmd_output_string(cmd).await?;
 
-        let xdg_data_home = if xdg_data_home.is_empty() {
+        let xdg_data_home = if xdg_data_home.trim().is_empty() {
             let mut cmd = Command::new("sh");
             cmd.args(["-c", "echo $HOME"]);
             let home = self.cmd_output_string(cmd).await?;
@@ -620,8 +620,9 @@ impl Distrobox {
 
     pub async fn list_apps(&self, box_name: &str) -> Result<Vector<ExportableApp>, Error> {
         let files = self.get_desktop_files(box_name).await?;
-        debug!(files=?files);
+        debug!(desktop_files=?files);
         let exported = self.get_exported_desktop_files().await?;
+        debug!(exported_files=?exported);
         let res: Vector<ExportableApp> = files
             .into_iter()
             .map(|(path, content)| -> Option<ExportableApp> {
@@ -633,10 +634,14 @@ impl Distrobox {
                     .unwrap_or_default();
 
                 let exported_as = format!("{box_name}-{file_name}");
+                let is_exported = exported.contains(&exported_as);
+                if is_exported {
+                    debug!(found_exported=exported_as);
+                }
                 entry.map(|entry| ExportableApp {
                     desktop_file_path: path,
                     entry,
-                    exported: exported.contains(&exported_as),
+                    exported: is_exported,
                 })
             })
             .flatten()

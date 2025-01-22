@@ -218,7 +218,7 @@ impl ExportableAppsDialog {
             menu_model.append_item(&export_action);
         } else {
             let unexport_action = gio::MenuItem::new(
-                Some("Export App"),
+                Some("Unexport App"),
                 Some(&format!(
                     "dialog.unexport-app(\"{}\")",
                     app.desktop_file_path
