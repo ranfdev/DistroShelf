@@ -169,11 +169,6 @@ impl DistroboxService {
         result
     }
 
-    fn push_operation(&self, operation: DistroboxTask) {
-        self.imp().tasks.borrow_mut().push_back(operation);
-        self.emit_by_name::<()>("tasks-changed", &[]);
-    }
-
     fn create_task<F, Fut>(&self, name: &str, action: &str, operation: F) -> DistroboxTask
     where
         F: FnOnce(DistroboxTask) -> Fut + 'static,
@@ -187,7 +182,8 @@ impl DistroboxService {
             operation(task).await
         });
         
-        this.push_operation(task.clone());
+        self.imp().tasks.borrow_mut().push_back(task);
+        self.emit_by_name::<()>("tasks-changed", &[]);
         task
     }
 
@@ -288,40 +284,31 @@ impl DistroboxService {
             Ok(())
         })
     }
-    pub fn do_delete(&self, name: &str) {
+    pub fn do_delete(&self, name: &str) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
-        self.push_operation(DistroboxTask::new(
-            name,
-            "delete",
-            move |_task| async move {
-                this.distrobox().remove(&name_clone).await?;
-                this.load_container_infos();
-                Ok(())
-            },
-        ));
+        self.create_task(name, "delete", move |_task| async move {
+            this.distrobox().remove(&name_clone).await?;
+            this.load_container_infos();
+            Ok(())
+        })
     }
-    pub fn do_stop(&self, name: &str) {
+    pub fn do_stop(&self, name: &str) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
-        self.push_operation(DistroboxTask::new(name, "stop", move |_task| async move {
+        self.create_task(name, "stop", move |_task| async move {
             this.distrobox().stop(&name_clone).await?;
             this.load_container_infos();
             Ok(())
-        }));
+        })
     }
-    pub fn do_spawn_terminal(&self, name: &str) {
+    pub fn do_spawn_terminal(&self, name: &str) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
-
-        self.push_operation(DistroboxTask::new(
-            name,
-            "spawn-terminal",
-            move |_task| async move {
-                let enter_cmd = this.distrobox().enter_cmd(&name_clone);
-                this.spawn_terminal_cmd(name_clone, &enter_cmd).await
-            },
-        ));
+        self.create_task(name, "spawn-terminal", move |_task| async move {
+            let enter_cmd = this.distrobox().enter_cmd(&name_clone);
+            this.spawn_terminal_cmd(name_clone, &enter_cmd).await
+        })
     }
     pub fn do_assemble(&self, file_path: &str) -> DistroboxTask {
         let this = self.clone();
