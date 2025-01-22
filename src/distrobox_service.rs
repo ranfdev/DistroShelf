@@ -174,58 +174,65 @@ impl DistroboxService {
         self.emit_by_name::<()>("tasks-changed", &[]);
     }
 
-    // I'd like this to show some output in the task, but the distrobox create command doesn't show any output...
+    fn create_task<F, Fut>(&self, name: &str, action: &str, operation: F) -> DistroboxTask
+    where
+        F: FnOnce(DistroboxTask) -> Fut + 'static,
+        Fut: std::future::Future<Output = Result<(), anyhow::Error>> + 'static,
+    {
+        let this = self.clone();
+        let name = name.to_string();
+        let action = action.to_string();
+        
+        let task = DistroboxTask::new(&name, &action, move |task| async move {
+            operation(task).await
+        });
+        
+        this.push_operation(task.clone());
+        task
+    }
+
     pub fn do_upgrade(&self, name: &str) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
-        let task = DistroboxTask::new(name, "upgrade", move |task| async move {
+        self.create_task(name, "upgrade", move |task| async move {
             let child = this.distrobox().upgrade(&name_clone)?;
             this.handle_child_output_for_task(child, &task).await
-        });
-        self.push_operation(task.clone());
-        task
+        })
     }
     pub fn do_launch(&self, name: &str, app: ExportableApp) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
-        let task = DistroboxTask::new(name, "launch-app", move |task| async move {
+        self.create_task(name, "launch-app", move |task| async move {
             let child = this.distrobox().launch_app(&name_clone, &app)?;
             this.handle_child_output_for_task(child, &task).await
-        });
-        self.push_operation(task.clone());
-        task
+        })
     }
     pub fn do_export(&self, name: &str, app: ExportableApp) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
-        let task = DistroboxTask::new(name, "export", move |_task| async move {
+        self.create_task(name, "export", move |_task| async move {
             this.distrobox().export_app(&name_clone, &app).await?;
             Ok(())
-        });
-        self.push_operation(task.clone());
-        task
+        })
     }
     pub fn do_unexport(&self, name: &str, app: ExportableApp) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
-        let task = DistroboxTask::new(name, "unexport", move |_task| async move {
+        self.create_task(name, "unexport", move |_task| async move {
             this.distrobox().unexport_app(&name_clone, &app).await?;
             Ok(())
-        });
-        self.push_operation(task.clone());
-        task
+        })
     }
     pub fn do_create(&self, create_args: CreateArgs) -> DistroboxTask {
         let this = self.clone();
         let name = create_args.name.to_string();
-        let task = DistroboxTask::new(&name, "create", move |task| async move {
+        let task = self.create_task(&name, "create", move |task| async move {
             let child = this.distrobox().create(create_args).await?;
             this.handle_child_output_for_task(child, &task).await
         });
         task.set_description(
             "Creation requires downloading the container image, which may take some time...",
         );
-        self.push_operation(task.clone());
         task
     }
     pub fn do_install(&self, name: &str, path: &Path) -> DistroboxTask {
@@ -242,7 +249,7 @@ impl DistroboxService {
         };
         let path_clone = path.to_owned();
         let name_clone = name.to_string();
-        let task = DistroboxTask::new(&name, "install", move |_task| async move {
+        let task = self.create_task(name, "install", move |_task| async move {
             // The file provided from the portal is under /run/user/1000 which is not accessible by root.
             // We can copy the file as a normal user to /tmp and then install.
 
@@ -266,23 +273,20 @@ impl DistroboxService {
             this.spawn_terminal_cmd(name_clone, &install_cmd).await
         });
         task.set_description(format!("Installing {:?}", path));
-        self.push_operation(task.clone());
         task
     }
     pub fn do_clone(&self, source_name: &str, target_name: &str) -> DistroboxTask {
         let this = self.clone();
         let source_name_clone = source_name.to_string();
         let target_name_clone = target_name.to_string();
-        let task = DistroboxTask::new(source_name, "clone", move |task| async move {
+        self.create_task(source_name, "clone", move |task| async move {
             let child = this
                 .distrobox()
                 .clone_to(&source_name_clone, &target_name_clone)
                 .await?;
             this.handle_child_output_for_task(child, &task).await?;
             Ok(())
-        });
-        self.push_operation(task.clone());
-        task
+        })
     }
     pub fn do_delete(&self, name: &str) {
         let this = self.clone();
@@ -322,12 +326,10 @@ impl DistroboxService {
     pub fn do_assemble(&self, file_path: &str) -> DistroboxTask {
         let this = self.clone();
         let file_path = file_path.to_string();
-        let task = DistroboxTask::new("assemble", "assemble", move |task| async move {
+        self.create_task("assemble", "assemble", move |task| async move {
             let child = this.distrobox().assemble(&file_path)?;
             this.handle_child_output_for_task(child, &task).await
-        });
-        self.push_operation(task.clone());
-        task
+        })
     }
 
     async fn spawn_terminal_cmd(&self, name: String, cmd: &Command) -> Result<(), anyhow::Error> {
