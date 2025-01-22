@@ -13,6 +13,7 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::sync::OnceLock;
 use std::time::Duration;
+use tracing::{debug, error, info, instrument, warn};
 
 use crate::container::Container;
 use crate::distrobox::wrap_flatpak_cmd;
@@ -169,20 +170,27 @@ impl DistroboxService {
         result
     }
 
+    #[instrument(skip_all, fields(task_name = %name, task_action = %action))]
     fn create_task<F, Fut>(&self, name: &str, action: &str, operation: F) -> DistroboxTask
     where
         F: FnOnce(DistroboxTask) -> Fut + 'static,
         Fut: std::future::Future<Output = Result<(), anyhow::Error>> + 'static,
     {
+        info!("Creating new distrobox task");
         let this = self.clone();
         let name = name.to_string();
         let action = action.to_string();
-        
+
         let task = DistroboxTask::new(&name, &action, move |task| async move {
-            operation(task).await
+            debug!("Starting task execution");
+            let result = operation(task).await;
+            if let Err(ref e) = result {
+                error!(error = %e, "Task execution failed");
+            }
+            result
         });
-        
-        self.imp().tasks.borrow_mut().push_back(task);
+
+        self.imp().tasks.borrow_mut().push_back(task.clone());
         self.emit_by_name::<()>("tasks-changed", &[]);
         task
     }
@@ -321,7 +329,8 @@ impl DistroboxService {
 
     async fn spawn_terminal_cmd(&self, name: String, cmd: &Command) -> Result<(), anyhow::Error> {
         let Some(supported_terminal) = self.selected_terminal() else {
-            panic!("No terminal selected"); // TODO show a dialog
+            error!("No terminal selected when trying to spawn terminal");
+            return Err(anyhow::anyhow!("No terminal selected"));
         };
         let mut spawn_cmd = Command::new(supported_terminal.program);
         spawn_cmd
@@ -330,7 +339,7 @@ impl DistroboxService {
             .args(cmd.args.clone());
         spawn_cmd = wrap_flatpak_cmd(spawn_cmd);
 
-        dbg!(&spawn_cmd);
+        debug!(?spawn_cmd, "Spawning terminal command");
         let mut async_cmd: async_process::Command = spawn_cmd.into();
         let mut child = async_cmd.spawn()?;
         let this = self.clone();
@@ -360,11 +369,13 @@ impl DistroboxService {
             }
         });
     }
+    #[instrument(skip_all, fields(task_name = %task.name()))]
     async fn handle_child_output_for_task(
         &self,
         mut child: Box<dyn Child + Send>,
         task: &DistroboxTask,
     ) -> Result<(), anyhow::Error> {
+        debug!("Handling child process output");
         let stdout = child.take_stdout().unwrap();
         let bufread = BufReader::new(stdout);
         let mut lines = bufread.lines();
@@ -375,12 +386,15 @@ impl DistroboxService {
         }
 
         match child.wait().await {
+            Ok(e) if e.success() => {
+                info!(exit_code = ?e.code(), "Child process exited successfully");
+            }
             Ok(e) => {
-                if !e.success() {
-                    anyhow::bail!("Status: {:?}", e.code());
-                }
+                warn!(exit_code = ?e.code(), "Child process exited with error");
+                anyhow::bail!("Status: {:?}", e.code());
             }
             Err(e) => {
+                error!(error = %e, "Child process failed");
                 return Err(e.into());
             }
         }
@@ -394,7 +408,6 @@ impl DistroboxService {
     pub fn images(&self) -> Resource<Vector<String>, anyhow::Error> {
         self.imp().images.borrow().clone()
     }
-
 
     pub fn set_selected_terminal_program(&self, program: &str) {
         if SUPPORTED_TERMINALS
@@ -414,8 +427,10 @@ impl DistroboxService {
 
     pub async fn validate_terminal(&self) -> Result<(), anyhow::Error> {
         let Some(terminal) = self.selected_terminal() else {
+            error!("No terminal selected for validation");
             return Err(anyhow::anyhow!("No terminal selected"));
         };
+        info!(terminal = %terminal.program, "Validating terminal");
 
         // Try running a simple command to validate the terminal
         let mut cmd = Command::new(terminal.program.clone());
@@ -428,15 +443,17 @@ impl DistroboxService {
         let mut child = match async_cmd.spawn() {
             Ok(child) => child,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                error!(terminal = %terminal.program, "Terminal program not found");
                 return Err(anyhow::anyhow!(
                     "Terminal program '{}' not found. Please install it or choose a different terminal.",
                     &terminal.program
-                ))
+                ));
             }
             Err(e) => return Err(e.into()),
         };
 
         if !child.status().await?.success() {
+            error!(terminal = %terminal.program, "Terminal validation failed");
             return Err(anyhow::anyhow!(
                 "Terminal validation failed. '{}' did not run successfully.",
                 &terminal.program
@@ -457,7 +474,6 @@ impl DistroboxService {
     pub fn version(&self) -> Resource<String, anyhow::Error> {
         self.imp().version.borrow().clone()
     }
-
 
     pub fn clear_ended_tasks(&self) {
         self.imp().tasks.borrow_mut().retain(|task| !task.ended());
@@ -485,7 +501,7 @@ impl DistroboxService {
             None
         })
     }
-    
+
     pub fn connect_terminal_changed(&self, f: impl Fn(&Self) -> () + 'static) -> SignalHandlerId {
         let this = self.clone();
         self.connect_local("terminal-changed", true, move |_values| {
@@ -501,7 +517,6 @@ impl DistroboxService {
             None
         })
     }
-
 }
 
 impl Default for DistroboxService {
