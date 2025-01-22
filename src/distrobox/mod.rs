@@ -109,8 +109,8 @@ pub struct ContainerInfo {
 }
 
 impl ContainerInfo {
-    fn field_missing_error(text: &str) -> Error {
-        Error::ParseOutput(format!("{text} missing"))
+    fn field_missing_error(text: &str, line: &str) -> Error {
+        Error::ParseOutput(format!("{text} missing in line: {}", line))
     }
 }
 
@@ -120,7 +120,11 @@ impl FromStr for ContainerInfo {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split('|').collect();
         if parts.len() != 4 {
-            return Err(Error::ParseOutput("Invalid field count".into()));
+            return Err(Error::ParseOutput(format!(
+                "Invalid field count (expected 4, got {}) in line: {}",
+                parts.len(),
+                s
+            )));
         }
 
         let id = parts[0].trim();
@@ -130,16 +134,16 @@ impl FromStr for ContainerInfo {
 
         // Check for empty fields
         if id.is_empty() {
-            return Err(ContainerInfo::field_missing_error("id"));
+            return Err(ContainerInfo::field_missing_error("id", s));
         }
         if name.is_empty() {
-            return Err(ContainerInfo::field_missing_error("name"));
+            return Err(ContainerInfo::field_missing_error("name", s));
         }
         if status.is_empty() {
-            return Err(ContainerInfo::field_missing_error("status"));
+            return Err(ContainerInfo::field_missing_error("status", s));
         }
         if image.is_empty() {
-            return Err(ContainerInfo::field_missing_error("image"));
+            return Err(ContainerInfo::field_missing_error("image", s));
         }
 
         Ok(ContainerInfo {
@@ -202,14 +206,24 @@ pub enum Error {
     #[error("failed to read command stdout: {0}")]
     StdoutRead(#[from] io::Error),
 
-    #[error("failed to spawn command: {0}")]
-    Spawn(io::Error),
+    #[error("failed to spawn command {command}: {source}")]
+    Spawn {
+        source: io::Error,
+        command: String,
+    },
 
     #[error("failed to parse command output: {0}")]
     ParseOutput(String),
 
     #[error("invalid field {0}: {1}")]
     InvalidField(String, String),
+
+    #[error("command failed with exit code {exit_code}: {command}\n{stderr}")]
+    CommandFailed {
+        exit_code: Option<i32>,
+        command: String,
+        stderr: String,
+    },
 }
 
 fn dbcmd() -> Command {
@@ -478,8 +492,12 @@ impl Distrobox {
         debug!(command = %program, args = ?args, "Spawning command");
         let child = self.cmd_runner.spawn(cmd.clone())
             .map_err(|e| {
-                error!(error = ?e, command = %program, "Command spawn failed");
-                Error::Spawn(e)
+                let full_command = format!("{:?} {:?}", program, args);
+                error!(error = ?e, command = %full_command, "Command spawn failed");
+                Error::Spawn {
+                    source: e,
+                    command: full_command,
+                }
             })?;
 
         self.output_tracker.push(format!("{:?} {:?}", program, args));
@@ -508,18 +526,28 @@ impl Distrobox {
 
         self.output_tracker.push(format!("{:?} {:?}", program, args));
         
+        let exit_code = output.status.code();
+        let stderr_output = String::from_utf8_lossy(&output.stderr);
+        
         if !output.status.success() {
+            let command_str = format!("{:?} {:?}", program, args);
+            let stderr = stderr_output.into_owned();
             error!(
-                exit_code = ?output.status.code(),
-                stderr = %String::from_utf8_lossy(&output.stderr),
+                exit_code = ?exit_code,
+                stderr = %stderr,
                 "Command failed"
             );
-        } else {
-            debug!(
-                exit_code = ?output.status.code(),
-                "Command completed successfully"
-            );
+            return Err(Error::CommandFailed {
+                exit_code,
+                command: command_str,
+                stderr,
+            });
         }
+
+        debug!(
+            exit_code = ?exit_code,
+            "Command completed successfully"
+        );
         Ok(output)
     }
 
@@ -797,9 +825,10 @@ impl Distrobox {
             Ok(version)
         } else {
             warn!(output = %text, "Failed to parse version from output");
-            Err(Error::ParseOutput(
-                "parsing version, trying to find ':'".to_string(),
-            ))
+            Err(Error::ParseOutput(format!(
+                "Failed to parse version from output: {}",
+                text
+            )))
         }
     }
 
