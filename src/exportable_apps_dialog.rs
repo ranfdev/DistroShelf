@@ -47,12 +47,12 @@ mod imp {
                 .set_callback(
                     move |res: Resource<Vector<ExportableApp>, anyhow::Error>| match res {
                         Resource::Error(err, _) => {
-                            obj.imp()
-                                .scrolled_window
-                                .set_child(Some(&gtk::Label::new(Some(&format!(
-                                    "Error: {}",
-                                    err
-                                )))));
+                            obj.imp().scrolled_window.set_child(Some(
+                                &gtk::Label::builder()
+                                    .label(format!("Error: {}", err))
+                                    .wrap(true)
+                                    .build(),
+                            ));
                         }
                         Resource::Loading(_) => {
                             obj.imp()
