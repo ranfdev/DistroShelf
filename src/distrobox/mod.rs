@@ -570,7 +570,7 @@ impl Distrobox {
             "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done",
         ]);
         let concatenated_files = self.cmd_output_string(cmd).await?;
-        dbg!(&concatenated_files);
+        debug!(concatenated_files=concatenated_files);
         let res = concatenated_files
             .split("# START FILE ")
             .skip(1)
@@ -587,7 +587,7 @@ impl Distrobox {
 
     pub async fn list_apps(&self, box_name: &str) -> Result<Vector<ExportableApp>, Error> {
         let files = self.get_desktop_files(box_name).await?;
-        dbg!(&files);
+        debug!(files=?files);
         let exported = self.get_exported_desktop_files().await?;
         let res: Vector<ExportableApp> = files
             .into_iter()
@@ -624,7 +624,7 @@ impl Distrobox {
             .into_iter()
             .fold(app.entry.exec.clone(), |acc, x| acc.replace(x, ""));
         cmd.arg(cleaned_exec);
-        self.cmd_spawn(dbg!(cmd))
+        self.cmd_spawn(cmd)
     }
 
     pub async fn export_app(&self, container: &str, app: &ExportableApp) -> Result<String, Error> {
@@ -905,7 +905,6 @@ Categories=Utility;Network;
         let output_tracker = db.output_tracker();
 
         let apps = block_on(db.list_apps("ubuntu"))?;
-        dbg!(output_tracker.items());
         assert_eq!(&apps[0].entry.name, "Vim");
         assert_eq!(&apps[0].entry.exec, "/path/to/vim");
         assert!(apps[0].exported);

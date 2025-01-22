@@ -2,6 +2,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib::SignalHandlerId;
 use gtk::{gio, glib};
+use tracing::info;
 
 use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
 use crate::distrobox_service::DistroboxService;
@@ -412,7 +413,7 @@ impl CreateDistroboxDialog {
                         string_list.append(&image);
                     }
                 } else {
-                    dbg!("Loading images...");
+                    info!("Loading images");
                 }
                 this.imp().image_row.set_model(Some(&string_list));
             }

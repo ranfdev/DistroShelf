@@ -32,6 +32,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib::clone;
 use gtk::{gio, glib, pango};
+use tracing::info;
 
 mod imp {
     use std::cell::RefCell;
@@ -80,7 +81,7 @@ mod imp {
             klass.bind_template();
 
             klass.install_action("win.refresh", None, |win, _action, _target| {
-                dbg!("Refreshing containers...");
+                info!("Refreshing containers");
                 win.distrobox_service().load_container_infos();
             });
             klass.add_binding_action(gdk::Key::F5, gdk::ModifierType::empty(), "win.refresh");
@@ -284,7 +285,7 @@ impl DistrohomeWindow {
                 imp.sidebar_stack.set_visible_child_name("distroboxes");
             }
         } else {
-            dbg!("Loading containers...");
+            info!("Loading containers");
         }
     }
 
@@ -621,7 +622,7 @@ impl DistrohomeWindow {
                         move |res| {
                             if let Ok(file) = res {
                                 if let Some(path) = file.path() {
-                                    dbg!(&path);
+                                    info!(path=?path);
                                     this.distrobox_service()
                                         .do_install(&container.name(), &path);
                                 }
