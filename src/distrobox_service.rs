@@ -95,7 +95,7 @@ impl DistroboxService {
         let distrobox = Distrobox::new();
         this.imp().distrobox.set(distrobox).unwrap();
 
-        this.connect_version();
+        this.load_version();
         this
     }
 
@@ -108,11 +108,11 @@ impl DistroboxService {
         let distrobox = Distrobox::new_null_with_responses(responses, is_in_flatpak);
         this.imp().distrobox.set(distrobox).unwrap();
 
-        this.connect_version();
+        this.load_version();
         this
     }
 
-    fn connect_version(&self) {
+    fn load_version(&self) {
         let this = self.clone();
         *self.imp().version.borrow_mut() = Resource::Loading(None);
         glib::MainContext::ref_thread_default().spawn_local(async move {
@@ -521,6 +521,6 @@ impl DistroboxService {
 
 impl Default for DistroboxService {
     fn default() -> Self {
-        Self::new()
+        glib::Object::builder().build()
     }
 }
