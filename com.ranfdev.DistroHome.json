@@ -16,6 +16,7 @@
         "--talk-name=org.freedesktop.Flatpak"
     ],
     "build-options" : {
+        "prepend-path": "/app/bin:/usr/bin",
         "append-path" : "/usr/lib/sdk/rust-stable/bin",
         "build-args" : [
             "--share=network"
