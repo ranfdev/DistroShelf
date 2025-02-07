@@ -18,10 +18,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-use crate::app_view_model::AppViewModel;
+use crate::root_store::RootStore;
 use crate::container::Container;
 use crate::create_distrobox_dialog::CreateDistroboxDialog;
-use crate::distrobox_service::DistroboxService;
+use crate::distrobox_store::DistroboxStore;
 use crate::distrobox_task::DistroboxTask;
 use crate::exportable_apps_dialog::ExportableAppsDialog;
 use crate::gtk_utils::reaction;
@@ -42,7 +42,7 @@ mod imp {
     use gtk::gdk;
 
     use crate::{
-        app_view_model::AppViewModel, distrobox_service::DistroboxService, resource::Resource,
+        root_store::RootStore, distrobox_store::DistroboxStore, resource::Resource,
         tagged_object::TaggedObject,
     };
 
@@ -53,7 +53,7 @@ mod imp {
     #[template(resource = "/com/ranfdev/DistroHome/window.ui")]
     pub struct DistrohomeWindow {
         #[property(get, set)]
-        pub app_view_model: RefCell<AppViewModel>,
+        pub root_store: RefCell<RootStore>,
         #[property(get, set, nullable)]
         pub current_dialog: RefCell<Option<adw::Dialog>>,
 
@@ -86,18 +86,18 @@ mod imp {
             klass.bind_template();
 
             klass.install_action("win.refresh", None, |win, _action, _target| {
-                win.app_view_model()
-                    .distrobox_service()
+                win.root_store()
+                    .distrobox_store()
                     .load_container_infos();
             });
             klass.add_binding_action(gdk::Key::F5, gdk::ModifierType::empty(), "win.refresh");
 
             klass.install_action("win.upgrade-all", None, |win, _action, _target| {
-                win.app_view_model().distrobox_service().do_upgrade_all();
+                win.root_store().distrobox_store().do_upgrade_all();
             });
 
             klass.install_action("win.preferences", None, |win, _action, _target| {
-                win.app_view_model()
+                win.root_store()
                     .set_current_dialog(TaggedObject::new("preferences"));
             });
 
@@ -114,7 +114,7 @@ mod imp {
             });
 
             klass.install_action("win.create-distrobox", None, |win, _action, _target| {
-                win.app_view_model()
+                win.root_store()
                     .set_current_dialog(TaggedObject::new("create-distrobox"));
             });
         }
@@ -140,59 +140,59 @@ glib::wrapper! {
 impl DistrohomeWindow {
     pub fn new<P: IsA<gtk::Application>>(
         application: &P,
-        distrobox_service: DistroboxService,
-        view_model: AppViewModel,
+        distrobox_store: DistroboxStore,
+        root_store: RootStore,
     ) -> Self {
         let this: Self = glib::Object::builder()
             .property("application", application)
-            .property("app-view-model", view_model)
+            .property("root-store", root_store)
             .build();
 
         let this_clone = this.clone();
-        this.app_view_model()
-            .connect_selected_container_notify(move |model| {
-                if let Some(container) = model.selected_container() {
+        this.root_store()
+            .connect_selected_container_notify(move |root_store| {
+                if let Some(container) = root_store.selected_container() {
                     this_clone.build_main_content(&container);
                     this_clone.imp().split_view.set_show_content(true);
                 }
             });
         let this_clone = this.clone();
-        this.app_view_model()
-            .connect_current_view_notify(move |model| {
-                match model.current_view().tag().as_str() {
+        this.root_store()
+            .connect_current_view_notify(move |root_store| {
+                match root_store.current_view().tag().as_str() {
                     "welcome" => {
                         this_clone
                             .imp()
                             .welcome_view
-                            .set_model(model.current_view().object().and_downcast_ref().unwrap());
+                            .set_store(root_store.current_view().object().and_downcast_ref().unwrap());
                     }
                     _ => {}
                 }
                 this_clone
                     .imp()
                     .main_stack
-                    .set_visible_child_name(&model.current_view().tag());
+                    .set_visible_child_name(&root_store.current_view().tag());
             });
         let this_clone = this.clone();
-        this.app_view_model()
-            .connect_current_dialog_notify(move |model| {
+        this.root_store()
+            .connect_current_dialog_notify(move |root_store| {
                 if let Some(dialog) = this_clone.current_dialog() {
                     dialog.close();
                 }
-                let dialog: adw::Dialog = match dbg!(model.current_dialog().tag().as_str()) {
+                let dialog: adw::Dialog = match dbg!(root_store.current_dialog().tag().as_str()) {
                     "exportable-apps" => ExportableAppsDialog::new(
-                        model.current_dialog().object().and_downcast_ref().unwrap(),
+                        root_store.current_dialog().object().and_downcast_ref().unwrap(),
                     )
                     .upcast(),
                     "create-distrobox" => {
-                        CreateDistroboxDialog::new(this_clone.app_view_model()).upcast()
+                        CreateDistroboxDialog::new(this_clone.root_store()).upcast()
                     }
                     "task" => this_clone.build_task_dialog(
-                        model.current_dialog().object().and_downcast_ref().unwrap(),
+                        root_store.current_dialog().object().and_downcast_ref().unwrap(),
                     ),
                     "preferences" => this_clone.build_preferences_dialog(),
                     _ => {
-                        panic!("invalid dialog tag");
+                        return
                     }
                 };
                 this_clone.set_current_dialog(Some(&dialog));
@@ -207,39 +207,39 @@ impl DistrohomeWindow {
         let this = self.clone();
 
         imp.sidebar_list_box
-            .bind_model(Some(&self.app_view_model().containers()), |obj| {
+            .bind_model(Some(&self.root_store().containers()), |obj| {
                 let container = obj.downcast_ref().unwrap();
                 SidebarRow::new(container).upcast()
             });
 
         let this = self.clone();
-        self.app_view_model()
+        self.root_store()
             .connect_current_sidebar_view_notify(move |_| {
                 this.imp()
                     .sidebar_stack
-                    .set_visible_child_name(&this.app_view_model().current_sidebar_view());
+                    .set_visible_child_name(&this.root_store().current_sidebar_view());
             });
         let this = self.clone();
         imp.sidebar_list_box.connect_row_activated(move |_, row| {
             let index = row.index();
-            let item = this.app_view_model().containers().item(index as u32);
+            let item = this.root_store().containers().item(index as u32);
             let selected_container: &Container = item.and_downcast_ref().unwrap();
-            this.app_view_model()
+            this.root_store()
                 .set_selected_container(Some(selected_container.clone()));
         });
 
         // Add tasks button to the bottom of the sidebar
-        let tasks_button = TasksButton::new(self.app_view_model());
+        let tasks_button = TasksButton::new(self.root_store());
         tasks_button.add_css_class("flat");
         self.imp()
             .sidebar_bottom_slot
             .set_child(Some(&tasks_button));
 
         let tasks_button_clone = tasks_button.clone();
-        self.app_view_model()
-            .distrobox_service()
-            .connect_tasks_changed(move |service| {
-                let tasks = service.tasks();
+        self.root_store()
+            .distrobox_store()
+            .connect_tasks_changed(move |store| {
+                let tasks = store.tasks();
                 tasks_button_clone.update_tasks(tasks);
             });
     }
@@ -312,8 +312,8 @@ impl DistrohomeWindow {
             #[weak(rename_to=this)]
             self,
             move |_| {
-                this.app_view_model()
-                    .distrobox_service()
+                this.root_store()
+                    .distrobox_store()
                     .do_stop(&container_name);
             }
         ));
@@ -327,8 +327,8 @@ impl DistrohomeWindow {
             #[strong]
             container,
             move |_| {
-                this.app_view_model()
-                    .distrobox_service()
+                this.root_store()
+                    .distrobox_store()
                     .do_spawn_terminal(&container.name());
             }
         ));
@@ -414,7 +414,7 @@ impl DistrohomeWindow {
             #[weak(rename_to = this)]
             self,
             move |_| {
-                this.app_view_model().upgrade_container();
+                this.root_store().upgrade_container();
             }
         ));
 
@@ -422,7 +422,7 @@ impl DistrohomeWindow {
             #[weak(rename_to = this)]
             self,
             move |_| {
-                this.app_view_model().view_exportable_apps();
+                this.root_store().view_exportable_apps();
             }
         ));
 
@@ -484,7 +484,7 @@ impl DistrohomeWindow {
                     #[weak]
                     entry,
                     move |_| {
-                        this.app_view_model().clone_container(&entry.text());
+                        this.root_store().clone_container(&entry.text());
                     }
                 ));
 
@@ -500,7 +500,7 @@ impl DistrohomeWindow {
                     .heading("Delete this container?")
                     .body(format!(
                         "{} will be deleted.\nThis action cannot be undone.",
-                        this.app_view_model()
+                        this.root_store()
                             .selected_container_name()
                             .unwrap_or_default()
                     ))
@@ -517,9 +517,9 @@ impl DistrohomeWindow {
                         #[weak(rename_to = this)]
                         this,
                         move |dialog, _| {
-                            if let Some(ref name) = this.app_view_model().selected_container_name()
+                            if let Some(ref name) = this.root_store().selected_container_name()
                             {
-                                this.app_view_model().distrobox_service().do_delete(name);
+                                this.root_store().distrobox_store().do_delete(name);
                             }
                             dialog.close();
                         }
@@ -539,7 +539,7 @@ impl DistrohomeWindow {
     }
 
     fn build_install_package_dialog(&self) {
-        if let Some(container) = self.app_view_model().selected_container() {
+        if let Some(container) = self.root_store().selected_container() {
             // Show file chooser and install package using the appropriate command
             let file_dialog = gtk::FileDialog::builder().title("Select Package").build();
 
@@ -553,7 +553,7 @@ impl DistrohomeWindow {
                         if let Ok(file) = res {
                             if let Some(path) = file.path() {
                                 info!(container = %container.name(), path = %path.display(), "Installing package into container");
-                                this.app_view_model().distrobox_service()
+                                this.root_store().distrobox_store()
                                     .do_install(&container.name(), &path);
                             }
                         }
@@ -687,7 +687,7 @@ impl DistrohomeWindow {
 
         let terminal_group = adw::PreferencesGroup::new();
         terminal_group.set_title("Terminal Settings");
-        terminal_group.add(&TerminalComboRow::new_with_params(self.app_view_model()));
+        terminal_group.add(&TerminalComboRow::new_with_params(self.root_store()));
         page.add(&terminal_group);
 
         page.add(&preferences_group);

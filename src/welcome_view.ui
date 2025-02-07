@@ -52,7 +52,7 @@
                             </style>
                             <binding name="label">
                               <lookup name="distrobox-error">
-                                <lookup name="model">WelcomeView</lookup>
+                                <lookup name="store">WelcomeView</lookup>
                               </lookup>
                             </binding>
                           </object>
@@ -79,9 +79,9 @@
                             <property name="title" translatable="yes">Preferred terminal</property>
                               <child>
                               <object class="TerminalComboRow" id="terminal_combo_row">
-                                <binding name="app-view-model">
-                                  <lookup name="app-view-model">
-                                    <lookup name="model">WelcomeView</lookup>
+                                <binding name="root-store">
+                                  <lookup name="root-store">
+                                    <lookup name="store">WelcomeView</lookup>
                                   </lookup>
                                 </binding>
                               </object>
@@ -110,7 +110,7 @@
                         </style>
                         <binding name="label">
                           <lookup name="terminal-error">
-                            <lookup name="model">WelcomeView</lookup>
+                            <lookup name="store">WelcomeView</lookup>
                           </lookup>
                         </binding>
                       </object>

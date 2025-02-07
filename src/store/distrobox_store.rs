@@ -36,8 +36,8 @@ mod imp {
     use super::*;
 
     #[derive(Properties)]
-    #[properties(wrapper_type = super::DistroboxService)]
-    pub struct DistroboxService {
+    #[properties(wrapper_type = super::DistroboxStore)]
+    pub struct DistroboxStore {
         pub distrobox: OnceLock<Distrobox>,
         pub containers: RefCell<Resource<im::HashMap<String, Container>, anyhow::Error>>,
         pub tasks: RefCell<Vector<DistroboxTask>>,
@@ -46,7 +46,7 @@ mod imp {
         pub version: RefCell<Resource<String, anyhow::Error>>,
     }
 
-    impl Default for DistroboxService {
+    impl Default for DistroboxStore {
         fn default() -> Self {
             Self {
                 distrobox: Default::default(),
@@ -60,7 +60,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for DistroboxService {
+    impl ObjectImpl for DistroboxStore {
         fn constructed(&self) {
             self.parent_constructed();
         }
@@ -79,16 +79,16 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for DistroboxService {
-        const NAME: &'static str = "DistroboxService";
-        type Type = super::DistroboxService;
+    impl ObjectSubclass for DistroboxStore {
+        const NAME: &'static str = "DistroboxStore";
+        type Type = super::DistroboxStore;
     }
 }
 
 glib::wrapper! {
-    pub struct DistroboxService(ObjectSubclass<imp::DistroboxService>);
+    pub struct DistroboxStore(ObjectSubclass<imp::DistroboxStore>);
 }
-impl DistroboxService {
+impl DistroboxStore {
     pub fn new() -> Self {
         let this: Self = glib::Object::builder().build();
 
@@ -423,7 +423,7 @@ impl DistroboxService {
         self.imp().images.borrow().clone()
     }
 
-    // TODO: This should be defined in the AppViewModel directly
+    // TODO: This should be defined in the RootStore directly
     pub fn set_selected_terminal_program(&self, program: &str) {
         if SUPPORTED_TERMINALS
             .iter()
@@ -534,7 +534,7 @@ impl DistroboxService {
     }
 }
 
-impl Default for DistroboxService {
+impl Default for DistroboxStore {
     fn default() -> Self {
         glib::Object::builder().build()
     }

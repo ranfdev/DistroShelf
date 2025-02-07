@@ -25,12 +25,12 @@ use gtk::{gio, glib};
 
 use crate::config::VERSION;
 use crate::distrobox::DistroboxCommandRunnerResponse;
-use crate::distrobox_service::DistroboxService;
+use crate::distrobox_store::DistroboxStore;
 use crate::DistrohomeWindow;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
-#[enum_type(name = "DistroboxServiceTy")]
-pub enum DistroboxServiceTy {
+#[enum_type(name = "DistroboxStoreTy")]
+pub enum DistroboxStoreTy {
     #[default]
     Real,
     NullWorking,
@@ -44,23 +44,23 @@ mod imp {
     use glib::Properties;
     use gtk::gdk;
 
-    use crate::{app_view_model::AppViewModel, known_distros};
+    use crate::{root_store::RootStore, known_distros};
 
     use super::*;
 
     #[derive(Debug, Default, Properties)]
     #[properties(wrapper_type = super::DistrohomeApplication)]
     pub struct DistrohomeApplication {
-        #[property(get, set = Self::set_distrobox_service_ty, builder(DistroboxServiceTy::Real))]
-        pub distrobox_service_ty: RefCell<DistroboxServiceTy>,
+        #[property(get, set = Self::set_distrobox_store_ty, builder(DistroboxStoreTy::Real))]
+        pub distrobox_store_ty: RefCell<DistroboxStoreTy>,
 
         #[property(get, set)]
-        pub view_model: RefCell<AppViewModel>,
+        pub root_store: RefCell<RootStore>,
     }
 
     impl DistrohomeApplication {
-        fn set_distrobox_service_ty(&self, value: DistroboxServiceTy) {
-            self.distrobox_service_ty.replace(value);
+        fn set_distrobox_store_ty(&self, value: DistroboxStoreTy) {
+            self.distrobox_store_ty.replace(value);
             if let Some(w) = self.obj().active_window() {
                 w.close();
             }
@@ -170,8 +170,8 @@ impl DistrohomeApplication {
     }
 
     fn recreate_window(&self) -> adw::ApplicationWindow {
-        let distrobox_service = match { self.imp().distrobox_service_ty.borrow().to_owned() } {
-            DistroboxServiceTy::NullWorking => DistroboxService::new_null_with_responses(
+        let distrobox_store = match { self.imp().distrobox_store_ty.borrow().to_owned() } {
+            DistroboxStoreTy::NullWorking => DistroboxStore::new_null_with_responses(
                 &[
                     DistroboxCommandRunnerResponse::Version,
                     DistroboxCommandRunnerResponse::new_list_common_distros(),
@@ -180,7 +180,7 @@ impl DistrohomeApplication {
                 ],
                 false,
             ),
-            DistroboxServiceTy::NullEmpty => DistroboxService::new_null_with_responses(
+            DistroboxStoreTy::NullEmpty => DistroboxStore::new_null_with_responses(
                 &[
                     DistroboxCommandRunnerResponse::Version,
                     DistroboxCommandRunnerResponse::List(vec![]),
@@ -188,18 +188,18 @@ impl DistrohomeApplication {
                 ],
                 false,
             ),
-            DistroboxServiceTy::NullNoVersion => DistroboxService::new_null_with_responses(
+            DistroboxStoreTy::NullNoVersion => DistroboxStore::new_null_with_responses(
                 &[DistroboxCommandRunnerResponse::NoVersion],
                 false,
             ),
-            _ => DistroboxService::new(),
+            _ => DistroboxStore::new(),
         };
 
-        self.view_model().bind_distrobox_service(&distrobox_service);
+        self.root_store().bind_distrobox_store(&distrobox_store);
         let window = DistrohomeWindow::new(
             self.upcast_ref::<adw::Application>(),
-            distrobox_service,
-            self.view_model(),
+            distrobox_store,
+            self.root_store(),
         );
         window.upcast()
     }

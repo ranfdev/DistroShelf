@@ -1,5 +1,5 @@
 use crate::{
-    app_view_model::{self, AppViewModel},
+    root_store::{self, RootStore},
     distrobox_task::DistroboxTask,
 };
 use adw::prelude::*;
@@ -18,7 +18,7 @@ mod imp {
     use glib::clone;
     use gtk::glib::{derived_properties, Properties};
 
-    use crate::app_view_model::AppViewModel;
+    use crate::root_store::RootStore;
 
     use super::*;
 
@@ -26,7 +26,7 @@ mod imp {
     #[properties(wrapper_type = super::TasksButton)]
     pub struct TasksButton {
         #[property(get, set)]
-        pub app_view_model: RefCell<AppViewModel>,
+        pub root_store: RefCell<RootStore>,
         pub menu_button: gtk::MenuButton,
         pub popover: gtk::Popover,
         pub main_content_box: gtk::Box,
@@ -77,8 +77,8 @@ mod imp {
                 self,
                 move |_| {
                     this.obj()
-                        .app_view_model()
-                        .distrobox_service()
+                        .root_store()
+                        .distrobox_store()
                         .clear_ended_tasks();
                 }
             ));
@@ -159,9 +159,9 @@ glib::wrapper! {
 }
 
 impl TasksButton {
-    pub fn new(app_view_model: AppViewModel) -> Self {
+    pub fn new(root_store: RootStore) -> Self {
         glib::Object::builder()
-            .property("app-view-model", app_view_model)
+            .property("root-store", root_store)
             .build()
     }
 
@@ -257,7 +257,7 @@ impl TasksButton {
             #[weak]
             task,
             move |_, _, _, _| {
-                this.app_view_model().view_task(&task);
+                this.root_store().view_task(&task);
             }
         ));
         vbox.add_controller(gesture);

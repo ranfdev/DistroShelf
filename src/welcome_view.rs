@@ -10,8 +10,8 @@ use std::sync::OnceLock;
 
 mod imp {
     use crate::{
-        app_view_model::AppViewModel, distrobox_service::DistroboxService, gtk_utils::reaction,
-        terminal_combo_row::TerminalComboRow, welcome_view_model::WelcomeViewModel,
+        root_store::RootStore, distrobox_store::DistroboxStore, gtk_utils::reaction,
+        terminal_combo_row::TerminalComboRow, welcome_view_store::WelcomeViewStore,
     };
 
     use super::*;
@@ -20,8 +20,8 @@ mod imp {
     #[properties(wrapper_type = super::WelcomeView)]
     #[template(file = "welcome_view.ui")]
     pub struct WelcomeView {
-        #[property(get, set=Self::set_model)]
-        model: RefCell<WelcomeViewModel>,
+        #[property(get, set=Self::set_store)]
+        store: RefCell<WelcomeViewStore>,
 
         #[template_child]
         carousel: TemplateChild<adw::Carousel>,
@@ -34,9 +34,9 @@ mod imp {
     }
 
     impl WelcomeView {
-        pub fn set_model(&self, model: &WelcomeViewModel) {
+        pub fn set_store(&self, store: &WelcomeViewStore) {
             let obj = self.obj().to_owned();
-            reaction!(model.current_page(), move |page: String| {
+            reaction!(store.current_page(), move |page: String| {
                 match page.as_str() {
                     "terminal" => obj
                         .imp()
@@ -51,7 +51,7 @@ obj
                     _ => {}
                 }
             });
-            self.model.replace(model.clone());
+            self.store.replace(store.clone());
         }
     }
 
@@ -82,11 +82,11 @@ obj
         #[template_callback]
         fn continue_to_terminal_page(&self, _: &gtk::Button) {
             let obj = self.obj();
-            obj.model().continue_to_terminal_page();
+            obj.store().continue_to_terminal_page();
         }
         #[template_callback]
         fn continue_to_app(&self, _: &gtk::Button) {
-            self.obj().model().complete_setup();
+            self.obj().store().complete_setup();
         }
     }
 }

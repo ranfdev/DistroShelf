@@ -18,7 +18,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-mod app_view_model;
 mod application;
 mod config;
 mod container;
@@ -26,10 +25,8 @@ mod create_distrobox_dialog;
 mod distro_combo_row_item;
 mod distro_icon;
 mod distrobox;
-mod distrobox_service;
 mod distrobox_task;
 mod exportable_apps_dialog;
-mod exportable_apps_dialog_model;
 mod gtk_utils;
 mod known_distros;
 mod resource;
@@ -39,11 +36,12 @@ mod tagged_object;
 mod tasks_button;
 mod terminal_combo_row;
 mod welcome_view;
-mod welcome_view_model;
 mod window;
+mod store;
+pub use store::{root_store, welcome_view_store, distrobox_store, exportable_apps_store};
 
 use self::application::DistrohomeApplication;
-use self::window::DistrohomeWindow;
+use window::DistrohomeWindow;
 
 use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};

@@ -4,9 +4,9 @@ use gtk::glib::SignalHandlerId;
 use gtk::{gio, glib};
 use tracing::info;
 
-use crate::app_view_model::{self, AppViewModel};
+use crate::root_store::{self, RootStore};
 use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
-use crate::distrobox_service::DistroboxService;
+use crate::distrobox_store::DistroboxStore;
 use crate::resource::{Resource, SharedResource};
 
 use glib::subclass::Signal;
@@ -29,7 +29,7 @@ mod imp {
     #[properties(wrapper_type=super::CreateDistroboxDialog)]
     pub struct CreateDistroboxDialog {
         #[property(get, set)]
-        pub app_view_model: RefCell<AppViewModel>,
+        pub root_store: RefCell<RootStore>,
         pub dialog: adw::Dialog,
         pub toolbar_view: adw::ToolbarView,
         pub content: gtk::Box,
@@ -228,8 +228,7 @@ mod imp {
                                     if let Some(path) = file.path() {
                                         file_row.set_subtitle(&path.display().to_string());
 
-                                        let service = obj.app_view_model().distrobox_service();
-                                        let task = service.do_assemble(&path.to_string_lossy());
+                                        let task = obj.root_store().distrobox_store().do_assemble(&path.to_string_lossy());
                                         let dialog = obj.clone();
                                         task.connect_status_notify(clone!(
                                             #[weak]
@@ -280,8 +279,7 @@ mod imp {
                 file_row,
                 move |_| {
                     if let Some(path) = file_row.subtitle() {
-                        let service = obj.app_view_model().distrobox_service();
-                        let task = service.do_assemble(&path.to_string());
+                        let task = obj.root_store().distrobox_store().do_assemble(&path.to_string());
                         let dialog = obj.clone();
                         task.connect_status_notify(clone!(
                             #[weak]
@@ -342,8 +340,7 @@ mod imp {
                 url_row,
                 move |_| {
                     let url = url_row.text();
-                    let service = obj.app_view_model().distrobox_service();
-                    let task = service.do_assemble(&url);
+                    let task = obj.root_store().distrobox_store().do_assemble(&url);
                     let dialog = obj.clone();
                     task.connect_status_notify(clone!(
                         #[weak]
@@ -401,18 +398,17 @@ glib::wrapper! {
         @extends adw::Dialog, gtk::Widget;
 }
 impl CreateDistroboxDialog {
-    pub fn new(app_view_model: AppViewModel) -> Self {
+    pub fn new(root_store: RootStore) -> Self {
         let this: Self = glib::Object::builder()
-            .property("app-view-model", app_view_model)
+            .property("root-store", root_store)
             .build();
 
-        let service = this.app_view_model().distrobox_service();
-        service.connect_images_changed(clone!(
+        this.root_store().distrobox_store().connect_images_changed(clone!(
             #[weak]
             this,
-            move |service| {
+            move |store| {
                 let string_list = gtk::StringList::new(&[]);
-                if let Resource::Loaded(images) = service.images() {
+                if let Resource::Loaded(images) = store.images() {
                     for image in images {
                         string_list.append(&image);
                     }
@@ -422,7 +418,7 @@ impl CreateDistroboxDialog {
                 this.imp().image_row.set_model(Some(&string_list));
             }
         ));
-        service.load_images();
+        this.root_store().distrobox_store().load_images();
 
         this
     }

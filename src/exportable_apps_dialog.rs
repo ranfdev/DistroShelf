@@ -4,8 +4,8 @@ use gtk::glib::{clone, BoxedAnyObject};
 use gtk::{gio, glib};
 
 use crate::distrobox::{self, ExportableApp};
-use crate::distrobox_service::DistroboxService;
-use crate::exportable_apps_dialog_model::ExportableAppsDialogModel;
+use crate::distrobox_store::DistroboxStore;
+use crate::exportable_apps_store::ExportableAppsStore;
 use crate::resource::{Resource, SharedResource};
 
 use std::cell::{OnceCell, RefCell};
@@ -24,7 +24,7 @@ mod imp {
     #[properties(wrapper_type=super::ExportableAppsDialog)]
     pub struct ExportableAppsDialog {
         #[property(get, set)]
-        pub model: RefCell<ExportableAppsDialogModel>,
+        pub store: RefCell<ExportableAppsStore>,
         pub dialog: adw::Dialog,
         pub toolbar_view: adw::ToolbarView,
         pub content: gtk::Box,
@@ -32,7 +32,7 @@ mod imp {
         pub stack: gtk::Stack,
         pub error_label: gtk::Label,
         pub list_box: gtk::ListBox,
-        pub distrobox_service: OnceCell<DistroboxService>,
+        pub distrobox_store: OnceCell<DistroboxStore>,
         pub container: RefCell<String>,
     }
 
@@ -94,7 +94,7 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let file_path = target.unwrap().str().unwrap();
-                    this.model().export(file_path);
+                    this.store().export(file_path);
                 },
             );
             klass.install_action(
@@ -102,7 +102,7 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let file_path = target.unwrap().str().unwrap();
-                    this.model().unexport(file_path);
+                    this.store().unexport(file_path);
                 },
             );
         }
@@ -117,15 +117,15 @@ glib::wrapper! {
         @extends adw::Dialog, gtk::Widget;
 }
 impl ExportableAppsDialog {
-    pub fn new(model: &ExportableAppsDialogModel) -> Self {
-        let this: Self = glib::Object::builder().property("model", model).build();
+    pub fn new(store: &ExportableAppsStore) -> Self {
+        let this: Self = glib::Object::builder().property("store", store).build();
 
-        let model = model.clone();
-        model
+        let store = store.clone();
+        store
             .bind_property("current-view", &this.imp().stack, "visible-child-name")
             .sync_create()
             .build();
-        model
+        store
             .bind_property("error", &this.imp().error_label, "label")
             .sync_create()
             .build();
@@ -133,13 +133,13 @@ impl ExportableAppsDialog {
         let this_clone = this.clone();
         this.imp()
             .list_box
-            .bind_model(Some(&model.apps()), move |obj| {
+            .bind_model(Some(&store.apps()), move |obj| {
                 let app = obj
                     .downcast_ref::<BoxedAnyObject>()
                     .map(|obj| obj.borrow::<ExportableApp>())
                     .unwrap();
                 this_clone
-                    .build_row(&model.container().name(), &*app)
+                    .build_row(&store.container().name(), &*app)
                     .upcast()
             });
 
@@ -158,7 +158,7 @@ impl ExportableAppsDialog {
             #[strong]
             app,
             move |_| {
-                this.model().launch(app.clone());
+                this.store().launch(app.clone());
             }
         ));
 

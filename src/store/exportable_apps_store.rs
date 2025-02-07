@@ -12,7 +12,7 @@ use std::sync::OnceLock;
 
 use crate::container::Container;
 use crate::distrobox::ExportableApp;
-use crate::distrobox_service::DistroboxService;
+use crate::distrobox_store::DistroboxStore;
 use crate::tagged_object::TaggedObject;
 
 mod imp {
@@ -22,10 +22,10 @@ mod imp {
     use super::*;
 
     #[derive(Properties)]
-    #[properties(wrapper_type = super::ExportableAppsDialogModel)]
-    pub struct ExportableAppsDialogModel {
+    #[properties(wrapper_type = super::ExportableAppsStore)]
+    pub struct ExportableAppsStore {
         #[property(get, set)]
-        distrobox_service: RefCell<DistroboxService>,
+        distrobox_store: RefCell<DistroboxStore>,
         #[property(get)]
         pub apps: gio::ListStore,
         #[property(get, set)]
@@ -36,10 +36,10 @@ mod imp {
         error: RefCell<String>,
     }
 
-    impl Default for ExportableAppsDialogModel {
+    impl Default for ExportableAppsStore {
         fn default() -> Self {
             Self {
-                distrobox_service: Default::default(),
+                distrobox_store: Default::default(),
                 apps: gio::ListStore::new::<BoxedAnyObject>(),
                 current_view: RefCell::new("loading".into()),
                 error: Default::default(),
@@ -49,19 +49,19 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for ExportableAppsDialogModel {}
+    impl ObjectImpl for ExportableAppsStore {}
 
     #[glib::object_subclass]
-    impl ObjectSubclass for ExportableAppsDialogModel {
-        const NAME: &'static str = "ExportableAppsDialogModel";
-        type Type = super::ExportableAppsDialogModel;
+    impl ObjectSubclass for ExportableAppsStore {
+        const NAME: &'static str = "ExportableAppsStore";
+        type Type = super::ExportableAppsStore;
     }
 }
 
 glib::wrapper! {
-    pub struct ExportableAppsDialogModel(ObjectSubclass<imp::ExportableAppsDialogModel>);
+    pub struct ExportableAppsStore(ObjectSubclass<imp::ExportableAppsStore>);
 }
-impl ExportableAppsDialogModel {
+impl ExportableAppsStore {
     pub fn new() -> Self {
         glib::Object::builder().build()
     }
@@ -71,7 +71,7 @@ impl ExportableAppsDialogModel {
 
         glib::MainContext::default().spawn_local(async move {
             let apps = this
-                .distrobox_service()
+                .distrobox_store()
                 .list_apps(&this.container().name())
                 .await;
 
@@ -90,22 +90,22 @@ impl ExportableAppsDialogModel {
         });
     }
     pub fn export(&self, desktop_file_path: &str) {
-        self.distrobox_service()
+        self.distrobox_store()
             .do_export(&self.container().name(), desktop_file_path);
         self.reload_apps();
     }
     pub fn unexport(&self, desktop_file_path: &str) {
-        self.distrobox_service()
+        self.distrobox_store()
             .do_unexport(&self.container().name(), desktop_file_path);
         self.reload_apps();
     }
     pub fn launch(&self, app: ExportableApp) {
-        self.distrobox_service()
+        self.distrobox_store()
             .do_launch(&self.container().name(), app);
     }
 }
 
-impl Default for ExportableAppsDialogModel {
+impl Default for ExportableAppsStore {
     fn default() -> Self {
         glib::Object::builder().build()
     }

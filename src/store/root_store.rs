@@ -12,22 +12,22 @@ use std::sync::OnceLock;
 
 use crate::container::Container;
 use crate::distrobox::CreateArgs;
-use crate::distrobox_service::DistroboxService;
+use crate::distrobox_store::DistroboxStore;
 use crate::distrobox_task::DistroboxTask;
-use crate::exportable_apps_dialog_model::ExportableAppsDialogModel;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::tagged_object::TaggedObject;
-use crate::welcome_view_model::WelcomeViewModel;
+use crate::welcome_view_store::WelcomeViewStore;
+use crate::exportable_apps_store::ExportableAppsStore;
 
 mod imp {
 
     use super::*;
 
     #[derive(Properties)]
-    #[properties(wrapper_type = super::AppViewModel)]
-    pub struct AppViewModel {
+    #[properties(wrapper_type = super::RootStore)]
+    pub struct RootStore {
         #[property(get, set)]
-        distrobox_service: RefCell<DistroboxService>,
+        distrobox_store: RefCell<DistroboxStore>,
         #[property(get)]
         containers: gio::ListStore,
         #[property(get, set, nullable)]
@@ -40,10 +40,10 @@ mod imp {
         current_dialog: RefCell<TaggedObject>,
     }
 
-    impl Default for AppViewModel {
+    impl Default for RootStore {
         fn default() -> Self {
             Self {
-                distrobox_service: Default::default(),
+                distrobox_store: Default::default(),
                 containers: gio::ListStore::new::<crate::container::Container>(),
                 selected_container: Default::default(),
                 current_view: Default::default(),
@@ -54,37 +54,34 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for AppViewModel {}
+    impl ObjectImpl for RootStore {}
 
     #[glib::object_subclass]
-    impl ObjectSubclass for AppViewModel {
-        const NAME: &'static str = "AppViewModel";
-        type Type = super::AppViewModel;
+    impl ObjectSubclass for RootStore {
+        const NAME: &'static str = "RootStore";
+        type Type = super::RootStore;
     }
 }
 
 glib::wrapper! {
-    pub struct AppViewModel(ObjectSubclass<imp::AppViewModel>);
+    pub struct RootStore(ObjectSubclass<imp::RootStore>);
 }
-impl AppViewModel {
+impl RootStore {
     pub fn new() -> Self {
         glib::Object::builder().build()
     }
-    pub fn bind_distrobox_service(self, service: &DistroboxService) {
+    pub fn bind_distrobox_store(self, store: &DistroboxStore) {
         let this = self.clone();
-        self.set_distrobox_service(service);
+        self.set_distrobox_store(store);
 
-        service.connect_version_changed(move |service| {
-            if service.version().is_error() {
-                this.set_current_view(&TaggedObject::with_object(
-                    "welcome",
-                    &WelcomeViewModel::new(&this),
-                ));
+        store.connect_version_changed(move |store| {
+            if store.version().is_error() {
+                this.set_current_view(&TaggedObject::with_object("welcome", &WelcomeViewStore::new(&this)));
             }
         });
         let this = self.clone();
-        service.connect_containers_changed(move |service| {
-            if let Some(data) = service.containers().data() {
+        store.connect_containers_changed(move |store| {
+            if let Some(data) = store.containers().data() {
                 let values: Vec<_> = data.values().cloned().collect();
                 reconcile_list_by_key(this.containers(), &values[..], |item| item.name());
                 if values.len() == 0 {
@@ -94,7 +91,7 @@ impl AppViewModel {
                 }
             }
         });
-        service.load_container_infos();
+        store.load_container_infos();
     }
 
     pub fn selected_container_name(&self) -> Option<String> {
@@ -102,8 +99,7 @@ impl AppViewModel {
     }
 
     pub fn upgrade_container(&self) {
-        let task = self
-            .distrobox_service()
+        let task = self.distrobox_store()
             .do_upgrade(&self.selected_container_name().unwrap());
         self.view_task(&task);
     }
@@ -111,34 +107,34 @@ impl AppViewModel {
         if let Some(container) = self.selected_container() {
             if !new_name.is_empty() {
                 if container.status_tag() == "up" {
-                    self.distrobox_service().do_stop(&container.name());
+                    self.distrobox_store().do_stop(&container.name());
                 }
                 let task = self
-                    .distrobox_service()
+                    .distrobox_store()
                     .do_clone(&container.name(), &new_name);
                 self.view_task(&task);
             }
         }
     }
     pub fn view_task(&self, task: &DistroboxTask) {
-        self.set_current_dialog(TaggedObject::with_object("task", task));
+                self.set_current_dialog(TaggedObject::with_object("task", task));
     }
     pub fn view_exportable_apps(&self) {
         let this = self.clone();
-        let dialog_model = ExportableAppsDialogModel::new();
-        dialog_model.set_distrobox_service(self.distrobox_service());
-        dialog_model.set_container(this.selected_container().unwrap());
-        this.set_current_dialog(TaggedObject::with_object("exportable-apps", &dialog_model));
+        let exportable_apps_store = ExportableAppsStore::new();
+        exportable_apps_store.set_distrobox_store(self.distrobox_store());
+        exportable_apps_store.set_container(this.selected_container().unwrap());
+        this.set_current_dialog(TaggedObject::with_object("exportable-apps", &exportable_apps_store));
 
-        dialog_model.reload_apps();
+        exportable_apps_store.reload_apps();
     }
     pub fn create_container(&self, args: CreateArgs) {
-        let task = self.distrobox_service().do_create(args);
+        let task = self.distrobox_store().do_create(args);
         self.view_task(&task);
     }
 }
 
-impl Default for AppViewModel {
+impl Default for RootStore {
     fn default() -> Self {
         Self::new()
     }
