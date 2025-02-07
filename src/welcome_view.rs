@@ -9,7 +9,10 @@ use std::cell::RefCell;
 use std::sync::OnceLock;
 
 mod imp {
-    use crate::{distrobox_service::DistroboxService, terminal_combo_row::TerminalComboRow};
+    use crate::{
+        app_view_model::AppViewModel, distrobox_service::DistroboxService, gtk_utils::reaction,
+        terminal_combo_row::TerminalComboRow, welcome_view_model::WelcomeViewModel,
+    };
 
     use super::*;
 
@@ -17,28 +20,43 @@ mod imp {
     #[properties(wrapper_type = super::WelcomeView)]
     #[template(file = "welcome_view.ui")]
     pub struct WelcomeView {
-        #[property(get, set)]
-        distrobox_service: RefCell<DistroboxService>,
-        #[property(get, set, nullable)]
-        distrobox_not_installed_error: RefCell<Option<String>>,
-        #[property(get, set, nullable)]
-        terminal_not_valid_error: RefCell<Option<String>>,
+        #[property(get, set=Self::set_model)]
+        model: RefCell<WelcomeViewModel>,
 
         #[template_child]
         carousel: TemplateChild<adw::Carousel>,
         #[template_child]
         terminal_preferences_page: TemplateChild<adw::Clamp>,
         #[template_child]
+        distrobox_page: TemplateChild<adw::Clamp>,
+        #[template_child]
         terminal_combo_row: TemplateChild<TerminalComboRow>,
     }
 
-    #[glib::derived_properties]
-    impl ObjectImpl for WelcomeView {
-        fn signals() -> &'static [Signal] {
-            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
-            SIGNALS.get_or_init(|| vec![Signal::builder("setup-finished").build()])
+    impl WelcomeView {
+        pub fn set_model(&self, model: &WelcomeViewModel) {
+            let obj = self.obj().to_owned();
+            reaction!(model.current_page(), move |page: String| {
+                match page.as_str() {
+                    "terminal" => obj
+                        .imp()
+                        .carousel
+                        .scroll_to(&*obj.imp().terminal_preferences_page, true),
+                    "distrobox" => {
+obj
+                        .imp()
+                        .carousel
+                        .scroll_to(&*obj.imp().distrobox_page, true)
+                    },
+                    _ => {}
+                }
+            });
+            self.model.replace(model.clone());
         }
     }
+
+    #[glib::derived_properties]
+    impl ObjectImpl for WelcomeView {}
 
     #[glib::object_subclass]
     impl ObjectSubclass for WelcomeView {
@@ -56,49 +74,19 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for WelcomeView {
-        fn size_allocate(&self, width: i32, height: i32, baseline: i32) {
-            self.parent_size_allocate(width, height, baseline);
-        }
-
-        fn snapshot(&self, snapshot: &gtk::Snapshot) {
-            self.parent_snapshot(snapshot);
-        }
-    }
-
-    // Generate Impl blocks for each parent class
-    impl BinImpl for WelcomeView {
-        // Default implementations that forward to parent
-    }
+    impl WidgetImpl for WelcomeView {}
+    impl BinImpl for WelcomeView {}
 
     #[gtk::template_callbacks]
     impl WelcomeView {
         #[template_callback]
         fn continue_to_terminal_page(&self, _: &gtk::Button) {
             let obj = self.obj();
-            if let Some(e) = obj.distrobox_service().version().error() {
-                obj.set_distrobox_not_installed_error(Some(e.to_string()));
-            } else {
-                self.carousel
-                    .scroll_to(&*self.terminal_preferences_page, true);
-            }
+            obj.model().continue_to_terminal_page();
         }
         #[template_callback]
         fn continue_to_app(&self, _: &gtk::Button) {
-            let obj = self.obj();
-            if obj.distrobox_service().selected_terminal().is_some() {
-                let obj = obj.clone();
-                glib::MainContext::ref_thread_default().spawn_local(async move {
-                    match obj.distrobox_service().validate_terminal().await {
-                        Ok(_) => {
-                            obj.emit_setup_finished();
-                        }
-                        Err(err) => {
-                            obj.set_terminal_not_valid_error(Some(format!("{}", err)));
-                        }
-                    }
-                });
-            }
+            self.obj().model().complete_setup();
         }
     }
 }
@@ -107,30 +95,4 @@ glib::wrapper! {
     pub struct WelcomeView(ObjectSubclass<imp::WelcomeView>)
         @extends adw::Bin, gtk::Widget,
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
-}
-
-impl WelcomeView {
-    pub fn new_with_params(
-        distrobox_not_installed_error: Option<String>,
-        terminal_not_valid_error: Option<String>,
-    ) -> Self {
-        glib::Object::builder()
-            .property(
-                "distrobox_not_installed_error",
-                distrobox_not_installed_error,
-            )
-            .property("terminal_not_valid_error", terminal_not_valid_error)
-            .build()
-    }
-
-    pub fn emit_setup_finished(&self) {
-        self.emit_by_name::<()>("setup-finished", &[]);
-    }
-
-    pub fn connect_setup_finished<F: Fn() -> () + 'static>(&self, f: F) -> glib::SignalHandlerId {
-        self.connect_local("setup-finished", false, move |_values| {
-            f();
-            None
-        })
-    }
 }

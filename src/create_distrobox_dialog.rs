@@ -4,6 +4,7 @@ use gtk::glib::SignalHandlerId;
 use gtk::{gio, glib};
 use tracing::info;
 
+use crate::app_view_model::{self, AppViewModel};
 use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
 use crate::distrobox_service::DistroboxService;
 use crate::resource::{Resource, SharedResource};
@@ -18,12 +19,17 @@ mod imp {
 
     use std::cell::OnceCell;
 
+    use gtk::glib::{derived_properties, Properties};
+
     use crate::distro_combo_row_item;
 
     use super::*;
 
-    #[derive(Default)]
+    #[derive(Default, Properties)]
+    #[properties(wrapper_type=super::CreateDistroboxDialog)]
     pub struct CreateDistroboxDialog {
+        #[property(get, set)]
+        pub app_view_model: RefCell<AppViewModel>,
         pub dialog: adw::Dialog,
         pub toolbar_view: adw::ToolbarView,
         pub content: gtk::Box,
@@ -35,15 +41,11 @@ mod imp {
         pub volume_rows: Rc<RefCell<Vec<adw::EntryRow>>>,
         pub scrolled_window: gtk::ScrolledWindow,
         pub shared_resource: SharedResource<Vec<distrobox::ExportableApp>, anyhow::Error>,
-        pub distrobox_service: OnceCell<DistroboxService>,
         pub current_create_args: RefCell<CreateArgs>,
     }
 
+    #[derived_properties]
     impl ObjectImpl for CreateDistroboxDialog {
-        fn signals() -> &'static [Signal] {
-            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
-            SIGNALS.get_or_init(|| vec![Signal::builder("create-requested").build()])
-        }
         fn constructed(&self) {
             self.obj().set_title("Create a Distrobox");
             self.obj().set_content_width(480);
@@ -226,8 +228,7 @@ mod imp {
                                     if let Some(path) = file.path() {
                                         file_row.set_subtitle(&path.display().to_string());
 
-                                        let service =
-                                            obj.imp().distrobox_service.get().unwrap().clone();
+                                        let service = obj.app_view_model().distrobox_service();
                                         let task = service.do_assemble(&path.to_string_lossy());
                                         let dialog = obj.clone();
                                         task.connect_status_notify(clone!(
@@ -279,7 +280,7 @@ mod imp {
                 file_row,
                 move |_| {
                     if let Some(path) = file_row.subtitle() {
-                        let service = obj.imp().distrobox_service.get().unwrap().clone();
+                        let service = obj.app_view_model().distrobox_service();
                         let task = service.do_assemble(&path.to_string());
                         let dialog = obj.clone();
                         task.connect_status_notify(clone!(
@@ -341,7 +342,7 @@ mod imp {
                 url_row,
                 move |_| {
                     let url = url_row.text();
-                    let service = obj.imp().distrobox_service.get().unwrap().clone();
+                    let service = obj.app_view_model().distrobox_service();
                     let task = service.do_assemble(&url);
                     let dialog = obj.clone();
                     task.connect_status_notify(clone!(
@@ -400,10 +401,13 @@ glib::wrapper! {
         @extends adw::Dialog, gtk::Widget;
 }
 impl CreateDistroboxDialog {
-    pub fn new(distrobox_service: DistroboxService) -> Self {
-        let this: Self = glib::Object::builder().build();
+    pub fn new(app_view_model: AppViewModel) -> Self {
+        let this: Self = glib::Object::builder()
+            .property("app-view-model", app_view_model)
+            .build();
 
-        distrobox_service.connect_images_changed(clone!(
+        let service = this.app_view_model().distrobox_service();
+        service.connect_images_changed(clone!(
             #[weak]
             this,
             move |service| {
@@ -418,9 +422,8 @@ impl CreateDistroboxDialog {
                 this.imp().image_row.set_model(Some(&string_list));
             }
         ));
-        distrobox_service.load_images();
+        service.load_images();
 
-        this.imp().distrobox_service.set(distrobox_service).unwrap();
         this
     }
 
@@ -519,16 +522,5 @@ impl CreateDistroboxDialog {
             }
             _ => {}
         }
-    }
-
-    pub fn connect_create_requested<F: Fn(&Self, CreateArgs) + 'static>(
-        &self,
-        f: F,
-    ) -> SignalHandlerId {
-        self.connect_local("create-requested", false, move |args| {
-            let obj = args[0].get::<Self>().unwrap();
-            f(&obj, obj.imp().current_create_args.borrow().clone());
-            None
-        })
     }
 }

@@ -137,10 +137,6 @@
             <property name="name">welcome</property>
             <property name="child">
               <object class="WelcomeView" id="welcome_view">
-                <property name="distrobox-service"
-                  bind-source="DistrohomeWindow"
-                  bind-property="distrobox-service"
-                  bind-flags="sync-create" />
               </object>
             </property>
           </object>

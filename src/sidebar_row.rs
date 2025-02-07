@@ -7,10 +7,15 @@ use gtk::{self, glib, pango};
 use crate::{container::Container, distro_icon, distrobox::Status};
 
 mod imp {
+    use std::cell::RefCell;
+
+    use gtk::glib::{derived_properties, Properties};
+
     use super::*;
 
     // Object holding the state
-    #[derive(Default)]
+    #[derive(Default, Properties)]
+    #[properties(wrapper_type=super::SidebarRow)]
     pub struct SidebarRow {
         // Widgets
         pub icon: gtk::Image,
@@ -20,9 +25,30 @@ mod imp {
         pub status_overlay: gtk::Overlay,
         pub status_dot: gtk::Box,
 
-        // Data
-        pub name: std::cell::RefCell<String>,
-        pub status: std::cell::RefCell<String>,
+        #[property(get, set)]
+        pub container: RefCell<Container>,
+        #[property(get, set=Self::set_status_tag)]
+        pub status_tag: RefCell<String>,
+        #[property(get, set=Self::set_image)]
+        pub image: RefCell<String>,
+    }
+
+    impl SidebarRow {
+        fn set_image(&self, value: &str) {
+            self.image.replace(value.to_string());
+            distro_icon::set_image(&self.icon, value);
+            self.subtitle_label.set_text(value);
+        }
+        fn set_status_tag(&self, value: &str) {
+            self.status_tag.replace(value.to_string());
+            // Remove all status classes
+            self.status_dot.remove_css_class("up");
+            self.status_dot.remove_css_class("exited");
+            self.status_dot.remove_css_class("created");
+
+            // Add the appropriate class
+            self.status_dot.add_css_class(value);
+        }
     }
 
     // The central trait for subclassing a GObject
@@ -45,13 +71,14 @@ mod imp {
                 text_box: gtk::Box::new(gtk::Orientation::Vertical, 4),
                 status_overlay: gtk::Overlay::new(),
                 status_dot: gtk::Box::new(gtk::Orientation::Horizontal, 0),
-                name: std::cell::RefCell::new(String::new()),
-                status: std::cell::RefCell::new("inactive".to_string()),
+                container: Default::default(),
+                status_tag: Default::default(),
+                image: Default::default(),
             }
         }
     }
 
-    // Trait shared by all GObjects
+    #[derived_properties]
     impl ObjectImpl for SidebarRow {
         fn constructed(&self) {
             self.parent_constructed();
@@ -129,46 +156,17 @@ impl SidebarRow {
 
     fn set_data(&self, container: &Container) {
         let imp = self.imp();
-        imp.name.replace(container.name());
-
-        distro_icon::set_image(&imp.icon, &container.image());
-
-        imp.title_label.set_text(&container.name());
-        imp.subtitle_label.set_text(&container.image());
-
-        // Update status indicator based on container status
-        let status = match container.status() {
-            Status::Up(_) => "up",
-            _ => "exited",
-        };
-        self.set_status(status);
-    }
-
-    pub fn name(&self) -> String {
-        self.imp().name.borrow().clone()
-    }
-
-    pub fn title(&self) -> String {
-        self.imp().title_label.text().to_string()
-    }
-
-    pub fn subtitle(&self) -> String {
-        self.imp().subtitle_label.text().to_string()
-    }
-
-    pub fn set_status(&self, status: &str) {
-        let imp = self.imp();
-        imp.status.replace(status.to_string());
-
-        // Remove all status classes
-        imp.status_dot.remove_css_class("up");
-        imp.status_dot.remove_css_class("exited");
-
-        // Add the appropriate class
-        imp.status_dot.add_css_class(status);
-    }
-
-    pub fn status(&self) -> String {
-        self.imp().status.borrow().clone()
+        container
+            .bind_property("status-tag", self, "status-tag")
+            .sync_create()
+            .build();
+        container
+            .bind_property("name", &imp.title_label, "label")
+            .sync_create()
+            .build();
+        container
+            .bind_property("image", self, "image")
+            .sync_create()
+            .build();
     }
 }

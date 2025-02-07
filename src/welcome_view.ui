@@ -13,7 +13,7 @@
             <property name="interactive">false</property>
             <property name="spacing">12</property>
             <child>
-              <object class="AdwClamp">
+              <object class="AdwClamp" id="distrobox_page">
                 <property name="maximum-size">500</property>
                 <property name="hexpand">true</property>
                 <property name="child">
@@ -51,7 +51,9 @@
                               <class name="error"/>
                             </style>
                             <binding name="label">
-                              <lookup name="distrobox-not-installed-error">WelcomeView</lookup>
+                              <lookup name="distrobox-error">
+                                <lookup name="model">WelcomeView</lookup>
+                              </lookup>
                             </binding>
                           </object>
                         </child>
@@ -77,10 +79,11 @@
                             <property name="title" translatable="yes">Preferred terminal</property>
                               <child>
                               <object class="TerminalComboRow" id="terminal_combo_row">
-                                <property name="distrobox-service"
-                                  bind-source="WelcomeView"
-                                  bind-property="distrobox-service"
-                                  bind-flags="sync-create" />
+                                <binding name="app-view-model">
+                                  <lookup name="app-view-model">
+                                    <lookup name="model">WelcomeView</lookup>
+                                  </lookup>
+                                </binding>
                               </object>
                             </child>
                           </object>
@@ -106,7 +109,9 @@
                           <class name="error"/>
                         </style>
                         <binding name="label">
-                          <lookup name="terminal-not-valid-error">WelcomeView</lookup>
+                          <lookup name="terminal-error">
+                            <lookup name="model">WelcomeView</lookup>
+                          </lookup>
                         </binding>
                       </object>
                     </child>

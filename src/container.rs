@@ -3,6 +3,10 @@ use crate::{
     known_distros::{known_distro_by_image, KnownDistro},
 };
 
+use crate::tagged_object::TaggedObject;
+use gtk::glib::{derived_properties, Properties};
+
+use adw::prelude::*;
 use glib::subclass::prelude::*;
 use gtk::glib;
 use std::cell::RefCell;
@@ -11,14 +15,22 @@ mod imp {
     use super::*;
 
     // This contains all the container informations given by distrobox, plus an associated KnownDistro struct
-    #[derive(Default)]
+    #[derive(Default, Properties)]
+    #[properties(wrapper_type=super::Container)]
     pub struct Container {
+        #[property(get, set)]
         pub name: RefCell<String>,
-        pub status: RefCell<Status>,
+        #[property(get, set)]
+        pub status_tag: RefCell<String>,
+        #[property(get, set)]
+        pub status_detail: RefCell<String>,
+        #[property(get, set)]
         pub image: RefCell<String>,
+        #[property(get, set)]
         pub distro: RefCell<Option<KnownDistro>>,
     }
 
+    #[derived_properties]
     impl ObjectImpl for Container {}
 
     #[glib::object_subclass]
@@ -35,33 +47,30 @@ impl Container {
     pub fn new() -> Self {
         glib::Object::builder().build()
     }
-
-    pub fn name(&self) -> String {
-        self.imp().name.borrow().clone()
-    }
-
-    pub fn status(&self) -> Status {
-        self.imp().status.borrow().clone()
-    }
-
-    pub fn image(&self) -> String {
-        self.imp().image.borrow().clone()
-    }
-
-    pub fn distro(&self) -> Option<KnownDistro> {
-        self.imp().distro.borrow().clone()
-    }
 }
 
 impl From<ContainerInfo> for Container {
     fn from(value: ContainerInfo) -> Self {
         let distro = known_distro_by_image(&value.image);
 
-        let this = Self::new();
-        this.imp().name.replace(value.name);
-        this.imp().status.replace(value.status);
-        this.imp().image.replace(value.image);
-        this.imp().distro.replace(distro);
-        this
+        let (status_tag, status_detail) = match value.status {
+            Status::Up(v) => ("up", v),
+            Status::Created(v) => ("created", v),
+            Status::Exited(v) => ("exited", v),
+            Status::Other(v) => ("other", v),
+        };
+        glib::Object::builder()
+            .property("name", value.name)
+            .property("image", value.image)
+            .property("distro", distro)
+            .property("status-tag", status_tag)
+            .property("status-detail", status_detail)
+            .build()
+    }
+}
+
+impl Default for Container {
+    fn default() -> Self {
+        Self::new()
     }
 }

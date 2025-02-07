@@ -44,7 +44,7 @@ mod imp {
     use glib::Properties;
     use gtk::gdk;
 
-    use crate::known_distros;
+    use crate::{app_view_model::AppViewModel, known_distros};
 
     use super::*;
 
@@ -53,6 +53,9 @@ mod imp {
     pub struct DistrohomeApplication {
         #[property(get, set = Self::set_distrobox_service_ty, builder(DistroboxServiceTy::Real))]
         pub distrobox_service_ty: RefCell<DistroboxServiceTy>,
+
+        #[property(get, set)]
+        pub view_model: RefCell<AppViewModel>,
     }
 
     impl DistrohomeApplication {
@@ -125,7 +128,7 @@ mod imp {
                 .status-dot.up {{
                     background-color: @success_color;
                 }}
-                .status-dot.exited {{
+                .status-dot.exited, .status-dot.created {{
                     background-color: alpha(@borders, 0.5);
                 }}
             "));
@@ -192,8 +195,12 @@ impl DistrohomeApplication {
             _ => DistroboxService::new(),
         };
 
-        let window =
-            DistrohomeWindow::new(self.upcast_ref::<adw::Application>(), distrobox_service);
+        self.view_model().bind_distrobox_service(&distrobox_service);
+        let window = DistrohomeWindow::new(
+            self.upcast_ref::<adw::Application>(),
+            distrobox_service,
+            self.view_model(),
+        );
         window.upcast()
     }
 

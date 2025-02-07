@@ -207,10 +207,7 @@ pub enum Error {
     StdoutRead(#[from] io::Error),
 
     #[error("failed to spawn command {command}: {source}")]
-    Spawn {
-        source: io::Error,
-        command: String,
-    },
+    Spawn { source: io::Error, command: String },
 
     #[error("failed to parse command output: {0}")]
     ParseOutput(String),
@@ -483,24 +480,26 @@ impl Distrobox {
             cmd
         };
         wrap_capture_cmd(&mut cmd);
-        
+
         let program = cmd.program.to_string_lossy().to_string();
-        let args = cmd.args.iter()
+        let args = cmd
+            .args
+            .iter()
             .map(|arg| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
-            
-        debug!(command = %program, args = ?args, "Spawning command");
-        let child = self.cmd_runner.spawn(cmd.clone())
-            .map_err(|e| {
-                let full_command = format!("{:?} {:?}", program, args);
-                error!(error = ?e, command = %full_command, "Command spawn failed");
-                Error::Spawn {
-                    source: e,
-                    command: full_command,
-                }
-            })?;
 
-        self.output_tracker.push(format!("{:?} {:?}", program, args));
+        debug!(command = %program, args = ?args, "Spawning command");
+        let child = self.cmd_runner.spawn(cmd.clone()).map_err(|e| {
+            let full_command = format!("{:?} {:?}", program, args);
+            error!(error = ?e, command = %full_command, "Command spawn failed");
+            Error::Spawn {
+                source: e,
+                command: full_command,
+            }
+        })?;
+
+        self.output_tracker
+            .push(format!("{:?} {:?}", program, args));
         Ok(child)
     }
 
@@ -511,26 +510,27 @@ impl Distrobox {
             cmd
         };
         wrap_capture_cmd(&mut cmd);
-        
+
         let program = cmd.program.to_string_lossy().to_string();
-        let args = cmd.args.iter()
+        let args = cmd
+            .args
+            .iter()
             .map(|arg| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
 
         info!(command = %program, args = ?args, "Executing command");
         let command_str = format!("{:?} {:?}", program, args);
 
-        let output = self.cmd_runner.output(cmd).await
-            .map_err(|e| {
-                error!(error = ?e, command = %program, "Command execution failed");
-                Error::Spawn {
-                    source: e,
-                    command: command_str.clone()
-                }
-            })?;
+        let output = self.cmd_runner.output(cmd).await.map_err(|e| {
+            error!(error = ?e, command = %program, "Command execution failed");
+            Error::Spawn {
+                source: e,
+                command: command_str.clone(),
+            }
+        })?;
 
         self.output_tracker.push(command_str.clone());
-        
+
         let exit_code = output.status.code();
         debug!(
             exit_code = ?exit_code,
@@ -603,7 +603,7 @@ impl Distrobox {
             "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done",
         ]);
         let concatenated_files = self.cmd_output_string(cmd).await?;
-        debug!(concatenated_files=concatenated_files);
+        debug!(concatenated_files = concatenated_files);
         let res = concatenated_files
             .split("# START FILE ")
             .skip(1)
@@ -636,7 +636,7 @@ impl Distrobox {
                 let exported_as = format!("{box_name}-{file_name}");
                 let is_exported = exported.contains(&exported_as);
                 if is_exported {
-                    debug!(found_exported=exported_as);
+                    debug!(found_exported = exported_as);
                 }
                 entry.map(|entry| ExportableApp {
                     desktop_file_path: path,
@@ -665,11 +665,15 @@ impl Distrobox {
         self.cmd_spawn(cmd)
     }
 
-    pub async fn export_app(&self, container: &str, app: &ExportableApp) -> Result<String, Error> {
+    pub async fn export_app(
+        &self,
+        container: &str,
+        desktop_file_path: &str,
+    ) -> Result<String, Error> {
         let mut cmd = dbcmd();
         cmd.args(["enter", "--name", container]).extend(
             "--",
-            &Command::new_with_args("distrobox-export", ["--app", &app.desktop_file_path]),
+            &Command::new_with_args("distrobox-export", ["--app", &desktop_file_path]),
         );
 
         self.cmd_output_string(cmd).await
@@ -677,12 +681,12 @@ impl Distrobox {
     pub async fn unexport_app(
         &self,
         container: &str,
-        app: &ExportableApp,
+        desktop_file_path: &str,
     ) -> Result<String, Error> {
         let mut cmd = dbcmd();
         cmd.args(["enter", "--name", container]).extend(
             "--",
-            &Command::new_with_args("distrobox-export", ["-d", "--app", &app.desktop_file_path]),
+            &Command::new_with_args("distrobox-export", ["-d", "--app", &desktop_file_path]),
         );
 
         self.cmd_output_string(cmd).await
@@ -773,7 +777,7 @@ impl Distrobox {
                 Ok(item) => {
                     debug!(
                         container_id = %item.id,
-                        container_name = %item.name, 
+                        container_name = %item.name,
                         image = %item.image,
                         status = ?item.status,
                         "Discovered container"

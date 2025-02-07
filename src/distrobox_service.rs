@@ -203,6 +203,13 @@ impl DistroboxService {
             this.handle_child_output_for_task(child, &task).await
         })
     }
+    pub fn do_upgrade_all(&self) {
+        if let Resource::Loaded(containers) = self.containers() {
+            for container in containers.values() {
+                self.do_upgrade(&container.name());
+            }
+        }
+    }
     pub fn do_launch(&self, name: &str, app: ExportableApp) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
@@ -211,19 +218,25 @@ impl DistroboxService {
             this.handle_child_output_for_task(child, &task).await
         })
     }
-    pub fn do_export(&self, name: &str, app: ExportableApp) -> DistroboxTask {
+    pub fn do_export(&self, name: &str, desktop_file_path: &str) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
+        let desktop_file_path = desktop_file_path.to_string();
         self.create_task(name, "export", move |_task| async move {
-            this.distrobox().export_app(&name_clone, &app).await?;
+            this.distrobox()
+                .export_app(&name_clone, &desktop_file_path)
+                .await?;
             Ok(())
         })
     }
-    pub fn do_unexport(&self, name: &str, app: ExportableApp) -> DistroboxTask {
+    pub fn do_unexport(&self, name: &str, desktop_file_path: &str) -> DistroboxTask {
         let this = self.clone();
         let name_clone = name.to_string();
+        let desktop_file_path = desktop_file_path.to_string();
         self.create_task(name, "unexport", move |_task| async move {
-            this.distrobox().unexport_app(&name_clone, &app).await?;
+            this.distrobox()
+                .unexport_app(&name_clone, &desktop_file_path)
+                .await?;
             Ok(())
         })
     }
@@ -241,43 +254,44 @@ impl DistroboxService {
     }
     pub fn do_install(&self, name: &str, path: &Path) -> DistroboxTask {
         let this = self.clone();
-        let package_manager = {
-            self.imp()
-                .containers
-                .borrow()
-                .data()
-                .and_then(|hash_map| hash_map.get(name))
-                .and_then(|container| container.distro())
-                .and_then(|known_distro: KnownDistro| known_distro.package_manager)
-                .expect(&format!("package manager not found for distro {}", name))
-        };
-        let path_clone = path.to_owned();
-        let name_clone = name.to_string();
-        let task = self.create_task(name, "install", move |_task| async move {
-            // The file provided from the portal is under /run/user/1000 which is not accessible by root.
-            // We can copy the file as a normal user to /tmp and then install.
+        todo!("read known distro");
+        // let package_manager = {
+        //     self.imp()
+        //         .containers
+        //         .borrow()
+        //         .data()
+        //         .and_then(|hash_map| hash_map.get(name))
+        //         .and_then(|container| container.distro())
+        //         .and_then(|known_distro: KnownDistro| known_distro.package_manager)
+        //         .expect(&format!("package manager not found for distro {}", name))
+        // };
+        // let path_clone = path.to_owned();
+        // let name_clone = name.to_string();
+        // let task = self.create_task(name, "install", move |_task| async move {
+        //     // The file provided from the portal is under /run/user/1000 which is not accessible by root.
+        //     // We can copy the file as a normal user to /tmp and then install.
 
-            let enter_cmd = this.distrobox().enter_cmd(&name_clone);
+        //     let enter_cmd = this.distrobox().enter_cmd(&name_clone);
 
-            // the file of the package must have the correct extension (.deb for apt-get).
-            let tmp_path = format!(
-                "/tmp/com.ranfdev.DistroShelf.user_package{}",
-                package_manager.installable_file()
-            );
-            let tmp_path = Path::new(&tmp_path);
-            let cp_cmd_pure = Command::new_with_args("cp", [&path_clone, tmp_path]);
-            let install_cmd_pure = package_manager.install_cmd(&tmp_path);
+        //     // the file of the package must have the correct extension (.deb for apt-get).
+        //     let tmp_path = format!(
+        //         "/tmp/com.ranfdev.DistroShelf.user_package{}",
+        //         package_manager.installable_file()
+        //     );
+        //     let tmp_path = Path::new(&tmp_path);
+        //     let cp_cmd_pure = Command::new_with_args("cp", [&path_clone, tmp_path]);
+        //     let install_cmd_pure = package_manager.install_cmd(&tmp_path);
 
-            let mut cp_cmd = enter_cmd.clone();
-            cp_cmd.extend("--", &cp_cmd_pure);
-            let mut install_cmd = enter_cmd.clone();
-            install_cmd.extend("--", &install_cmd_pure);
+        //     let mut cp_cmd = enter_cmd.clone();
+        //     cp_cmd.extend("--", &cp_cmd_pure);
+        //     let mut install_cmd = enter_cmd.clone();
+        //     install_cmd.extend("--", &install_cmd_pure);
 
-            this.spawn_terminal_cmd(name_clone.clone(), &cp_cmd).await?;
-            this.spawn_terminal_cmd(name_clone, &install_cmd).await
-        });
-        task.set_description(format!("Installing {:?}", path));
-        task
+        //     this.spawn_terminal_cmd(name_clone.clone(), &cp_cmd).await?;
+        //     this.spawn_terminal_cmd(name_clone, &install_cmd).await
+        // });
+        // task.set_description(format!("Installing {:?}", path));
+        // task
     }
     pub fn do_clone(&self, source_name: &str, target_name: &str) -> DistroboxTask {
         let this = self.clone();
@@ -409,6 +423,7 @@ impl DistroboxService {
         self.imp().images.borrow().clone()
     }
 
+    // TODO: This should be defined in the AppViewModel directly
     pub fn set_selected_terminal_program(&self, program: &str) {
         if SUPPORTED_TERMINALS
             .iter()

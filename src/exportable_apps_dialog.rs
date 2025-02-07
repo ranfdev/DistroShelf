@@ -1,10 +1,11 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::glib::clone;
+use gtk::glib::{clone, BoxedAnyObject};
 use gtk::{gio, glib};
 
 use crate::distrobox::{self, ExportableApp};
 use crate::distrobox_service::DistroboxService;
+use crate::exportable_apps_dialog_model::ExportableAppsDialogModel;
 use crate::resource::{Resource, SharedResource};
 
 use std::cell::{OnceCell, RefCell};
@@ -14,19 +15,28 @@ use im_rc::Vector;
 
 mod imp {
 
+    use adw::subclass::preferences_group;
+    use gtk::glib::{derived_properties, Properties};
+
     use super::*;
 
-    #[derive(Default)]
+    #[derive(Default, Properties)]
+    #[properties(wrapper_type=super::ExportableAppsDialog)]
     pub struct ExportableAppsDialog {
+        #[property(get, set)]
+        pub model: RefCell<ExportableAppsDialogModel>,
         pub dialog: adw::Dialog,
         pub toolbar_view: adw::ToolbarView,
         pub content: gtk::Box,
         pub scrolled_window: gtk::ScrolledWindow,
-        pub apps: SharedResource<Vector<distrobox::ExportableApp>, anyhow::Error>,
+        pub stack: gtk::Stack,
+        pub error_label: gtk::Label,
+        pub list_box: gtk::ListBox,
         pub distrobox_service: OnceCell<DistroboxService>,
         pub container: RefCell<String>,
     }
 
+    #[derived_properties]
     impl ObjectImpl for ExportableAppsDialog {
         fn constructed(&self) {
             let obj = self.obj();
@@ -41,32 +51,30 @@ mod imp {
 
             self.scrolled_window.set_vexpand(true);
             self.scrolled_window.set_propagate_natural_height(true);
+            self.scrolled_window.set_child(Some(&self.stack));
 
-            let obj = self.obj().clone();
-            self.apps
-                .set_callback(
-                    move |res: Resource<Vector<ExportableApp>, anyhow::Error>| match res {
-                        Resource::Error(err, _) => {
-                            obj.imp().scrolled_window.set_child(Some(
-                                &gtk::Label::builder()
-                                    .label(format!("Error: {}", err))
-                                    .wrap(true)
-                                    .build(),
-                            ));
-                        }
-                        Resource::Loading(_) => {
-                            obj.imp()
-                                .scrolled_window
-                                .set_child(Some(&obj.handle_ui_loading()));
-                        }
-                        Resource::Loaded(res) => {
-                            obj.imp()
-                                .scrolled_window
-                                .set_child(Some(&obj.handle_ui_loaded(&res)));
-                        }
-                        Resource::Unitialized => {}
-                    },
-                );
+            self.stack
+                .set_transition_type(gtk::StackTransitionType::Crossfade);
+            self.stack.add_named(&self.error_label, Some("error"));
+
+            let loading_page = adw::StatusPage::new();
+            loading_page.set_title("Loading App List");
+            loading_page.set_description(Some(
+                "Please wait while we load the list of exportable apps. This may take some time if the distrobox wasn't running",
+            ));
+            loading_page.set_child(Some(&adw::Spinner::new()));
+            self.stack.add_named(&loading_page, Some("loading"));
+
+            self.list_box.add_css_class("boxed-list");
+            self.list_box.set_selection_mode(gtk::SelectionMode::None);
+            let export_apps_group = adw::PreferencesGroup::new();
+            export_apps_group.set_margin_start(12);
+            export_apps_group.set_margin_end(12);
+            export_apps_group.set_margin_top(12);
+            export_apps_group.set_margin_bottom(12);
+            export_apps_group.set_title("Exportable Apps");
+            export_apps_group.add(&self.list_box);
+            self.stack.add_named(&export_apps_group, Some("apps"));
 
             self.content.append(&self.scrolled_window);
             self.toolbar_view.set_content(Some(&self.content));
@@ -86,17 +94,7 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let file_path = target.unwrap().str().unwrap();
-                    if let Resource::Loaded(apps) = this.imp().apps.resource() {
-                        let app_found = apps.iter().find(|app| app.desktop_file_path == file_path);
-                        let container = this.imp().container.borrow();
-                        this.imp()
-                            .distrobox_service
-                            .get()
-                            .unwrap()
-                            .do_export(&container, app_found.unwrap().clone());
-
-                        this.load_apps();
-                    }
+                    this.model().export(file_path);
                 },
             );
             klass.install_action(
@@ -104,17 +102,7 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let file_path = target.unwrap().str().unwrap();
-                    if let Resource::Loaded(apps) = this.imp().apps.resource() {
-                        let app_found = apps.iter().find(|app| app.desktop_file_path == file_path);
-                        let container = this.imp().container.borrow();
-                        this.imp()
-                            .distrobox_service
-                            .get()
-                            .unwrap()
-                            .do_unexport(&container, app_found.unwrap().clone());
-
-                        this.load_apps();
-                    }
+                    this.model().unexport(file_path);
                 },
             );
         }
@@ -129,56 +117,33 @@ glib::wrapper! {
         @extends adw::Dialog, gtk::Widget;
 }
 impl ExportableAppsDialog {
-    pub fn new(container: &str, distrobox_service: DistroboxService) -> Self {
-        let this: Self = glib::Object::builder().build();
-        let container = container.to_string();
-        this.imp().container.replace(container.to_string());
+    pub fn new(model: &ExportableAppsDialogModel) -> Self {
+        let this: Self = glib::Object::builder().property("model", model).build();
+
+        let model = model.clone();
+        model
+            .bind_property("current-view", &this.imp().stack, "visible-child-name")
+            .sync_create()
+            .build();
+        model
+            .bind_property("error", &this.imp().error_label, "label")
+            .sync_create()
+            .build();
+
+        let this_clone = this.clone();
         this.imp()
-            .distrobox_service
-            .set(distrobox_service.clone())
-            .unwrap();
+            .list_box
+            .bind_model(Some(&model.apps()), move |obj| {
+                let app = obj
+                    .downcast_ref::<BoxedAnyObject>()
+                    .map(|obj| obj.borrow::<ExportableApp>())
+                    .unwrap();
+                this_clone
+                    .build_row(&model.container().name(), &*app)
+                    .upcast()
+            });
 
-        this.load_apps();
         this
-    }
-    pub fn load_apps(&self) {
-        let container = self.imp().container.borrow().clone();
-        let this = self.clone();
-        let future = {
-            async move {
-                this.imp()
-                    .distrobox_service
-                    .get()
-                    .unwrap()
-                    .list_apps(&container)
-                    .await
-                    .map_err(|e| e.into())
-            }
-        };
-
-        self.imp().apps.load(future);
-    }
-    pub fn handle_ui_loading(&self) -> impl IsA<gtk::Widget> {
-        // TODO: replace with new libadwaita spinner when available
-        let status_page = adw::StatusPage::new();
-        status_page.set_title("Loading App List");
-        status_page.set_description(Some(
-            "Please wait while we load the list of exportable apps. This may take some time if the distrobox wasn't running",
-        ));
-        status_page
-    }
-    pub fn handle_ui_loaded(&self, apps: &Vector<ExportableApp>) -> impl IsA<gtk::Widget> {
-        let export_apps_group = adw::PreferencesGroup::new();
-        export_apps_group.set_margin_start(12);
-        export_apps_group.set_margin_end(12);
-        export_apps_group.set_margin_top(12);
-        export_apps_group.set_margin_bottom(12);
-        export_apps_group.set_title("Exportable Apps");
-        let container = self.imp().container.borrow().clone();
-        for app in apps {
-            export_apps_group.add(&self.build_row(&container, &app));
-        }
-        export_apps_group
     }
     pub fn build_row(&self, container: &str, app: &ExportableApp) -> adw::ActionRow {
         // Create the action row
@@ -187,18 +152,13 @@ impl ExportableAppsDialog {
         row.set_subtitle(&app.desktop_file_path);
         row.set_activatable(true);
 
-        let container = container.to_string();
         row.connect_activated(clone!(
             #[weak(rename_to=this)]
             self,
             #[strong]
             app,
             move |_| {
-                this.imp()
-                    .distrobox_service
-                    .get()
-                    .unwrap()
-                    .do_launch(&container, app.clone());
+                this.model().launch(app.clone());
             }
         ));
 

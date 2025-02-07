@@ -1,5 +1,11 @@
 use crate::distrobox::Command;
+use glib::subclass::prelude::*;
+use gtk::glib;
+use gtk::glib::derived_properties;
+use gtk::glib::prelude::*;
+use gtk::glib::Properties;
 use std::cell::LazyCell;
+use std::cell::RefCell;
 use std::path::Path;
 
 use im_rc as im;
@@ -9,62 +15,63 @@ pub const DISTROS: LazyCell<
     fn() -> im::HashMap<String, KnownDistro>,
 > = LazyCell::new(|| {
     [
-        ("alma", "#dadada", Some(PackageManager::Dnf)),
-        ("alpine", "#2147ea", None),
-        ("amazon", "#de5412", Some(PackageManager::Dnf)),
-        ("arch", "#12aaff", None),
-        ("centos", "#ff6600", Some(PackageManager::Dnf)),
-        ("clearlinux", "#56bbff", None),
-        ("crystal", "#8839ef", None),
-        ("debian", "#da5555", Some(PackageManager::Apt)),
-        ("deepin", "#0050ff", Some(PackageManager::Apt)),
-        ("fedora", "#3b6db3", Some(PackageManager::Dnf)),
-        ("gentoo", "#daaada", None),
-        ("kali", "#000000", Some(PackageManager::Apt)),
-        ("mageia", "#b612b6", Some(PackageManager::Dnf)),
-        ("mint", "#6fbd20", Some(PackageManager::Apt)),
-        ("neon", "#27ae60", Some(PackageManager::Apt)),
-        ("opensuse", "#daff00", Some(PackageManager::Dnf)),
-        ("oracle", "#ff0000", Some(PackageManager::Dnf)),
-        ("redhat", "#ff6662", Some(PackageManager::Dnf)),
-        ("rhel", "#ff6662", Some(PackageManager::Dnf)),
-        ("rocky", "#91ff91", Some(PackageManager::Dnf)),
-        ("slackware", "#6145a7", None),
-        ("ubuntu", "#FF4400", Some(PackageManager::Apt)),
-        ("vanilla", "#7f11e0", None),
-        ("void", "#abff12", None),
+        ("alma", "#dadada", PackageManager::Dnf),
+        ("alpine", "#2147ea", PackageManager::Unknown),
+        ("amazon", "#de5412", PackageManager::Dnf),
+        ("arch", "#12aaff", PackageManager::Unknown),
+        ("centos", "#ff6600", PackageManager::Dnf),
+        ("clearlinux", "#56bbff", PackageManager::Unknown),
+        ("crystal", "#8839ef", PackageManager::Unknown),
+        ("debian", "#da5555", PackageManager::Apt),
+        ("deepin", "#0050ff", PackageManager::Apt),
+        ("fedora", "#3b6db3", PackageManager::Dnf),
+        ("gentoo", "#daaada", PackageManager::Unknown),
+        ("kali", "#000000", PackageManager::Apt),
+        ("mageia", "#b612b6", PackageManager::Dnf),
+        ("mint", "#6fbd20", PackageManager::Apt),
+        ("neon", "#27ae60", PackageManager::Apt),
+        ("opensuse", "#daff00", PackageManager::Dnf),
+        ("oracle", "#ff0000", PackageManager::Dnf),
+        ("redhat", "#ff6662", PackageManager::Dnf),
+        ("rhel", "#ff6662", PackageManager::Dnf),
+        ("rocky", "#91ff91", PackageManager::Dnf),
+        ("slackware", "#6145a7", PackageManager::Unknown),
+        ("ubuntu", "#FF4400", PackageManager::Apt),
+        ("vanilla", "#7f11e0", PackageManager::Unknown),
+        ("void", "#abff12", PackageManager::Unknown),
     ]
     .iter()
     .map(|(name, color, package_manager)| {
         (
             name.to_string(),
-            KnownDistro {
-                name,
-                color,
-                package_manager: package_manager.clone(),
-            },
+            KnownDistro::new(name, color, package_manager.clone()),
         )
     })
     .collect()
 });
 
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
+#[enum_type(name = "DbxPackageManager")]
 pub enum PackageManager {
+    #[default]
+    Unknown,
     Apt,
     Dnf,
 }
 
 impl PackageManager {
-    pub fn install_cmd(&self, file: &Path) -> Command {
+    pub fn install_cmd(&self, file: &Path) -> Option<Command> {
         match self {
-            PackageManager::Apt => apt_install_cmd(file),
-            PackageManager::Dnf => dnf_install_cmd(file),
+            PackageManager::Apt => Some(apt_install_cmd(file)),
+            PackageManager::Dnf => Some(dnf_install_cmd(file)),
+            PackageManager::Unknown => None,
         }
     }
-    pub fn installable_file(&self) -> &str {
+    pub fn installable_file(&self) -> Option<&str> {
         match self {
-            PackageManager::Apt => ".deb",
-            PackageManager::Dnf => ".rpm",
+            PackageManager::Apt => Some(".deb"),
+            PackageManager::Dnf => Some(".rpm"),
+            PackageManager::Unknown => None,
         }
     }
 }
@@ -83,34 +90,18 @@ fn dnf_install_cmd(file: &Path) -> Command {
     cmd
 }
 
-#[derive(Debug, Clone, Hash, PartialEq)]
-pub struct KnownDistro {
-    pub name: &'static str,
-    pub color: &'static str,
-    pub package_manager: Option<PackageManager>,
-}
-
-impl KnownDistro {
-    pub fn icon_name(&self) -> String {
-        format!("{}-symbolic", self.name)
-    }
-    pub fn default_icon_name() -> &'static str {
-        "tux-symbolic"
-    }
-}
-
 pub fn known_distro_by_image(url: &str) -> Option<KnownDistro> {
     DISTROS
         .values()
-        .find(|distro| url.contains(distro.name))
+        .find(|distro| url.contains(&distro.name()))
         .cloned()
 }
 
 pub fn generate_css() -> String {
     let mut out = String::new();
     for distro in DISTROS.values() {
-        let name = distro.name;
-        let color = distro.color;
+        let name = distro.name();
+        let color = distro.color();
         out.push_str(&format!(
             ".{name} {{
     --distro-color: {color};
@@ -118,4 +109,54 @@ pub fn generate_css() -> String {
         ))
     }
     out
+}
+
+mod imp {
+    use super::*;
+
+    #[derive(Default, Properties)]
+    #[properties(wrapper_type=super::KnownDistro)]
+    pub struct KnownDistro {
+        #[property(get, set)]
+        pub name: RefCell<String>,
+        #[property(get, set)]
+        pub color: RefCell<String>,
+        #[property(get, set, builder(PackageManager::Unknown))]
+        pub package_manager: RefCell<PackageManager>,
+    }
+
+    #[derived_properties]
+    impl ObjectImpl for KnownDistro {}
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for KnownDistro {
+        const NAME: &'static str = "KnownDistro";
+        type Type = super::KnownDistro;
+    }
+}
+
+glib::wrapper! {
+    pub struct KnownDistro(ObjectSubclass<imp::KnownDistro>);
+}
+
+impl Default for KnownDistro {
+    fn default() -> Self {
+        glib::Object::builder().build()
+    }
+}
+
+impl KnownDistro {
+    pub fn new(name: &str, color: &str, package_manager: PackageManager) -> Self {
+        glib::Object::builder()
+            .property("name", name)
+            .property("color", color)
+            .property("package-manager", package_manager)
+            .build()
+    }
+    pub fn icon_name(&self) -> String {
+        format!("{}-symbolic", self.name())
+    }
+    pub fn default_icon_name() -> &'static str {
+        "tux-symbolic"
+    }
 }

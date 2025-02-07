@@ -21,7 +21,7 @@ pub fn set_image(image_widget: &gtk::Image, container_image: &str) {
         );
 
         image_widget.set_paintable(Some(&icon));
-        image_widget.add_css_class(distro.name);
+        image_widget.add_css_class(&distro.name());
     } else {
         image_widget.set_icon_name(Some(&KnownDistro::default_icon_name()));
     }

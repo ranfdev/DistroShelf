@@ -1,4 +1,7 @@
-use crate::distrobox_task::DistroboxTask;
+use crate::{
+    app_view_model::{self, AppViewModel},
+    distrobox_task::DistroboxTask,
+};
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{
@@ -13,11 +16,17 @@ mod imp {
     use std::cell::{Cell, RefCell};
 
     use glib::clone;
+    use gtk::glib::{derived_properties, Properties};
+
+    use crate::app_view_model::AppViewModel;
 
     use super::*;
 
-    #[derive(Default)]
+    #[derive(Default, Properties)]
+    #[properties(wrapper_type = super::TasksButton)]
     pub struct TasksButton {
+        #[property(get, set)]
+        pub app_view_model: RefCell<AppViewModel>,
         pub menu_button: gtk::MenuButton,
         pub popover: gtk::Popover,
         pub main_content_box: gtk::Box,
@@ -38,6 +47,7 @@ mod imp {
         type ParentType = adw::Bin;
     }
 
+    #[derived_properties]
     impl ObjectImpl for TasksButton {
         fn constructed(&self) {
             self.parent_constructed();
@@ -66,7 +76,10 @@ mod imp {
                 #[weak(rename_to=this)]
                 self,
                 move |_| {
-                    this.obj().emit_by_name::<()>("clear-tasks-clicked", &[]);
+                    this.obj()
+                        .app_view_model()
+                        .distrobox_service()
+                        .clear_ended_tasks();
                 }
             ));
 
@@ -129,18 +142,6 @@ mod imp {
                 }
             ));
         }
-
-        fn signals() -> &'static [glib::subclass::Signal] {
-            static SIGNALS: OnceLock<Vec<glib::subclass::Signal>> = OnceLock::new();
-            SIGNALS.get_or_init(|| {
-                vec![
-                    glib::subclass::Signal::builder("task-clicked")
-                        .param_types([DistroboxTask::static_type()])
-                        .build(),
-                    glib::subclass::Signal::builder("clear-tasks-clicked").build(),
-                ]
-            })
-        }
     }
 
     // Trait shared by all widgets
@@ -158,8 +159,10 @@ glib::wrapper! {
 }
 
 impl TasksButton {
-    pub fn new() -> Self {
-        glib::Object::builder().build()
+    pub fn new(app_view_model: AppViewModel) -> Self {
+        glib::Object::builder()
+            .property("app-view-model", app_view_model)
+            .build()
     }
 
     fn add_task(&self, task: &DistroboxTask) {
@@ -254,35 +257,11 @@ impl TasksButton {
             #[weak]
             task,
             move |_, _, _, _| {
-                this.emit_by_name::<()>("task-clicked", &[&task]);
-                println!("Task clicked: {}", task.name());
+                this.app_view_model().view_task(&task);
             }
         ));
         vbox.add_controller(gesture);
 
         vbox
-    }
-
-    pub fn connect_task_clicked<F: Fn(&Self, &DistroboxTask) + 'static>(
-        &self,
-        f: F,
-    ) -> glib::SignalHandlerId {
-        self.connect_local("task-clicked", false, move |values| {
-            let obj = values[0].get::<Self>().unwrap();
-            let task = values[1].get::<DistroboxTask>().unwrap();
-            f(&obj, &task);
-            None
-        })
-    }
-
-    pub fn connect_clear_tasks_clicked<F: Fn(&Self) + 'static>(
-        &self,
-        f: F,
-    ) -> glib::SignalHandlerId {
-        self.connect_local("clear-tasks-clicked", false, move |values| {
-            let obj = values[0].get::<Self>().unwrap();
-            f(&obj);
-            None
-        })
     }
 }

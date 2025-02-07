@@ -18,13 +18,14 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+use crate::app_view_model::AppViewModel;
 use crate::container::Container;
 use crate::create_distrobox_dialog::CreateDistroboxDialog;
-use crate::distrobox::Status;
 use crate::distrobox_service::DistroboxService;
 use crate::distrobox_task::DistroboxTask;
 use crate::exportable_apps_dialog::ExportableAppsDialog;
-use crate::resource::Resource;
+use crate::gtk_utils::reaction;
+use crate::known_distros::PackageManager;
 use crate::sidebar_row::SidebarRow;
 use crate::tasks_button::TasksButton;
 use crate::terminal_combo_row::TerminalComboRow;
@@ -40,7 +41,10 @@ mod imp {
     use glib::{derived_properties, Properties};
     use gtk::gdk;
 
-    use crate::{distrobox_service::DistroboxService, resource::Resource};
+    use crate::{
+        app_view_model::AppViewModel, distrobox_service::DistroboxService, resource::Resource,
+        tagged_object::TaggedObject,
+    };
 
     use super::*;
 
@@ -49,8 +53,9 @@ mod imp {
     #[template(resource = "/com/ranfdev/DistroHome/window.ui")]
     pub struct DistrohomeWindow {
         #[property(get, set)]
-        pub distrobox_service: RefCell<DistroboxService>,
-        pub selected_container: RefCell<Option<String>>,
+        pub app_view_model: RefCell<AppViewModel>,
+        #[property(get, set, nullable)]
+        pub current_dialog: RefCell<Option<adw::Dialog>>,
 
         // Template widgets
         #[template_child]
@@ -81,21 +86,19 @@ mod imp {
             klass.bind_template();
 
             klass.install_action("win.refresh", None, |win, _action, _target| {
-                info!("Refreshing containers");
-                win.distrobox_service().load_container_infos();
+                win.app_view_model()
+                    .distrobox_service()
+                    .load_container_infos();
             });
             klass.add_binding_action(gdk::Key::F5, gdk::ModifierType::empty(), "win.refresh");
 
             klass.install_action("win.upgrade-all", None, |win, _action, _target| {
-                if let Resource::Loaded(containers) = win.distrobox_service().containers() {
-                    for container in containers.values() {
-                        win.distrobox_service().do_upgrade(&container.name());
-                    }
-                }
+                win.app_view_model().distrobox_service().do_upgrade_all();
             });
 
             klass.install_action("win.preferences", None, |win, _action, _target| {
-                win.build_preferences_dialog();
+                win.app_view_model()
+                    .set_current_dialog(TaggedObject::new("preferences"));
             });
 
             klass.install_action("win.learn-more", None, |_win, _action, _target| {
@@ -111,7 +114,8 @@ mod imp {
             });
 
             klass.install_action("win.create-distrobox", None, |win, _action, _target| {
-                win.build_create_distrobox_dialog();
+                win.app_view_model()
+                    .set_current_dialog(TaggedObject::new("create-distrobox"));
             });
         }
 
@@ -137,156 +141,107 @@ impl DistrohomeWindow {
     pub fn new<P: IsA<gtk::Application>>(
         application: &P,
         distrobox_service: DistroboxService,
+        view_model: AppViewModel,
     ) -> Self {
         let this: Self = glib::Object::builder()
             .property("application", application)
-            .property("distrobox-service", distrobox_service)
+            .property("app-view-model", view_model)
             .build();
 
-        this.build_sidebar();
-
         let this_clone = this.clone();
-        this.distrobox_service()
-            .connect_containers_changed(move |_service| {
-                this_clone.fill_sidebar();
-            });
-        this.distrobox_service().load_container_infos();
-
-        let this_clone = this.clone();
-        this.distrobox_service()
-            .connect_version_changed(move |service| match service.version() {
-                Resource::Error(_, _) => {
-                    this_clone
-                        .imp()
-                        .main_stack
-                        .set_visible_child_name("welcome");
-                    let this = this_clone.clone();
-                    this_clone
-                        .imp()
-                        .welcome_view
-                        .connect_setup_finished(move || {
-                            this.imp().main_stack.set_visible_child_name("main");
-                        });
+        this.app_view_model()
+            .connect_selected_container_notify(move |model| {
+                if let Some(container) = model.selected_container() {
+                    this_clone.build_main_content(&container);
+                    this_clone.imp().split_view.set_show_content(true);
                 }
-                _ => {}
             });
-
+        let this_clone = this.clone();
+        this.app_view_model()
+            .connect_current_view_notify(move |model| {
+                match model.current_view().tag().as_str() {
+                    "welcome" => {
+                        this_clone
+                            .imp()
+                            .welcome_view
+                            .set_model(model.current_view().object().and_downcast_ref().unwrap());
+                    }
+                    _ => {}
+                }
+                this_clone
+                    .imp()
+                    .main_stack
+                    .set_visible_child_name(&model.current_view().tag());
+            });
+        let this_clone = this.clone();
+        this.app_view_model()
+            .connect_current_dialog_notify(move |model| {
+                if let Some(dialog) = this_clone.current_dialog() {
+                    dialog.close();
+                }
+                let dialog: adw::Dialog = match dbg!(model.current_dialog().tag().as_str()) {
+                    "exportable-apps" => ExportableAppsDialog::new(
+                        model.current_dialog().object().and_downcast_ref().unwrap(),
+                    )
+                    .upcast(),
+                    "create-distrobox" => {
+                        CreateDistroboxDialog::new(this_clone.app_view_model()).upcast()
+                    }
+                    "task" => this_clone.build_task_dialog(
+                        model.current_dialog().object().and_downcast_ref().unwrap(),
+                    ),
+                    "preferences" => this_clone.build_preferences_dialog(),
+                    _ => {
+                        panic!("invalid dialog tag");
+                    }
+                };
+                this_clone.set_current_dialog(Some(&dialog));
+                dialog.present(Some(&this_clone));
+            });
+        this.build_sidebar();
         this
-    }
-
-    fn selected_container_name(&self) -> Option<String> {
-        self.imp().selected_container.borrow().clone()
-    }
-
-    fn selected_container(&self) -> Option<Container> {
-        let name = self.selected_container_name()?;
-        self.distrobox_service()
-            .containers()
-            .data()?
-            .get(&name)
-            .cloned()
     }
 
     fn build_sidebar(&self) {
         let imp = self.imp();
         let this = self.clone();
 
-        imp.sidebar_list_box.connect_row_activated(move |_, _| {
-            this.imp().split_view.set_show_content(true);
-        });
-
-        let this = self.clone();
         imp.sidebar_list_box
-            .connect_row_selected(move |_list_box, row| {
-                let Some(row) = row else {
-                    return;
-                };
-
-                let child = row.child();
-                let row: &SidebarRow = child.and_downcast_ref().unwrap();
-                let containers = this.distrobox_service().containers();
-                let Some(containers) = containers.data() else {
-                    return;
-                };
-                if let Some(container) = containers.get(&row.name()) {
-                    this.build_main_content(&container);
-                }
-
-                this.imp()
-                    .selected_container
-                    .replace(Some(row.name().clone()));
+            .bind_model(Some(&self.app_view_model().containers()), |obj| {
+                let container = obj.downcast_ref().unwrap();
+                SidebarRow::new(container).upcast()
             });
 
+        let this = self.clone();
+        self.app_view_model()
+            .connect_current_sidebar_view_notify(move |_| {
+                this.imp()
+                    .sidebar_stack
+                    .set_visible_child_name(&this.app_view_model().current_sidebar_view());
+            });
+        let this = self.clone();
+        imp.sidebar_list_box.connect_row_activated(move |_, row| {
+            let index = row.index();
+            let item = this.app_view_model().containers().item(index as u32);
+            let selected_container: &Container = item.and_downcast_ref().unwrap();
+            this.app_view_model()
+                .set_selected_container(Some(selected_container.clone()));
+        });
+
         // Add tasks button to the bottom of the sidebar
-        let tasks_button = TasksButton::new();
+        let tasks_button = TasksButton::new(self.app_view_model());
         tasks_button.add_css_class("flat");
-        let this = self.clone();
-        tasks_button.connect_task_clicked(move |_button, task| {
-            this.build_task_dialog(task);
-        });
-        let this = self.clone();
-        tasks_button.connect_clear_tasks_clicked(move |_| {
-            this.distrobox_service().clear_ended_tasks();
-        });
         self.imp()
             .sidebar_bottom_slot
             .set_child(Some(&tasks_button));
 
         let tasks_button_clone = tasks_button.clone();
-        self.distrobox_service()
+        self.app_view_model()
+            .distrobox_service()
             .connect_tasks_changed(move |service| {
                 let tasks = service.tasks();
                 tasks_button_clone.update_tasks(tasks);
             });
-    }
-
-    fn fill_sidebar(&self) {
-        let imp = self.imp();
-
-        let containers = self.distrobox_service().containers();
-        if let Resource::Loaded(containers) = containers {
-            // remove previous rows
-            while let Some(row) = imp.sidebar_list_box.first_child() {
-                imp.sidebar_list_box.remove(&row);
-            }
-
-            // Container list empty
-            if containers.len() == 0 {
-                imp.sidebar_stack.set_visible_child_name("no-distroboxes");
-            } else {
-                // Container list full
-                let mut sorted_containers = containers.iter().collect::<Vec<_>>();
-                sorted_containers.sort_by_key(|x| x.0);
-
-                let selected_container = self.selected_container_name();
-
-                for (name, info) in sorted_containers {
-                    // build the row
-                    let row = gtk::ListBoxRow::new();
-                    let sidebar_row = SidebarRow::new(&info);
-                    row.set_child(Some(&sidebar_row));
-                    imp.sidebar_list_box.append(&row);
-
-                    // select it if it was selected before
-                    if let Some(selected) = &selected_container {
-                        if selected == name {
-                            imp.sidebar_list_box.select_row(Some(&row));
-                        }
-                    }
-                }
-
-                // select the first is nothing was selected
-                if selected_container.is_none() {
-                    if let Some(row) = imp.sidebar_list_box.first_child() {
-                        let row = row.downcast_ref::<gtk::ListBoxRow>();
-                        imp.sidebar_list_box.select_row(row);
-                    }
-                }
-                imp.sidebar_stack.set_visible_child_name("distroboxes");
-            }
-        } else {
-            info!("Loading containers");
-        }
     }
 
     pub fn build_container_header(&self, container: &Container) -> gtk::Box {
@@ -317,8 +272,8 @@ impl DistrohomeWindow {
         header_box.append(&text_box);
 
         if let Some(distro) = container.distro() {
-            header_box.add_css_class(distro.name);
-            icon.set_icon_name(Some(&distro.name));
+            header_box.add_css_class(&distro.name());
+            icon.set_icon_name(Some(&distro.name()));
         }
 
         header_box
@@ -346,10 +301,23 @@ impl DistrohomeWindow {
         let status_row = adw::ActionRow::new();
         status_group.add_css_class("property");
         status_row.set_title("Status");
-        status_row.set_subtitle(&container.status().to_string());
 
         let status_child = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         status_child.set_valign(gtk::Align::Center);
+
+        let stop_btn = gtk::Button::from_icon_name("media-playback-stop-symbolic");
+        stop_btn.set_tooltip_text(Some("Stop"));
+        let container_name = container.name().clone();
+        stop_btn.connect_clicked(clone!(
+            #[weak(rename_to=this)]
+            self,
+            move |_| {
+                this.app_view_model()
+                    .distrobox_service()
+                    .do_stop(&container_name);
+            }
+        ));
+        status_child.append(&stop_btn);
 
         let terminal_btn = gtk::Button::from_icon_name("terminal-symbolic");
         terminal_btn.set_tooltip_text(Some("Open Terminal"));
@@ -359,32 +327,24 @@ impl DistrohomeWindow {
             #[strong]
             container,
             move |_| {
-                this.distrobox_service()
+                this.app_view_model()
+                    .distrobox_service()
                     .do_spawn_terminal(&container.name());
             }
         ));
-
-        if let Status::Up(_) = &container.status() {
-            let stop_btn = gtk::Button::from_icon_name("media-playback-stop-symbolic");
-            stop_btn.set_tooltip_text(Some("Stop"));
-
-            status_child.append(&stop_btn);
-            status_child.append(&terminal_btn);
-
-            let container_name = container.name().clone();
-            stop_btn.connect_clicked(clone!(
-                #[weak(rename_to=this)]
-                self,
-                move |_| {
-                    this.distrobox_service().do_stop(&container_name);
-                }
-            ));
-        } else {
-            status_child.append(&terminal_btn);
-        }
+        status_child.append(&terminal_btn);
 
         status_row.add_suffix(&status_child);
         status_group.add(&status_row);
+
+        reaction! {
+            (container.status_detail(), container.status_tag()),
+            move |(detail, tag): (String, String)| {
+                let text = format!("{tag}: {detail}");
+                status_row.set_subtitle(&text);
+                stop_btn.set_visible(tag == "up");
+            }
+        };
 
         // Quick Actions Group
         let actions_group = adw::PreferencesGroup::new();
@@ -404,20 +364,23 @@ impl DistrohomeWindow {
         );
         actions_group.add(&apps_row);
 
-        if let Some(pm) = container.distro().and_then(|distro| distro.package_manager) {
-            let install_package_row = Self::create_button_row(
-                &format!("Install {} Package", pm.installable_file()),
-                "package-symbolic",
-                "Install packages into container",
-            );
-            actions_group.add(&install_package_row);
-            install_package_row.connect_activated(clone!(
-                #[weak(rename_to = this)]
-                self,
-                move |_| {
-                    this.build_install_package_dialog();
-                }
-            ));
+        if let Some(distro) = container.distro() {
+            let pm = distro.package_manager();
+            if pm != PackageManager::Unknown {
+                let install_package_row = Self::create_button_row(
+                    &format!("Install {} Package", pm.installable_file().unwrap()),
+                    "package-symbolic",
+                    "Install packages into container",
+                );
+                actions_group.add(&install_package_row);
+                install_package_row.connect_activated(clone!(
+                    #[weak(rename_to = this)]
+                    self,
+                    move |_| {
+                        this.build_install_package_dialog();
+                    }
+                ));
+            }
         }
 
         let clone_row = Self::create_button_row(
@@ -451,9 +414,7 @@ impl DistrohomeWindow {
             #[weak(rename_to = this)]
             self,
             move |_| {
-                if let Some(ref name) = this.selected_container_name() {
-                    this.build_upgrade_dialog(name);
-                }
+                this.app_view_model().upgrade_container();
             }
         ));
 
@@ -461,9 +422,7 @@ impl DistrohomeWindow {
             #[weak(rename_to = this)]
             self,
             move |_| {
-                if let Some(name) = this.selected_container_name() {
-                    this.build_exportable_apps_dialog(&name);
-                }
+                this.app_view_model().view_exportable_apps();
             }
         ));
 
@@ -523,23 +482,9 @@ impl DistrohomeWindow {
                     #[weak(rename_to = this)]
                     this,
                     #[weak]
-                    dialog,
-                    #[weak]
                     entry,
                     move |_| {
-                        if let Some(container) = this.selected_container() {
-                            let new_name = entry.text().to_string();
-                            if !new_name.is_empty() {
-                                if matches!(container.status(), Status::Up(_)) {
-                                    this.distrobox_service().do_stop(&container.name());
-                                }
-                                let task = this
-                                    .distrobox_service()
-                                    .do_clone(&container.name(), &new_name);
-                                this.build_task_dialog(&task);
-                                dialog.close();
-                            }
-                        }
+                        this.app_view_model().clone_container(&entry.text());
                     }
                 ));
 
@@ -555,7 +500,9 @@ impl DistrohomeWindow {
                     .heading("Delete this container?")
                     .body(format!(
                         "{} will be deleted.\nThis action cannot be undone.",
-                        this.selected_container_name().unwrap_or_default()
+                        this.app_view_model()
+                            .selected_container_name()
+                            .unwrap_or_default()
                     ))
                     .close_response("cancel")
                     .default_response("cancel")
@@ -570,8 +517,9 @@ impl DistrohomeWindow {
                         #[weak(rename_to = this)]
                         this,
                         move |dialog, _| {
-                            if let Some(ref name) = this.selected_container_name() {
-                                this.distrobox_service().do_delete(name);
+                            if let Some(ref name) = this.app_view_model().selected_container_name()
+                            {
+                                this.app_view_model().distrobox_service().do_delete(name);
                             }
                             dialog.close();
                         }
@@ -590,47 +538,28 @@ impl DistrohomeWindow {
         self.imp().main_slot.set_child(Some(&widget));
     }
 
-    fn build_create_distrobox_dialog(&self) {
-        let dialog = CreateDistroboxDialog::new(self.distrobox_service().clone());
-        let this = self.clone();
-        dialog.connect_create_requested(move |dialog, args| {
-            let task = this.distrobox_service().do_create(args);
-            let create_dialog = this.build_task_dialog(&task);
-            let dialog = dialog.clone();
-            task.connect_status_notify(move |task| {
-                if task.status() == "successful" {
-                    create_dialog.close();
-                    dialog.close();
-                }
-            });
-        });
-        dialog.present(Some(self));
-    }
-
     fn build_install_package_dialog(&self) {
-        if let Some(container) = self.selected_container() {
-            if let Some(_) = container.distro().and_then(|distro| distro.package_manager) {
-                // Show file chooser and install package using the appropriate command
-                let file_dialog = gtk::FileDialog::builder().title("Select Package").build();
+        if let Some(container) = self.app_view_model().selected_container() {
+            // Show file chooser and install package using the appropriate command
+            let file_dialog = gtk::FileDialog::builder().title("Select Package").build();
 
-                file_dialog.open(
-                    Some(self),
-                    None::<&gio::Cancellable>,
-                    clone!(
-                        #[weak(rename_to = this)]
-                        self,
-                        move |res| {
-                            if let Ok(file) = res {
-                                if let Some(path) = file.path() {
-                                    info!(container = %container.name(), path = %path.display(), "Installing package into container");
-                                    this.distrobox_service()
-                                        .do_install(&container.name(), &path);
-                                }
+            file_dialog.open(
+                Some(self),
+                None::<&gio::Cancellable>,
+                clone!(
+                    #[weak(rename_to = this)]
+                    self,
+                    move |res| {
+                        if let Ok(file) = res {
+                            if let Some(path) = file.path() {
+                                info!(container = %container.name(), path = %path.display(), "Installing package into container");
+                                this.app_view_model().distrobox_service()
+                                    .do_install(&container.name(), &path);
                             }
                         }
-                    ),
-                );
-            }
+                    }
+                ),
+            );
         }
     }
 
@@ -747,7 +676,7 @@ impl DistrohomeWindow {
         dialog
     }
 
-    fn build_preferences_dialog(&self) {
+    fn build_preferences_dialog(&self) -> adw::Dialog {
         let dialog = adw::PreferencesDialog::new();
         dialog.set_title("Preferences");
 
@@ -758,21 +687,12 @@ impl DistrohomeWindow {
 
         let terminal_group = adw::PreferencesGroup::new();
         terminal_group.set_title("Terminal Settings");
-        terminal_group.add(&TerminalComboRow::new_with_params(self.distrobox_service()));
+        terminal_group.add(&TerminalComboRow::new_with_params(self.app_view_model()));
         page.add(&terminal_group);
 
         page.add(&preferences_group);
         dialog.add(&page);
-        dialog.present(Some(self));
-    }
-
-    fn build_exportable_apps_dialog(&self, box_name: &str) {
-        ExportableAppsDialog::new(box_name, self.distrobox_service().clone()).present(Some(self));
-    }
-
-    fn build_upgrade_dialog(&self, box_name: &str) {
-        let task = self.distrobox_service().do_upgrade(box_name);
-        self.build_task_dialog(&task);
+        dialog.upcast()
     }
 
     fn create_button_row(title: &str, icon_name: &str, subtitle: &str) -> adw::ActionRow {

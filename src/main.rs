@@ -18,6 +18,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+mod app_view_model;
 mod application;
 mod config;
 mod container;
@@ -28,13 +29,17 @@ mod distrobox;
 mod distrobox_service;
 mod distrobox_task;
 mod exportable_apps_dialog;
+mod exportable_apps_dialog_model;
+mod gtk_utils;
 mod known_distros;
 mod resource;
 mod sidebar_row;
 mod supported_terminals;
+mod tagged_object;
 mod tasks_button;
 mod terminal_combo_row;
 mod welcome_view;
+mod welcome_view_model;
 mod window;
 
 use self::application::DistrohomeApplication;
@@ -45,7 +50,7 @@ use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use tracing::info;
-use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 fn main() -> glib::ExitCode {
     // Initialize tracing
