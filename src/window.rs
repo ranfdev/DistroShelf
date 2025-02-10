@@ -18,7 +18,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-use crate::root_store::RootStore;
 use crate::container::Container;
 use crate::create_distrobox_dialog::CreateDistroboxDialog;
 use crate::distrobox_store::DistroboxStore;
@@ -26,7 +25,9 @@ use crate::distrobox_task::DistroboxTask;
 use crate::exportable_apps_dialog::ExportableAppsDialog;
 use crate::gtk_utils::reaction;
 use crate::known_distros::PackageManager;
+use crate::root_store::RootStore;
 use crate::sidebar_row::SidebarRow;
+use crate::task_manager_dialog::TaskManagerDialog;
 use crate::tasks_button::TasksButton;
 use crate::terminal_combo_row::TerminalComboRow;
 use adw::prelude::*;
@@ -42,7 +43,7 @@ mod imp {
     use gtk::gdk;
 
     use crate::{
-        root_store::RootStore, distrobox_store::DistroboxStore, resource::Resource,
+        distrobox_store::DistroboxStore, resource::Resource, root_store::RootStore,
         tagged_object::TaggedObject,
     };
 
@@ -52,7 +53,7 @@ mod imp {
     #[properties(wrapper_type = super::DistrohomeWindow)]
     #[template(resource = "/com/ranfdev/DistroHome/window.ui")]
     pub struct DistrohomeWindow {
-        #[property(get, set)]
+        #[property(get, set, construct)]
         pub root_store: RefCell<RootStore>,
         #[property(get, set, nullable)]
         pub current_dialog: RefCell<Option<adw::Dialog>>,
@@ -86,9 +87,7 @@ mod imp {
             klass.bind_template();
 
             klass.install_action("win.refresh", None, |win, _action, _target| {
-                win.root_store()
-                    .distrobox_store()
-                    .load_container_infos();
+                win.root_store().distrobox_store().load_container_infos();
             });
             klass.add_binding_action(gdk::Key::F5, gdk::ModifierType::empty(), "win.refresh");
 
@@ -125,7 +124,12 @@ mod imp {
     }
 
     #[derived_properties]
-    impl ObjectImpl for DistrohomeWindow {}
+    impl ObjectImpl for DistrohomeWindow {
+        fn constructed(&self) {
+            self.parent_constructed();
+            dbg!(self.obj().root_store().task_manager_store());
+        }
+    }
     impl WidgetImpl for DistrohomeWindow {}
     impl WindowImpl for DistrohomeWindow {}
     impl ApplicationWindowImpl for DistrohomeWindow {}
@@ -138,11 +142,8 @@ glib::wrapper! {
 }
 
 impl DistrohomeWindow {
-    pub fn new<P: IsA<gtk::Application>>(
-        application: &P,
-        distrobox_store: DistroboxStore,
-        root_store: RootStore,
-    ) -> Self {
+    pub fn new<P: IsA<gtk::Application>>(application: &P, root_store: RootStore) -> Self {
+        dbg!(root_store.task_manager_store());
         let this: Self = glib::Object::builder()
             .property("application", application)
             .property("root-store", root_store)
@@ -161,10 +162,13 @@ impl DistrohomeWindow {
             .connect_current_view_notify(move |root_store| {
                 match root_store.current_view().tag().as_str() {
                     "welcome" => {
-                        this_clone
-                            .imp()
-                            .welcome_view
-                            .set_store(root_store.current_view().object().and_downcast_ref().unwrap());
+                        this_clone.imp().welcome_view.set_store(
+                            root_store
+                                .current_view()
+                                .object()
+                                .and_downcast_ref()
+                                .unwrap(),
+                        );
                     }
                     _ => {}
                 }
@@ -181,19 +185,21 @@ impl DistrohomeWindow {
                 }
                 let dialog: adw::Dialog = match dbg!(root_store.current_dialog().tag().as_str()) {
                     "exportable-apps" => ExportableAppsDialog::new(
-                        root_store.current_dialog().object().and_downcast_ref().unwrap(),
+                        root_store
+                            .current_dialog()
+                            .object()
+                            .and_downcast_ref()
+                            .unwrap(),
                     )
                     .upcast(),
                     "create-distrobox" => {
                         CreateDistroboxDialog::new(this_clone.root_store()).upcast()
                     }
-                    "task" => this_clone.build_task_dialog(
-                        root_store.current_dialog().object().and_downcast_ref().unwrap(),
-                    ),
-                    "preferences" => this_clone.build_preferences_dialog(),
-                    _ => {
-                        return
+                    "task-manager" => {
+                        TaskManagerDialog::new(&root_store.task_manager_store().unwrap()).upcast()
                     }
+                    "preferences" => this_clone.build_preferences_dialog(),
+                    _ => return,
                 };
                 this_clone.set_current_dialog(Some(&dialog));
                 dialog.present(Some(&this_clone));
@@ -229,19 +235,11 @@ impl DistrohomeWindow {
         });
 
         // Add tasks button to the bottom of the sidebar
-        let tasks_button = TasksButton::new(self.root_store());
+        let tasks_button = TasksButton::new(&self.root_store());
         tasks_button.add_css_class("flat");
         self.imp()
             .sidebar_bottom_slot
             .set_child(Some(&tasks_button));
-
-        let tasks_button_clone = tasks_button.clone();
-        self.root_store()
-            .distrobox_store()
-            .connect_tasks_changed(move |store| {
-                let tasks = store.tasks();
-                tasks_button_clone.update_tasks(tasks);
-            });
     }
 
     pub fn build_container_header(&self, container: &Container) -> gtk::Box {
@@ -312,9 +310,7 @@ impl DistrohomeWindow {
             #[weak(rename_to=this)]
             self,
             move |_| {
-                this.root_store()
-                    .distrobox_store()
-                    .do_stop(&container_name);
+                this.root_store().distrobox_store().do_stop(&container_name);
             }
         ));
         status_child.append(&stop_btn);
@@ -517,8 +513,7 @@ impl DistrohomeWindow {
                         #[weak(rename_to = this)]
                         this,
                         move |dialog, _| {
-                            if let Some(ref name) = this.root_store().selected_container_name()
-                            {
+                            if let Some(ref name) = this.root_store().selected_container_name() {
                                 this.root_store().distrobox_store().do_delete(name);
                             }
                             dialog.close();
@@ -561,119 +556,6 @@ impl DistrohomeWindow {
                 ),
             );
         }
-    }
-
-    fn build_task_dialog(&self, task: &DistroboxTask) -> adw::Dialog {
-        let dialog = adw::Dialog::new();
-        dialog.set_title(&format!("{}: {}", task.target(), task.name()));
-        dialog.set_content_width(360);
-
-        let toolbar_view = adw::ToolbarView::new();
-        toolbar_view.add_top_bar(
-            &adw::HeaderBar::builder()
-                .show_start_title_buttons(false)
-                .show_end_title_buttons(false)
-                .build(),
-        );
-
-        let content = gtk::Box::new(gtk::Orientation::Vertical, 6);
-        content.set_margin_start(12);
-        content.set_margin_end(12);
-        content.set_margin_bottom(12);
-
-        let status_label = gtk::Label::new(Some(&format!("Status: {}", task.status())));
-        status_label.set_xalign(0.0);
-        content.append(&status_label);
-
-        let description = task.description();
-        if !description.is_empty() {
-            let label = gtk::Label::new(Some(&description));
-            label.set_xalign(0.0);
-            label.set_wrap(true);
-            content.append(&label);
-        }
-
-        task.connect_status_notify(clone!(
-            #[weak]
-            status_label,
-            move |task| {
-                status_label.set_text(&format!("Status: {}", task.status()));
-            }
-        ));
-
-        if task.is_failed() {
-            if let Some(error) = task.take_error() {
-                tracing::error!(task = %task.name(), "Task failed: {}", error);
-                let error_label = gtk::Label::new(Some(&format!("Error: {}", error)));
-                error_label.set_xalign(0.0);
-                content.append(&error_label);
-            }
-        }
-
-        let text_view = gtk::TextView::builder()
-            .buffer(&task.output())
-            .editable(false)
-            .cursor_visible(false)
-            .wrap_mode(gtk::WrapMode::Word)
-            .css_classes(vec!["output".to_string()])
-            .top_margin(12)
-            .bottom_margin(12)
-            .left_margin(12)
-            .right_margin(12)
-            .build();
-
-        let scrolled_window = gtk::ScrolledWindow::builder()
-            .child(&text_view)
-            .propagate_natural_height(true)
-            .height_request(300)
-            .vexpand(true)
-            .build();
-        content.append(&scrolled_window);
-
-        let button_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-        button_row.set_hexpand(true);
-        button_row.set_homogeneous(true);
-        let close_btn = gtk::Button::with_label("Hide");
-        close_btn.connect_clicked(clone!(
-            #[weak]
-            dialog,
-            move |_| {
-                dialog.close();
-            }
-        ));
-        close_btn.add_css_class("pill");
-
-        let stop_btn = gtk::Button::with_label("Stop");
-        stop_btn.connect_clicked(clone!(
-            #[weak]
-            task,
-            move |_| {
-                tracing::warn!(task_id = %task.name(), "Stop requested but not implemented yet");
-                // TODO: implement this
-                // task.stop();
-            }
-        ));
-        stop_btn.add_css_class("destructive-action");
-        stop_btn.add_css_class("pill");
-        stop_btn.set_sensitive(!task.ended());
-        task.connect_status_notify(clone!(
-            #[weak]
-            stop_btn,
-            move |task| {
-                stop_btn.set_sensitive(!task.ended());
-            }
-        ));
-
-        button_row.append(&close_btn);
-        button_row.append(&stop_btn);
-        content.append(&button_row);
-
-        toolbar_view.set_content(Some(&content));
-
-        dialog.set_child(Some(&toolbar_view));
-
-        dialog.present(Some(self));
-        dialog
     }
 
     fn build_preferences_dialog(&self) -> adw::Dialog {

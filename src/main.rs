@@ -29,16 +29,20 @@ mod distrobox_task;
 mod exportable_apps_dialog;
 mod gtk_utils;
 mod known_distros;
+mod remote_resource;
 mod resource;
 mod sidebar_row;
+mod store;
 mod supported_terminals;
 mod tagged_object;
+mod task_manager_dialog;
 mod tasks_button;
 mod terminal_combo_row;
 mod welcome_view;
 mod window;
-mod store;
-pub use store::{root_store, welcome_view_store, distrobox_store, exportable_apps_store};
+pub use store::{
+    distrobox_store, exportable_apps_store, root_store, task_manager_store, welcome_view_store,
+};
 
 use self::application::DistrohomeApplication;
 use window::DistrohomeWindow;

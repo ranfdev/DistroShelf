@@ -4,10 +4,10 @@ use gtk::glib::SignalHandlerId;
 use gtk::{gio, glib};
 use tracing::info;
 
-use crate::root_store::{self, RootStore};
 use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
 use crate::distrobox_store::DistroboxStore;
 use crate::resource::{Resource, SharedResource};
+use crate::root_store::{self, RootStore};
 
 use glib::subclass::Signal;
 use std::{cell::RefCell, rc::Rc};
@@ -228,7 +228,10 @@ mod imp {
                                     if let Some(path) = file.path() {
                                         file_row.set_subtitle(&path.display().to_string());
 
-                                        let task = obj.root_store().distrobox_store().do_assemble(&path.to_string_lossy());
+                                        let task = obj
+                                            .root_store()
+                                            .distrobox_store()
+                                            .do_assemble(&path.to_string_lossy());
                                         let dialog = obj.clone();
                                         task.connect_status_notify(clone!(
                                             #[weak]
@@ -279,7 +282,10 @@ mod imp {
                 file_row,
                 move |_| {
                     if let Some(path) = file_row.subtitle() {
-                        let task = obj.root_store().distrobox_store().do_assemble(&path.to_string());
+                        let task = obj
+                            .root_store()
+                            .distrobox_store()
+                            .do_assemble(&path.to_string());
                         let dialog = obj.clone();
                         task.connect_status_notify(clone!(
                             #[weak]
@@ -403,21 +409,23 @@ impl CreateDistroboxDialog {
             .property("root-store", root_store)
             .build();
 
-        this.root_store().distrobox_store().connect_images_changed(clone!(
-            #[weak]
-            this,
-            move |store| {
-                let string_list = gtk::StringList::new(&[]);
-                if let Resource::Loaded(images) = store.images() {
-                    for image in images {
-                        string_list.append(&image);
+        this.root_store()
+            .distrobox_store()
+            .connect_images_changed(clone!(
+                #[weak]
+                this,
+                move |store| {
+                    let string_list = gtk::StringList::new(&[]);
+                    if let Resource::Loaded(images) = store.images() {
+                        for image in images {
+                            string_list.append(&image);
+                        }
+                    } else {
+                        info!("Loading images");
                     }
-                } else {
-                    info!("Loading images");
+                    this.imp().image_row.set_model(Some(&string_list));
                 }
-                this.imp().image_row.set_model(Some(&string_list));
-            }
-        ));
+            ));
         this.root_store().distrobox_store().load_images();
 
         this

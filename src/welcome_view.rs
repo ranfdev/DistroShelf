@@ -10,7 +10,7 @@ use std::sync::OnceLock;
 
 mod imp {
     use crate::{
-        root_store::RootStore, distrobox_store::DistroboxStore, gtk_utils::reaction,
+        distrobox_store::DistroboxStore, gtk_utils::reaction, root_store::RootStore,
         terminal_combo_row::TerminalComboRow, welcome_view_store::WelcomeViewStore,
     };
 
@@ -42,12 +42,10 @@ mod imp {
                         .imp()
                         .carousel
                         .scroll_to(&*obj.imp().terminal_preferences_page, true),
-                    "distrobox" => {
-obj
+                    "distrobox" => obj
                         .imp()
                         .carousel
-                        .scroll_to(&*obj.imp().distrobox_page, true)
-                    },
+                        .scroll_to(&*obj.imp().distrobox_page, true),
                     _ => {}
                 }
             });

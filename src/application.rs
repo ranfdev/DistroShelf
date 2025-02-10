@@ -26,6 +26,7 @@ use gtk::{gio, glib};
 use crate::config::VERSION;
 use crate::distrobox::DistroboxCommandRunnerResponse;
 use crate::distrobox_store::DistroboxStore;
+use crate::root_store::RootStore;
 use crate::DistrohomeWindow;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
@@ -44,7 +45,7 @@ mod imp {
     use glib::Properties;
     use gtk::gdk;
 
-    use crate::{root_store::RootStore, known_distros};
+    use crate::{known_distros, root_store::RootStore};
 
     use super::*;
 
@@ -195,12 +196,9 @@ impl DistrohomeApplication {
             _ => DistroboxStore::new(),
         };
 
-        self.root_store().bind_distrobox_store(&distrobox_store);
-        let window = DistrohomeWindow::new(
-            self.upcast_ref::<adw::Application>(),
-            distrobox_store,
-            self.root_store(),
-        );
+        self.set_root_store(RootStore::new(&distrobox_store));
+        let window =
+            DistrohomeWindow::new(self.upcast_ref::<adw::Application>(), self.root_store());
         window.upcast()
     }
 

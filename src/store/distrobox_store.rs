@@ -40,7 +40,8 @@ mod imp {
     pub struct DistroboxStore {
         pub distrobox: OnceLock<Distrobox>,
         pub containers: RefCell<Resource<im::HashMap<String, Container>, anyhow::Error>>,
-        pub tasks: RefCell<Vector<DistroboxTask>>,
+        #[property(get, set)]
+        pub tasks: RefCell<gio::ListStore>,
         pub images: RefCell<Resource<Vector<String>, anyhow::Error>>,
         pub settings: gio::Settings,
         pub version: RefCell<Resource<String, anyhow::Error>>,
@@ -51,7 +52,7 @@ mod imp {
             Self {
                 distrobox: Default::default(),
                 containers: Default::default(),
-                tasks: Default::default(),
+                tasks: RefCell::new(gio::ListStore::new::<DistroboxTask>()),
                 images: Default::default(),
                 settings: gio::Settings::new("com.ranfdev.DistroHome"),
                 version: Default::default(),
@@ -190,8 +191,7 @@ impl DistroboxStore {
             result
         });
 
-        self.imp().tasks.borrow_mut().push_back(task.clone());
-        self.emit_by_name::<()>("tasks-changed", &[]);
+        self.tasks().append(&task);
         task
     }
 
@@ -416,9 +416,6 @@ impl DistroboxStore {
         Ok(())
     }
 
-    pub fn tasks(&self) -> Vector<DistroboxTask> {
-        self.imp().tasks.borrow().clone()
-    }
     pub fn images(&self) -> Resource<Vector<String>, anyhow::Error> {
         self.imp().images.borrow().clone()
     }
@@ -491,7 +488,16 @@ impl DistroboxStore {
     }
 
     pub fn clear_ended_tasks(&self) {
-        self.imp().tasks.borrow_mut().retain(|task| !task.ended());
+        let tasks = self.tasks();
+        let n_items = tasks.n_items();
+        for i in (0..n_items).rev() {
+            if let Some(task) = tasks.item(i) {
+                let task = task.downcast::<DistroboxTask>().unwrap();
+                if task.ended() {
+                    tasks.remove(i);
+                }
+            }
+        }
         self.emit_by_name::<()>("tasks-changed", &[]);
     }
 

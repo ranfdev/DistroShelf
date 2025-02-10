@@ -7,11 +7,11 @@ use gtk::{gio, glib};
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
-use crate::root_store;
-use crate::root_store::RootStore;
 use crate::container::Container;
 use crate::distrobox::ExportableApp;
 use crate::distrobox_store::DistroboxStore;
+use crate::root_store;
+use crate::root_store::RootStore;
 use crate::tagged_object::TaggedObject;
 
 mod imp {

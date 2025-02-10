@@ -3,8 +3,7 @@
 
 use crate::root_store::{self, RootStore};
 use crate::{
-    distrobox_store::DistroboxStore, supported_terminals,
-    supported_terminals::SUPPORTED_TERMINALS,
+    distrobox_store::DistroboxStore, supported_terminals, supported_terminals::SUPPORTED_TERMINALS,
 };
 use adw::prelude::*;
 use adw::subclass::prelude::*;

@@ -14,13 +14,16 @@ use crate::container::Container;
 use crate::distrobox::CreateArgs;
 use crate::distrobox_store::DistroboxStore;
 use crate::distrobox_task::DistroboxTask;
+use crate::exportable_apps_store::ExportableAppsStore;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::tagged_object::TaggedObject;
 use crate::welcome_view_store::WelcomeViewStore;
-use crate::exportable_apps_store::ExportableAppsStore;
+
+use super::distrobox_store;
+use super::task_manager_store;
+use super::task_manager_store::TaskManagerStore;
 
 mod imp {
-
     use super::*;
 
     #[derive(Properties)]
@@ -38,6 +41,8 @@ mod imp {
         current_view: RefCell<TaggedObject>,
         #[property(get, set)]
         current_dialog: RefCell<TaggedObject>,
+        #[property(get, set, nullable)]
+        task_manager_store: RefCell<Option<TaskManagerStore>>,
     }
 
     impl Default for RootStore {
@@ -49,6 +54,7 @@ mod imp {
                 current_view: Default::default(),
                 current_sidebar_view: Default::default(),
                 current_dialog: Default::default(),
+                task_manager_store: Default::default(),
             }
         }
     }
@@ -67,31 +73,35 @@ glib::wrapper! {
     pub struct RootStore(ObjectSubclass<imp::RootStore>);
 }
 impl RootStore {
-    pub fn new() -> Self {
-        glib::Object::builder().build()
-    }
-    pub fn bind_distrobox_store(self, store: &DistroboxStore) {
-        let this = self.clone();
-        self.set_distrobox_store(store);
+    pub fn new(distrobox_store: &DistroboxStore) -> Self {
+        let this: Self = glib::Object::builder()
+            .property("distrobox-store", distrobox_store)
+            .build();
+        this.set_task_manager_store(Some(&TaskManagerStore::new(&this)));
 
-        store.connect_version_changed(move |store| {
+        let this_clone = this.clone();
+        distrobox_store.connect_version_changed(move |store| {
             if store.version().is_error() {
-                this.set_current_view(&TaggedObject::with_object("welcome", &WelcomeViewStore::new(&this)));
+                this_clone.set_current_view(&TaggedObject::with_object(
+                    "welcome",
+                    &WelcomeViewStore::new(&this_clone),
+                ));
             }
         });
-        let this = self.clone();
-        store.connect_containers_changed(move |store| {
+        let this_clone = this.clone();
+        distrobox_store.connect_containers_changed(move |store| {
             if let Some(data) = store.containers().data() {
                 let values: Vec<_> = data.values().cloned().collect();
-                reconcile_list_by_key(this.containers(), &values[..], |item| item.name());
+                reconcile_list_by_key(this_clone.containers(), &values[..], |item| item.name());
                 if values.len() == 0 {
-                    this.set_current_sidebar_view("no-distroboxes");
+                    this_clone.set_current_sidebar_view("no-distroboxes");
                 } else {
-                    this.set_current_sidebar_view("distroboxes");
+                    this_clone.set_current_sidebar_view("distroboxes");
                 }
             }
         });
-        store.load_container_infos();
+        distrobox_store.load_container_infos();
+        this
     }
 
     pub fn selected_container_name(&self) -> Option<String> {
@@ -99,7 +109,8 @@ impl RootStore {
     }
 
     pub fn upgrade_container(&self) {
-        let task = self.distrobox_store()
+        let task = self
+            .distrobox_store()
             .do_upgrade(&self.selected_container_name().unwrap());
         self.view_task(&task);
     }
@@ -117,14 +128,22 @@ impl RootStore {
         }
     }
     pub fn view_task(&self, task: &DistroboxTask) {
-                self.set_current_dialog(TaggedObject::with_object("task", task));
+        let task_manager_store = self.task_manager_store().unwrap();
+        task_manager_store.select(task);
+        self.set_current_dialog(TaggedObject::with_object(
+            "task-manager",
+            &task_manager_store,
+        ));
     }
     pub fn view_exportable_apps(&self) {
         let this = self.clone();
         let exportable_apps_store = ExportableAppsStore::new();
         exportable_apps_store.set_distrobox_store(self.distrobox_store());
         exportable_apps_store.set_container(this.selected_container().unwrap());
-        this.set_current_dialog(TaggedObject::with_object("exportable-apps", &exportable_apps_store));
+        this.set_current_dialog(TaggedObject::with_object(
+            "exportable-apps",
+            &exportable_apps_store,
+        ));
 
         exportable_apps_store.reload_apps();
     }
@@ -136,6 +155,6 @@ impl RootStore {
 
 impl Default for RootStore {
     fn default() -> Self {
-        Self::new()
+        glib::Object::builder().build()
     }
 }
