@@ -1,12 +1,16 @@
 // You can copy/paste this file every time you need a simple GObject
 // to hold some data
 
-use glib::prelude::*;
+use futures::{io::BufReader, AsyncBufReadExt, StreamExt};
 use glib::subclass::prelude::*;
 use glib::Properties;
 use gtk::glib;
+use gtk::prelude::*;
 use std::cell::RefCell;
 use std::future::Future;
+use tracing::{debug, error, info, warn};
+
+use crate::distrobox::Child;
 
 mod imp {
     use super::*;
@@ -63,6 +67,36 @@ impl DistroboxTask {
             }
         });
         this
+    }
+
+    pub async fn handle_child_output(
+        &self,
+        mut child: Box<dyn Child + Send>,
+    ) -> Result<(), anyhow::Error> {
+        debug!("Handling child process output");
+        let stdout = child.take_stdout().unwrap();
+        let bufread = BufReader::new(stdout);
+        let mut lines = bufread.lines();
+        while let Some(line) = lines.next().await {
+            let line = line?;
+            self.output().insert(&mut self.output().end_iter(), &line);
+            self.output().insert(&mut self.output().end_iter(), "\n");
+        }
+
+        match child.wait().await {
+            Ok(e) if e.success() => {
+                info!(exit_code = ?e.code(), "Child process exited successfully");
+            }
+            Ok(e) => {
+                warn!(exit_code = ?e.code(), "Child process exited with error");
+                anyhow::bail!("Status: {:?}", e.code());
+            }
+            Err(e) => {
+                error!(error = %e, "Child process failed");
+                return Err(e.into());
+            }
+        }
+        Ok(())
     }
     pub fn set_status_executing(&self) {
         self.imp().status.replace("executing".to_string());

@@ -20,33 +20,25 @@
 
 use crate::container::Container;
 use crate::create_distrobox_dialog::CreateDistroboxDialog;
-use crate::distrobox_store::DistroboxStore;
-use crate::distrobox_task::DistroboxTask;
 use crate::exportable_apps_dialog::ExportableAppsDialog;
 use crate::gtk_utils::reaction;
 use crate::known_distros::PackageManager;
 use crate::root_store::RootStore;
 use crate::sidebar_row::SidebarRow;
+use crate::tagged_object::TaggedObject;
 use crate::task_manager_dialog::TaskManagerDialog;
 use crate::tasks_button::TasksButton;
 use crate::terminal_combo_row::TerminalComboRow;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use glib::{derived_properties, Properties};
+use gtk::gdk;
 use gtk::glib::clone;
 use gtk::{gio, glib, pango};
+use std::cell::RefCell;
 use tracing::info;
 
 mod imp {
-    use std::cell::RefCell;
-
-    use glib::{derived_properties, Properties};
-    use gtk::gdk;
-
-    use crate::{
-        distrobox_store::DistroboxStore, resource::Resource, root_store::RootStore,
-        tagged_object::TaggedObject,
-    };
-
     use super::*;
 
     #[derive(Default, gtk::CompositeTemplate, Properties)]
@@ -87,12 +79,12 @@ mod imp {
             klass.bind_template();
 
             klass.install_action("win.refresh", None, |win, _action, _target| {
-                win.root_store().distrobox_store().load_container_infos();
+                win.root_store().load_containers();
             });
             klass.add_binding_action(gdk::Key::F5, gdk::ModifierType::empty(), "win.refresh");
 
             klass.install_action("win.upgrade-all", None, |win, _action, _target| {
-                win.root_store().distrobox_store().do_upgrade_all();
+                win.root_store().upgrade_all();
             });
 
             klass.install_action("win.preferences", None, |win, _action, _target| {
@@ -124,12 +116,7 @@ mod imp {
     }
 
     #[derived_properties]
-    impl ObjectImpl for DistrohomeWindow {
-        fn constructed(&self) {
-            self.parent_constructed();
-            dbg!(self.obj().root_store().task_manager_store());
-        }
-    }
+    impl ObjectImpl for DistrohomeWindow {}
     impl WidgetImpl for DistrohomeWindow {}
     impl WindowImpl for DistrohomeWindow {}
     impl ApplicationWindowImpl for DistrohomeWindow {}
@@ -143,7 +130,6 @@ glib::wrapper! {
 
 impl DistrohomeWindow {
     pub fn new<P: IsA<gtk::Application>>(application: &P, root_store: RootStore) -> Self {
-        dbg!(root_store.task_manager_store());
         let this: Self = glib::Object::builder()
             .property("application", application)
             .property("root-store", root_store)
@@ -160,18 +146,6 @@ impl DistrohomeWindow {
         let this_clone = this.clone();
         this.root_store()
             .connect_current_view_notify(move |root_store| {
-                match root_store.current_view().tag().as_str() {
-                    "welcome" => {
-                        this_clone.imp().welcome_view.set_store(
-                            root_store
-                                .current_view()
-                                .object()
-                                .and_downcast_ref()
-                                .unwrap(),
-                        );
-                    }
-                    _ => {}
-                }
                 this_clone
                     .imp()
                     .main_stack
@@ -185,19 +159,13 @@ impl DistrohomeWindow {
                 }
                 let dialog: adw::Dialog = match dbg!(root_store.current_dialog().tag().as_str()) {
                     "exportable-apps" => ExportableAppsDialog::new(
-                        root_store
-                            .current_dialog()
-                            .object()
-                            .and_downcast_ref()
-                            .unwrap(),
+                        &this_clone.root_store().selected_container().unwrap(),
                     )
                     .upcast(),
                     "create-distrobox" => {
                         CreateDistroboxDialog::new(this_clone.root_store()).upcast()
                     }
-                    "task-manager" => {
-                        TaskManagerDialog::new(&root_store.task_manager_store().unwrap()).upcast()
-                    }
+                    "task-manager" => TaskManagerDialog::new(&root_store).upcast(),
                     "preferences" => this_clone.build_preferences_dialog(),
                     _ => return,
                 };
@@ -205,6 +173,7 @@ impl DistrohomeWindow {
                 dialog.present(Some(&this_clone));
             });
         this.build_sidebar();
+        this.root_store().load_containers();
         this
     }
 
@@ -219,12 +188,18 @@ impl DistrohomeWindow {
             });
 
         let this = self.clone();
-        self.root_store()
-            .connect_current_sidebar_view_notify(move |_| {
+        self.root_store().containers().connect_items_changed(
+            move |list, position, removed, added| {
+                let visible_child_name = if list.n_items() == 0 {
+                    "no-distroboxes"
+                } else {
+                    "distroboxes"
+                };
                 this.imp()
                     .sidebar_stack
-                    .set_visible_child_name(&this.root_store().current_sidebar_view());
-            });
+                    .set_visible_child_name(&visible_child_name);
+            },
+        );
         let this = self.clone();
         imp.sidebar_list_box.connect_row_activated(move |_, row| {
             let index = row.index();
@@ -305,12 +280,11 @@ impl DistrohomeWindow {
 
         let stop_btn = gtk::Button::from_icon_name("media-playback-stop-symbolic");
         stop_btn.set_tooltip_text(Some("Stop"));
-        let container_name = container.name().clone();
         stop_btn.connect_clicked(clone!(
             #[weak(rename_to=this)]
             self,
             move |_| {
-                this.root_store().distrobox_store().do_stop(&container_name);
+                this.root_store().selected_container().unwrap().stop();
             }
         ));
         status_child.append(&stop_btn);
@@ -320,12 +294,11 @@ impl DistrohomeWindow {
         terminal_btn.connect_clicked(clone!(
             #[weak(rename_to = this)]
             self,
-            #[strong]
-            container,
             move |_| {
                 this.root_store()
-                    .distrobox_store()
-                    .do_spawn_terminal(&container.name());
+                    .selected_container()
+                    .unwrap()
+                    .spawn_terminal();
             }
         ));
         status_child.append(&terminal_btn);
@@ -410,7 +383,7 @@ impl DistrohomeWindow {
             #[weak(rename_to = this)]
             self,
             move |_| {
-                this.root_store().upgrade_container();
+                this.root_store().selected_container().unwrap().upgrade();
             }
         ));
 
@@ -480,7 +453,10 @@ impl DistrohomeWindow {
                     #[weak]
                     entry,
                     move |_| {
-                        this.root_store().clone_container(&entry.text());
+                        this.root_store()
+                            .selected_container()
+                            .unwrap()
+                            .clone_to(&entry.text());
                     }
                 ));
 
@@ -513,9 +489,7 @@ impl DistrohomeWindow {
                         #[weak(rename_to = this)]
                         this,
                         move |dialog, _| {
-                            if let Some(ref name) = this.root_store().selected_container_name() {
-                                this.root_store().distrobox_store().do_delete(name);
-                            }
+                            this.root_store().selected_container().unwrap().delete();
                             dialog.close();
                         }
                     ),
@@ -548,8 +522,8 @@ impl DistrohomeWindow {
                         if let Ok(file) = res {
                             if let Some(path) = file.path() {
                                 info!(container = %container.name(), path = %path.display(), "Installing package into container");
-                                this.root_store().distrobox_store()
-                                    .do_install(&container.name(), &path);
+                                this.root_store().selected_container().unwrap()
+                                    .install(&path);
                             }
                         }
                     }

@@ -137,6 +137,11 @@
             <property name="name">welcome</property>
             <property name="child">
               <object class="WelcomeView" id="welcome_view">
+                <binding name="root-store">
+                  <lookup name="root-store">
+                    DistrohomeWindow
+                  </lookup>
+                </binding>
               </object>
             </property>
           </object>

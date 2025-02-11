@@ -1,29 +1,18 @@
-use crate::{
-    distrobox_task::DistroboxTask,
-    root_store::{self, RootStore},
-    task_manager_dialog::TaskManagerDialog,
-    task_manager_store::TaskManagerStore,
-};
+use crate::tagged_object::TaggedObject;
+use crate::{distrobox_task::DistroboxTask, root_store::RootStore};
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use gtk::glib::{derived_properties, Properties};
 use gtk::{
     self,
-    glib::{self, clone},
-    pango,
+    glib::{self},
 };
-use im_rc::Vector;
+use std::cell::RefCell;
 use std::sync::OnceLock;
 
+use glib::clone;
+
 mod imp {
-    use std::cell::{Cell, RefCell};
-
-    use glib::clone;
-    use gtk::glib::{derived_properties, Properties};
-
-    use crate::{
-        gtk_utils::reaction, root_store::RootStore, tagged_object::TaggedObject,
-        task_manager_store::TaskManagerStore,
-    };
 
     use super::*;
 
@@ -63,14 +52,6 @@ mod imp {
             warning_icon.set_icon_name(Some("dialog-warning-symbolic"));
             warning_icon.set_visible(false);
 
-            // Bind the warning icon's visibility to the store's "has-warning" property.
-            obj.root_store()
-                .task_manager_store()
-                .unwrap()
-                .bind_property("has-warning", warning_icon, "visible")
-                .sync_create()
-                .build();
-
             hbox.append(&label);
             hbox.append(warning_icon);
             self.button.set_child(Some(&hbox));
@@ -81,14 +62,42 @@ mod imp {
                 obj,
                 move |_| {
                     this.root_store()
-                        .set_current_dialog(TaggedObject::with_object(
-                            "task-manager",
-                            &this.root_store().task_manager_store().unwrap(),
-                        ));
+                        .set_current_dialog(TaggedObject::new("task-manager"));
                 }
             ));
 
             obj.set_child(Some(&self.button));
+
+            let this_clone = obj.clone();
+            obj.root_store().tasks().connect_items_changed(
+                move |tasks, position, removed, added| {
+                    // Show warning if a task already failed
+                    // This loop will reset the previous warning flag if there is no failed task
+                    let mut has_warning = false;
+                    for i in 0..tasks.n_items() {
+                        let item = tasks.item(i);
+                        let item: &DistroboxTask = item.and_downcast_ref().unwrap();
+                        if item.is_failed() {
+                            has_warning = true;
+                            break;
+                        }
+                    }
+                    this_clone.imp().warning_icon.set_visible(has_warning);
+
+                    // Listen when a new task will fail
+                    for i in position..position + added {
+                        dbg!(i);
+                        let item = tasks.item(i);
+                        let item: &DistroboxTask = item.and_downcast_ref().unwrap();
+                        let this_clone = this_clone.clone();
+                        item.connect_status_notify(move |item| {
+                            if item.is_failed() {
+                                this_clone.imp().warning_icon.set_visible(true);
+                            }
+                        });
+                    }
+                },
+            );
         }
     }
 

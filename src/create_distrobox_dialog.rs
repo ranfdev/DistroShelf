@@ -1,28 +1,19 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::glib::SignalHandlerId;
 use gtk::{gio, glib};
-use tracing::info;
+use im_rc::Vector;
 
 use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
-use crate::distrobox_store::DistroboxStore;
-use crate::resource::{Resource, SharedResource};
-use crate::root_store::{self, RootStore};
+use crate::resource::SharedResource;
+use crate::root_store::RootStore;
 
-use glib::subclass::Signal;
 use std::{cell::RefCell, rc::Rc};
 
+use crate::distro_combo_row_item;
 use glib::clone;
-use std::sync::OnceLock;
+use gtk::glib::{derived_properties, Properties};
 
 mod imp {
-
-    use std::cell::OnceCell;
-
-    use gtk::glib::{derived_properties, Properties};
-
-    use crate::distro_combo_row_item;
-
     use super::*;
 
     #[derive(Default, Properties)]
@@ -228,20 +219,9 @@ mod imp {
                                     if let Some(path) = file.path() {
                                         file_row.set_subtitle(&path.display().to_string());
 
-                                        let task = obj
-                                            .root_store()
-                                            .distrobox_store()
-                                            .do_assemble(&path.to_string_lossy());
-                                        let dialog = obj.clone();
-                                        task.connect_status_notify(clone!(
-                                            #[weak]
-                                            dialog,
-                                            move |task| {
-                                                if task.status() == "successful" {
-                                                    dialog.close();
-                                                }
-                                            }
-                                        ));
+                                        obj.root_store()
+                                            .assemble_container(&path.to_string_lossy());
+                                        obj.close();
                                     }
                                 }
                             }
@@ -282,20 +262,8 @@ mod imp {
                 file_row,
                 move |_| {
                     if let Some(path) = file_row.subtitle() {
-                        let task = obj
-                            .root_store()
-                            .distrobox_store()
-                            .do_assemble(&path.to_string());
-                        let dialog = obj.clone();
-                        task.connect_status_notify(clone!(
-                            #[weak]
-                            dialog,
-                            move |task| {
-                                if task.status() == "successful" {
-                                    dialog.close();
-                                }
-                            }
-                        ));
+                        obj.root_store().assemble_container(&path.to_string());
+                        obj.close();
                     }
                 }
             ));
@@ -346,17 +314,8 @@ mod imp {
                 url_row,
                 move |_| {
                     let url = url_row.text();
-                    let task = obj.root_store().distrobox_store().do_assemble(&url);
-                    let dialog = obj.clone();
-                    task.connect_status_notify(clone!(
-                        #[weak]
-                        dialog,
-                        move |task| {
-                            if task.status() == "successful" {
-                                dialog.close();
-                            }
-                        }
-                    ));
+                    let task = obj.root_store().assemble_container(&url);
+                    obj.close();
                 }
             ));
 
@@ -409,24 +368,20 @@ impl CreateDistroboxDialog {
             .property("root-store", root_store)
             .build();
 
-        this.root_store()
-            .distrobox_store()
-            .connect_images_changed(clone!(
-                #[weak]
-                this,
-                move |store| {
-                    let string_list = gtk::StringList::new(&[]);
-                    if let Resource::Loaded(images) = store.images() {
-                        for image in images {
-                            string_list.append(&image);
-                        }
-                    } else {
-                        info!("Loading images");
+        this.root_store().images().connect_data_changed(clone!(
+            #[weak]
+            this,
+            move |resource| {
+                let string_list = gtk::StringList::new(&[]);
+                if let Some(images) = resource.data::<Vector<String>>() {
+                    for image in images {
+                        string_list.append(&image);
                     }
-                    this.imp().image_row.set_model(Some(&string_list));
                 }
-            ));
-        this.root_store().distrobox_store().load_images();
+                this.imp().image_row.set_model(Some(&string_list));
+            }
+        ));
+        this.root_store().images().reload();
 
         this
     }

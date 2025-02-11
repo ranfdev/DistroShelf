@@ -2,16 +2,13 @@
 // This file is licensed under the same terms as the project it belongs to
 
 use adw::subclass::prelude::*;
-use glib::subclass::Signal;
 use glib::Properties;
 use gtk::{glib, prelude::*};
 use std::cell::RefCell;
-use std::sync::OnceLock;
 
 mod imp {
     use crate::{
-        distrobox_store::DistroboxStore, gtk_utils::reaction, root_store::RootStore,
-        terminal_combo_row::TerminalComboRow, welcome_view_store::WelcomeViewStore,
+        root_store::RootStore, tagged_object::TaggedObject, terminal_combo_row::TerminalComboRow,
     };
 
     use super::*;
@@ -20,8 +17,13 @@ mod imp {
     #[properties(wrapper_type = super::WelcomeView)]
     #[template(file = "welcome_view.ui")]
     pub struct WelcomeView {
-        #[property(get, set=Self::set_store)]
-        store: RefCell<WelcomeViewStore>,
+        #[property(get, set)]
+        root_store: RefCell<RootStore>,
+
+        #[property(get, set, nullable)]
+        distrobox_error: RefCell<Option<String>>,
+        #[property(get, set, nullable)]
+        terminal_error: RefCell<Option<String>>,
 
         #[template_child]
         carousel: TemplateChild<adw::Carousel>,
@@ -31,26 +33,6 @@ mod imp {
         distrobox_page: TemplateChild<adw::Clamp>,
         #[template_child]
         terminal_combo_row: TemplateChild<TerminalComboRow>,
-    }
-
-    impl WelcomeView {
-        pub fn set_store(&self, store: &WelcomeViewStore) {
-            let obj = self.obj().to_owned();
-            reaction!(store.current_page(), move |page: String| {
-                match page.as_str() {
-                    "terminal" => obj
-                        .imp()
-                        .carousel
-                        .scroll_to(&*obj.imp().terminal_preferences_page, true),
-                    "distrobox" => obj
-                        .imp()
-                        .carousel
-                        .scroll_to(&*obj.imp().distrobox_page, true),
-                    _ => {}
-                }
-            });
-            self.store.replace(store.clone());
-        }
     }
 
     #[glib::derived_properties]
@@ -80,11 +62,29 @@ mod imp {
         #[template_callback]
         fn continue_to_terminal_page(&self, _: &gtk::Button) {
             let obj = self.obj();
-            obj.store().continue_to_terminal_page();
+            if let Some(e) = obj.root_store().distrobox_version().error() {
+                obj.set_distrobox_error(Some(e.as_str()));
+            } else {
+                self.carousel
+                    .scroll_to(&*obj.imp().terminal_preferences_page, true);
+            }
         }
         #[template_callback]
         fn continue_to_app(&self, _: &gtk::Button) {
-            self.obj().store().complete_setup();
+            let obj = self.obj().clone();
+            if obj.root_store().selected_terminal().is_some() {
+                glib::MainContext::ref_thread_default().spawn_local(async move {
+                    match obj.root_store().validate_terminal().await {
+                        Ok(_) => {
+                            obj.root_store()
+                                .set_current_view(&TaggedObject::new("main"));
+                        }
+                        Err(err) => {
+                            obj.set_terminal_error(Some(format!("{}", err)));
+                        }
+                    }
+                });
+            }
         }
     }
 }

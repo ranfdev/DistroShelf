@@ -1,18 +1,16 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::glib::{clone, BoxedAnyObject};
-use gtk::{gio, glib};
+use gtk::glib;
+use gtk::glib::clone;
 
 use crate::distrobox_task::DistroboxTask;
 use crate::gtk_utils::reaction;
-use crate::store::task_manager_store::TaskManagerStore;
+use crate::root_store::RootStore;
 
-use std::cell::{OnceCell, RefCell};
+use gtk::glib::{derived_properties, Properties};
+use std::cell::RefCell;
 
 mod imp {
-
-    use adw::{subclass::preferences_group, ToolbarView};
-    use gtk::glib::{derived_properties, Properties};
 
     use super::*;
 
@@ -20,7 +18,7 @@ mod imp {
     #[properties(wrapper_type=super::TaskManagerDialog)]
     pub struct TaskManagerDialog {
         #[property(get, construct_only)]
-        pub store: RefCell<TaskManagerStore>,
+        pub root_store: RefCell<RootStore>,
         pub dialog: adw::Dialog,
         pub toolbar_view: adw::ToolbarView,
         pub navigation_view: adw::NavigationView,
@@ -60,6 +58,7 @@ mod imp {
                 "Tasks such as starting, stopping and upgrading will appear here.",
             ));
             self.stack.add_named(&self.status_page, Some("empty"));
+            self.stack.set_visible_child_name("empty");
 
             self.list_box.set_selection_mode(gtk::SelectionMode::None);
             self.list_box.set_valign(gtk::Align::Start);
@@ -67,11 +66,12 @@ mod imp {
             self.list_box.set_margin_bottom(12);
 
             let this = self.obj().clone();
-            let store = self.obj().store();
-            self.list_box.bind_model(Some(&store.tasks()), move |obj| {
-                let task = obj.downcast_ref::<DistroboxTask>().unwrap();
-                this.build_row(&task).upcast()
-            });
+            let root_store = self.obj().root_store();
+            self.list_box
+                .bind_model(Some(&root_store.tasks()), move |obj| {
+                    let task = obj.downcast_ref::<DistroboxTask>().unwrap();
+                    this.build_row(&task).upcast()
+                });
 
             self.list_page_content
                 .set_orientation(gtk::Orientation::Vertical);
@@ -89,7 +89,7 @@ mod imp {
                 #[weak(rename_to=this)]
                 obj,
                 move |_| {
-                    this.store().clear_ended_tasks();
+                    this.root_store().clear_ended_tasks();
                 }
             ));
             self.list_page_content.append(&clear_btn);
@@ -102,12 +102,26 @@ mod imp {
                 "Manage Tasks",
             ));
             let this = self.obj().clone();
-            reaction!(store.current_view(), move |view: String| {
-                this.imp().stack.set_visible_child_name(&view);
-            });
+            if root_store.tasks().n_items() == 0 {
+                this.imp().stack.set_visible_child_name("empty");
+            } else {
+                this.imp().stack.set_visible_child_name("list");
+            }
+            root_store
+                .tasks()
+                .connect_items_changed(move |tasks, _, _, _| {
+                    dbg!(tasks.n_items());
+                    if tasks.n_items() == 0 {
+                        this.imp().stack.set_visible_child_name("empty");
+                    } else {
+                        this.imp().stack.set_visible_child_name("list");
+                    }
+                });
 
             let this = self.obj().clone();
-            reaction!(store.selected_task(), move |task: Option<DistroboxTask>| {
+            reaction!(root_store.selected_task(), move |task: Option<
+                DistroboxTask,
+            >| {
                 if let Some(task) = task {
                     this.build_task_view(&task);
                     this.imp().navigation_view.push(&adw::NavigationPage::new(
@@ -118,7 +132,7 @@ mod imp {
             });
             let this = self.obj().clone();
             self.navigation_view.connect_popped(move |_, _| {
-                this.store().back();
+                this.root_store().set_selected_task(None::<&DistroboxTask>);
             });
 
             self.scrolled_window.set_child(Some(&self.stack));
@@ -146,17 +160,12 @@ glib::wrapper! {
 }
 
 impl TaskManagerDialog {
-    pub fn new(store: &TaskManagerStore) -> Self {
+    pub fn new(root_store: &RootStore) -> Self {
         // Build the dialog with the TaskManagerStore
-        let this: Self = glib::Object::builder().property("store", store).build();
+        let this: Self = glib::Object::builder()
+            .property("root-store", root_store)
+            .build();
 
-        this
-    }
-
-    pub fn with_selected(store: &TaskManagerStore, selected: &DistroboxTask) -> Self {
-        let this = Self::new(store);
-
-        this.store().select(selected);
         this
     }
 
@@ -172,7 +181,7 @@ impl TaskManagerDialog {
             #[weak(rename_to=this)]
             self,
             move |_| {
-                this.store().select(&task);
+                this.root_store().set_selected_task(Some(&task));
             }
         ));
         row

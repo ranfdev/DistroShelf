@@ -24,8 +24,7 @@ use gettextrs::gettext;
 use gtk::{gio, glib};
 
 use crate::config::VERSION;
-use crate::distrobox::DistroboxCommandRunnerResponse;
-use crate::distrobox_store::DistroboxStore;
+use crate::distrobox::{Distrobox, DistroboxCommandRunnerResponse};
 use crate::root_store::RootStore;
 use crate::DistrohomeWindow;
 
@@ -171,8 +170,8 @@ impl DistrohomeApplication {
     }
 
     fn recreate_window(&self) -> adw::ApplicationWindow {
-        let distrobox_store = match { self.imp().distrobox_store_ty.borrow().to_owned() } {
-            DistroboxStoreTy::NullWorking => DistroboxStore::new_null_with_responses(
+        let distrobox = match { self.imp().distrobox_store_ty.borrow().to_owned() } {
+            DistroboxStoreTy::NullWorking => Distrobox::new_null_with_responses(
                 &[
                     DistroboxCommandRunnerResponse::Version,
                     DistroboxCommandRunnerResponse::new_list_common_distros(),
@@ -181,7 +180,7 @@ impl DistrohomeApplication {
                 ],
                 false,
             ),
-            DistroboxStoreTy::NullEmpty => DistroboxStore::new_null_with_responses(
+            DistroboxStoreTy::NullEmpty => Distrobox::new_null_with_responses(
                 &[
                     DistroboxCommandRunnerResponse::Version,
                     DistroboxCommandRunnerResponse::List(vec![]),
@@ -189,14 +188,14 @@ impl DistrohomeApplication {
                 ],
                 false,
             ),
-            DistroboxStoreTy::NullNoVersion => DistroboxStore::new_null_with_responses(
+            DistroboxStoreTy::NullNoVersion => Distrobox::new_null_with_responses(
                 &[DistroboxCommandRunnerResponse::NoVersion],
                 false,
             ),
-            _ => DistroboxStore::new(),
+            _ => Distrobox::new(),
         };
 
-        self.set_root_store(RootStore::new(&distrobox_store));
+        self.set_root_store(RootStore::new(distrobox));
         let window =
             DistrohomeWindow::new(self.upcast_ref::<adw::Application>(), self.root_store());
         window.upcast()

@@ -40,9 +40,7 @@ mod tasks_button;
 mod terminal_combo_row;
 mod welcome_view;
 mod window;
-pub use store::{
-    distrobox_store, exportable_apps_store, root_store, task_manager_store, welcome_view_store,
-};
+pub use store::root_store;
 
 use self::application::DistrohomeApplication;
 use window::DistrohomeWindow;

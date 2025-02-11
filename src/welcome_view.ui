@@ -52,7 +52,7 @@
                             </style>
                             <binding name="label">
                               <lookup name="distrobox-error">
-                                <lookup name="store">WelcomeView</lookup>
+                                WelcomeView
                               </lookup>
                             </binding>
                           </object>
@@ -81,7 +81,7 @@
                               <object class="TerminalComboRow" id="terminal_combo_row">
                                 <binding name="root-store">
                                   <lookup name="root-store">
-                                    <lookup name="store">WelcomeView</lookup>
+                                    WelcomeView
                                   </lookup>
                                 </binding>
                               </object>
@@ -110,7 +110,7 @@
                         </style>
                         <binding name="label">
                           <lookup name="terminal-error">
-                            <lookup name="store">WelcomeView</lookup>
+                            WelcomeView
                           </lookup>
                         </binding>
                       </object>

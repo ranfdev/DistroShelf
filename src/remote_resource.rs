@@ -7,12 +7,13 @@ use glib::subclass::prelude::*;
 use glib::subclass::Signal;
 use glib::Properties;
 use gtk::glib;
+use std::any::Any;
 use std::cell::RefCell;
 use std::future::Future;
 use std::sync::OnceLock;
 
 mod imp {
-    use std::{cell::OnceCell, future::Future, pin::Pin};
+    use std::{any::Any, cell::OnceCell, future::Future, pin::Pin};
 
     use super::*;
 
@@ -25,19 +26,28 @@ mod imp {
     #[derive(Properties, Default)]
     #[properties(wrapper_type = super::RemoteResource)]
     pub struct RemoteResource {
-        #[property(get, set)]
+        #[property(get)]
         pub loading: RefCell<bool>,
-        #[property(get, set)]
-        pub error: RefCell<String>,
         #[property(get, set, nullable)]
-        pub data: RefCell<Option<glib::Object>>,
-        pub loader:
-            OnceCell<Box<dyn Fn() -> Pin<Box<dyn Future<Output = anyhow::Result<glib::Object>>>>>>,
-        pub reconciler: RefCell<Option<Box<dyn Fn(&glib::Object, &glib::Object)>>>,
+        pub error: RefCell<Option<String>>,
+        pub data: RefCell<Option<Box<dyn Any>>>,
+        pub loader: OnceCell<
+            Box<
+                dyn Fn(
+                    Option<&dyn Any>,
+                )
+                    -> Pin<Box<dyn Future<Output = anyhow::Result<Box<dyn Any>>>>>,
+            >,
+        >,
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for RemoteResource {}
+    impl ObjectImpl for RemoteResource {
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| vec![Signal::builder("data-changed").build()])
+        }
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for RemoteResource {
@@ -50,27 +60,16 @@ glib::wrapper! {
     pub struct RemoteResource(ObjectSubclass<imp::RemoteResource>);
 }
 impl RemoteResource {
-    pub fn new<T, F: Future<Output = anyhow::Result<T>> + 'static>(
-        loader: impl Fn() -> F + 'static,
-        reconciler: Option<impl Fn(&T, &T) -> () + 'static>,
-    ) -> Self
-    where
-        T: IsA<glib::Object>,
-    {
+    pub fn new<T: 'static, F: Future<Output = anyhow::Result<T>> + 'static>(
+        loader: impl Fn(Option<&T>) -> F + 'static,
+    ) -> Self {
         let this: Self = glib::Object::builder().build();
-        this.imp().reconciler.replace(reconciler.map(|r| {
-            Box::new(move |prev: &glib::Object, current: &glib::Object| {
-                r(
-                    &prev.downcast_ref().unwrap(),
-                    &current.downcast_ref().unwrap(),
-                )
-            }) as Box<dyn Fn(&glib::Object, &glib::Object)>
-        }));
         this.imp()
             .loader
-            .set(Box::new(move || {
-                let data = loader();
-                { async move { data.await.map(|obj| obj.upcast()) } }.boxed_local()
+            .set(Box::new(move |prev_data| {
+                let prev_data = prev_data.and_then(|x| x.downcast_ref::<T>());
+                let data = loader(prev_data);
+                { async move { data.await.map(|obj| Box::new(obj) as Box<dyn Any>) } }.boxed_local()
             }))
             .map_err(|_| "loader already set")
             .unwrap();
@@ -79,29 +78,41 @@ impl RemoteResource {
     pub fn reload(&self) {
         let weak = self.downgrade();
         self.imp().loading.replace(true);
+        self.notify_loading();
         glib::MainContext::ref_thread_default().spawn_local(async move {
             let Some(this) = weak.upgrade() else {
                 return;
             };
-            let res = this.imp().loader.get().unwrap()().await;
+            let data = this.imp().data.take();
+            let res = this.imp().loader.get().unwrap()(data.as_deref()).await;
             match res {
                 Ok(res) => {
-                    if let Some(reconciler) = this.imp().reconciler.borrow().as_ref() {
-                        if let Some(data) = this.data() {
-                            reconciler(&data, &res);
-                        }
-                    } else {
-                        this.set_data(Some(&res));
-                    };
+                    this.imp().data.replace(Some(res));
+                    this.set_error(None::<String>);
+                    this.emit_by_name("data-changed", &[])
                 }
                 Err(e) => {
-                    this.set_error(format!("{}", e));
+                    this.imp().data.replace(data);
+                    this.set_error(Some(format!("{}", e)));
                 }
             }
+            this.imp().loading.replace(false);
+            this.notify_loading();
         });
     }
-    pub fn typed_data<T: IsA<glib::Object>>(&self) -> Option<T> {
-        self.data().and_then(|d| d.downcast().ok())
+    pub fn data<T: Clone + 'static>(&self) -> Option<T> {
+        self.imp()
+            .data
+            .borrow()
+            .as_ref()
+            .map(|d| (d.downcast_ref::<T>().unwrap()).clone())
+    }
+    pub fn connect_data_changed(&self, f: impl Fn(&Self) + 'static) {
+        self.connect_local("data-changed", true, move |values| {
+            let this = values[0].get::<RemoteResource>().unwrap();
+            f(&this);
+            None
+        });
     }
 }
 

@@ -3,28 +3,22 @@ use adw::subclass::prelude::*;
 use gtk::glib::{clone, BoxedAnyObject};
 use gtk::{gio, glib};
 
-use crate::distrobox::{self, ExportableApp};
-use crate::distrobox_store::DistroboxStore;
-use crate::exportable_apps_store::ExportableAppsStore;
-use crate::resource::{Resource, SharedResource};
+use crate::container::Container;
+use crate::distrobox::ExportableApp;
 
-use std::cell::{OnceCell, RefCell};
+use std::cell::RefCell;
 
 use glib::VariantTy;
-use im_rc::Vector;
+use gtk::glib::{derived_properties, Properties};
 
 mod imp {
-
-    use adw::subclass::preferences_group;
-    use gtk::glib::{derived_properties, Properties};
-
     use super::*;
 
     #[derive(Default, Properties)]
     #[properties(wrapper_type=super::ExportableAppsDialog)]
     pub struct ExportableAppsDialog {
         #[property(get, set)]
-        pub store: RefCell<ExportableAppsStore>,
+        pub container: RefCell<Container>,
         pub dialog: adw::Dialog,
         pub toolbar_view: adw::ToolbarView,
         pub content: gtk::Box,
@@ -32,8 +26,6 @@ mod imp {
         pub stack: gtk::Stack,
         pub error_label: gtk::Label,
         pub list_box: gtk::ListBox,
-        pub distrobox_store: OnceCell<DistroboxStore>,
-        pub container: RefCell<String>,
     }
 
     #[derived_properties]
@@ -94,7 +86,7 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let file_path = target.unwrap().str().unwrap();
-                    this.store().export(file_path);
+                    this.container().export(file_path);
                 },
             );
             klass.install_action(
@@ -102,7 +94,7 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let file_path = target.unwrap().str().unwrap();
-                    this.store().unexport(file_path);
+                    this.container().unexport(file_path);
                 },
             );
         }
@@ -117,35 +109,46 @@ glib::wrapper! {
         @extends adw::Dialog, gtk::Widget;
 }
 impl ExportableAppsDialog {
-    pub fn new(store: &ExportableAppsStore) -> Self {
-        let this: Self = glib::Object::builder().property("store", store).build();
-
-        let store = store.clone();
-        store
-            .bind_property("current-view", &this.imp().stack, "visible-child-name")
-            .sync_create()
-            .build();
-        store
-            .bind_property("error", &this.imp().error_label, "label")
-            .sync_create()
+    pub fn new(container: &Container) -> Self {
+        let this: Self = glib::Object::builder()
+            .property("container", container)
             .build();
 
         let this_clone = this.clone();
-        this.imp()
-            .list_box
-            .bind_model(Some(&store.apps()), move |obj| {
-                let app = obj
-                    .downcast_ref::<BoxedAnyObject>()
-                    .map(|obj| obj.borrow::<ExportableApp>())
-                    .unwrap();
-                this_clone
-                    .build_row(&store.container().name(), &*app)
-                    .upcast()
-            });
+        container.apps().connect_loading_notify(move |resource| {
+            if resource.loading() {
+                this_clone.imp().stack.set_visible_child_name("loading");
+            }
+        });
+        let this_clone = this.clone();
+        container.apps().connect_error_notify(move |resource| {
+            if let Some(err) = resource.error() {
+                this_clone.imp().error_label.set_label(&err);
+                this_clone.imp().stack.set_visible_child_name("error");
+            }
+        });
+        let this_clone = this.clone();
+        container.apps().connect_data_changed(move |resource| {
+            let apps = resource.data::<gio::ListStore>().unwrap();
+            this_clone.imp().stack.set_visible_child_name("apps");
+
+            let this = this_clone.clone();
+            this_clone
+                .imp()
+                .list_box
+                .bind_model(Some(&apps), move |obj| {
+                    let app = obj
+                        .downcast_ref::<BoxedAnyObject>()
+                        .map(|obj| obj.borrow::<ExportableApp>())
+                        .unwrap();
+                    this.build_row(&*app).upcast()
+                });
+        });
+        container.apps().reload();
 
         this
     }
-    pub fn build_row(&self, container: &str, app: &ExportableApp) -> adw::ActionRow {
+    pub fn build_row(&self, app: &ExportableApp) -> adw::ActionRow {
         // Create the action row
         let row = adw::ActionRow::new();
         row.set_title(&app.entry.name);
@@ -158,7 +161,7 @@ impl ExportableAppsDialog {
             #[strong]
             app,
             move |_| {
-                this.store().launch(app.clone());
+                this.container().launch(app.clone());
             }
         ));
 
