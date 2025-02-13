@@ -141,7 +141,7 @@ impl ExportableAppsDialog {
                         .downcast_ref::<BoxedAnyObject>()
                         .map(|obj| obj.borrow::<ExportableApp>())
                         .unwrap();
-                    this.build_row(&*app).upcast()
+                    this.build_row(&app).upcast()
                 });
         });
         container.apps().reload();

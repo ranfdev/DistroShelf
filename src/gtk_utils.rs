@@ -25,7 +25,7 @@ pub fn reconcile_list_by_key<T: IsA<glib::Object>, K: Hash + std::cmp::Eq>(
     properties: &[&str],
 ) {
     let mut other_map: HashMap<K, (&T, bool)> =
-        other.into_iter().map(|v| (key_fn(v), (v, false))).collect();
+        other.iter().map(|v| (key_fn(v), (v, false))).collect();
     list.retain(|item| {
         let item = item.downcast_ref().unwrap();
         let key = key_fn(item);

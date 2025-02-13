@@ -7,14 +7,13 @@ use glib::subclass::prelude::*;
 use glib::subclass::Signal;
 use glib::Properties;
 use gtk::glib;
-use std::any::Any;
 use std::cell::RefCell;
-use std::future::Future;
 use std::sync::OnceLock;
+use std::{any::Any, cell::OnceCell, future::Future, pin::Pin};
 
+type AnyLoaderClosure =
+    Box<dyn Fn(Option<&dyn Any>) -> Pin<Box<dyn Future<Output = anyhow::Result<Box<dyn Any>>>>>>;
 mod imp {
-    use std::{any::Any, cell::OnceCell, future::Future, pin::Pin};
-
     use super::*;
 
     /// Manages a resource (not necessarily a gio resource) that can be loaded from outside the app.
@@ -31,14 +30,7 @@ mod imp {
         #[property(get, set, nullable)]
         pub error: RefCell<Option<String>>,
         pub data: RefCell<Option<Box<dyn Any>>>,
-        pub loader: OnceCell<
-            Box<
-                dyn Fn(
-                    Option<&dyn Any>,
-                )
-                    -> Pin<Box<dyn Future<Output = anyhow::Result<Box<dyn Any>>>>>,
-            >,
-        >,
+        pub loader: OnceCell<AnyLoaderClosure>,
     }
 
     #[glib::derived_properties]

@@ -81,7 +81,7 @@ impl Container {
             let this = this_clone.clone();
             let mut apps_list = apps_list
                 .cloned()
-                .unwrap_or_else(|| gio::ListStore::new::<BoxedAnyObject>());
+                .unwrap_or_else(gio::ListStore::new::<BoxedAnyObject>);
             async move {
                 let apps = this
                     .root_store()
@@ -90,7 +90,7 @@ impl Container {
                     .await?;
 
                 apps_list.remove_all();
-                apps_list.extend(apps.into_iter().map(|app| BoxedAnyObject::new(app)));
+                apps_list.extend(apps.into_iter().map(BoxedAnyObject::new));
 
                 // Listing the apps starts the container, we need to update its status
                 this.root_store().load_containers();
@@ -124,35 +124,38 @@ impl Container {
     }
     pub fn install(&self, path: &Path) {
         let this = self.clone();
-        let package_manager = {
-            self.distro().map(|d| d.package_manager().clone()).unwrap()
-        };
+        let package_manager = { self.distro().map(|d| d.package_manager()).unwrap() };
         let path_clone = path.to_owned();
         let name_clone = self.name();
-        self.root_store().create_task(&self.name(), "install", move |task| async move {
-            task.set_description(format!("Installing {:?}", path_clone));
-            // The file provided from the portal is under /run/user/1000 which is not accessible by root.
-            // We can copy the file as a normal user to /tmp and then install.
+        self.root_store()
+            .create_task(&self.name(), "install", move |task| async move {
+                task.set_description(format!("Installing {:?}", path_clone));
+                // The file provided from the portal is under /run/user/1000 which is not accessible by root.
+                // We can copy the file as a normal user to /tmp and then install.
 
-            let enter_cmd = this.root_store().distrobox().enter_cmd(&name_clone);
+                let enter_cmd = this.root_store().distrobox().enter_cmd(&name_clone);
 
-            // the file of the package must have the correct extension (.deb for apt-get).
-            let tmp_path = format!(
-                "/tmp/com.ranfdev.DistroShelf.user_package_{}",
-                package_manager.installable_file().unwrap()
-            );
-            let tmp_path = Path::new(&tmp_path);
-            let cp_cmd_pure = Command::new_with_args("cp", [&path_clone, tmp_path]);
-            let install_cmd_pure = package_manager.install_cmd(&tmp_path).unwrap();
+                // the file of the package must have the correct extension (.deb for apt-get).
+                let tmp_path = format!(
+                    "/tmp/com.ranfdev.DistroShelf.user_package_{}",
+                    package_manager.installable_file().unwrap()
+                );
+                let tmp_path = Path::new(&tmp_path);
+                let cp_cmd_pure = Command::new_with_args("cp", [&path_clone, tmp_path]);
+                let install_cmd_pure = package_manager.install_cmd(tmp_path).unwrap();
 
-            let mut cp_cmd = enter_cmd.clone();
-            cp_cmd.extend("--", &cp_cmd_pure);
-            let mut install_cmd = enter_cmd.clone();
-            install_cmd.extend("--", &install_cmd_pure);
+                let mut cp_cmd = enter_cmd.clone();
+                cp_cmd.extend("--", &cp_cmd_pure);
+                let mut install_cmd = enter_cmd.clone();
+                install_cmd.extend("--", &install_cmd_pure);
 
-            this.root_store().spawn_terminal_cmd(name_clone.clone(), &cp_cmd).await?;
-            this.root_store().spawn_terminal_cmd(name_clone, &install_cmd).await
-        });
+                this.root_store()
+                    .spawn_terminal_cmd(name_clone.clone(), &cp_cmd)
+                    .await?;
+                this.root_store()
+                    .spawn_terminal_cmd(name_clone, &install_cmd)
+                    .await
+            });
     }
     pub fn export(&self, desktop_file_path: &str) {
         let this = self.clone();

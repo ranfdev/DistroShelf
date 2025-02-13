@@ -76,8 +76,7 @@ mod imp {
                 glib::MainContext::ref_thread_default().spawn_local(async move {
                     match obj.root_store().validate_terminal().await {
                         Ok(_) => {
-                            obj.root_store()
-                                .set_current_view(&TaggedObject::new("main"));
+                            obj.root_store().set_current_view(TaggedObject::new("main"));
                         }
                         Err(err) => {
                             obj.set_terminal_error(Some(format!("{}", err)));

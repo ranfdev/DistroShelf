@@ -70,7 +70,7 @@ mod imp {
             self.list_box
                 .bind_model(Some(&root_store.tasks()), move |obj| {
                     let task = obj.downcast_ref::<DistroboxTask>().unwrap();
-                    this.build_row(&task).upcast()
+                    this.build_row(task).upcast()
                 });
 
             self.list_page_content

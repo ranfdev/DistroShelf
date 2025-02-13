@@ -9,9 +9,9 @@ pub enum FdMode {
     Pipe,
 }
 
-impl Into<Stdio> for FdMode {
-    fn into(self) -> Stdio {
-        match self {
+impl From<FdMode> for Stdio {
+    fn from(val: FdMode) -> Stdio {
+        match val {
             FdMode::Inherit => Stdio::inherit(),
             FdMode::Pipe => Stdio::piped(),
         }
@@ -88,13 +88,13 @@ impl Command {
     }
 }
 
-impl Into<async_process::Command> for Command {
-    fn into(self) -> async_process::Command {
-        let mut cmd = async_process::Command::new(self.program);
-        cmd.args(self.args)
-            .stdin::<Stdio>(self.stdin.into())
-            .stdout::<Stdio>(self.stdout.into())
-            .stderr::<Stdio>(self.stderr.into());
+impl From<Command> for async_process::Command {
+    fn from(val: Command) -> Self {
+        let mut cmd = async_process::Command::new(val.program);
+        cmd.args(val.args)
+            .stdin::<Stdio>(val.stdin.into())
+            .stdout::<Stdio>(val.stdout.into())
+            .stderr::<Stdio>(val.stderr.into());
         cmd
     }
 }

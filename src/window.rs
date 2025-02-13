@@ -93,7 +93,7 @@ mod imp {
             });
 
             klass.install_action("win.learn-more", None, |_win, _action, _target| {
-                gtk::UriLauncher::new(&"https://distrobox.it").launch(
+                gtk::UriLauncher::new("https://distrobox.it").launch(
                     None::<&gtk::Window>,
                     None::<&gio::Cancellable>,
                     |res| {
@@ -165,7 +165,7 @@ impl DistrohomeWindow {
                     "create-distrobox" => {
                         CreateDistroboxDialog::new(this_clone.root_store()).upcast()
                     }
-                    "task-manager" => TaskManagerDialog::new(&root_store).upcast(),
+                    "task-manager" => TaskManagerDialog::new(root_store).upcast(),
                     "preferences" => this_clone.build_preferences_dialog(),
                     _ => return,
                 };
@@ -196,7 +196,7 @@ impl DistrohomeWindow {
                 };
                 this.imp()
                     .sidebar_stack
-                    .set_visible_child_name(&visible_child_name);
+                    .set_visible_child_name(visible_child_name);
             },
         );
         let this = self.clone();

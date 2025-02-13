@@ -65,3 +65,9 @@ impl DistroComboRowItem {
         imp.label.set_label(image);
     }
 }
+
+impl Default for DistroComboRowItem {
+    fn default() -> Self {
+        Self::new()
+    }
+}

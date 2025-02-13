@@ -13,7 +13,7 @@ pub fn set_image(image_widget: &gtk::Image, container_image: &str) {
         let icon_theme = gtk::IconTheme::for_display(&image_widget.display());
         let icon = icon_theme.lookup_icon(
             &distro.icon_name(),
-            &[&KnownDistro::default_icon_name()],
+            &[KnownDistro::default_icon_name()],
             32,
             1,
             gtk::TextDirection::None,
@@ -23,6 +23,6 @@ pub fn set_image(image_widget: &gtk::Image, container_image: &str) {
         image_widget.set_paintable(Some(&icon));
         image_widget.add_css_class(&distro.name());
     } else {
-        image_widget.set_icon_name(Some(&KnownDistro::default_icon_name()));
+        image_widget.set_icon_name(Some(KnownDistro::default_icon_name()));
     }
 }

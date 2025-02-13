@@ -162,18 +162,12 @@ pub struct ExportableApp {
     pub exported: bool,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct CreateArgName(String);
 
 impl std::fmt::Display for CreateArgName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-impl Default for CreateArgName {
-    fn default() -> Self {
-        Self(Default::default())
     }
 }
 
@@ -328,7 +322,7 @@ impl DistroboxCommandRunnerResponse {
             output.push_str(" | ");
             output.push_str("Created | ");
             output.push_str(&container.image);
-            output.push_str("\n");
+            output.push('\n');
         }
         let mut cmd = Command::new("distrobox");
         cmd.arg("ls").arg("--no-color");
@@ -625,7 +619,7 @@ impl Distrobox {
         debug!(exported_files=?exported);
         let res: Vector<ExportableApp> = files
             .into_iter()
-            .map(|(path, content)| -> Option<ExportableApp> {
+            .flat_map(|(path, content)| -> Option<ExportableApp> {
                 let entry = parse_desktop_file(&content);
                 let file_name = Path::new(&path)
                     .file_name()
@@ -644,7 +638,6 @@ impl Distrobox {
                     exported: is_exported,
                 })
             })
-            .flatten()
             .collect();
 
         Ok(res)
@@ -673,7 +666,7 @@ impl Distrobox {
         let mut cmd = dbcmd();
         cmd.args(["enter", "--name", container]).extend(
             "--",
-            &Command::new_with_args("distrobox-export", ["--app", &desktop_file_path]),
+            &Command::new_with_args("distrobox-export", ["--app", desktop_file_path]),
         );
 
         self.cmd_output_string(cmd).await
@@ -686,7 +679,7 @@ impl Distrobox {
         let mut cmd = dbcmd();
         cmd.args(["enter", "--name", container]).extend(
             "--",
-            &Command::new_with_args("distrobox-export", ["-d", "--app", &desktop_file_path]),
+            &Command::new_with_args("distrobox-export", ["-d", "--app", desktop_file_path]),
         );
 
         self.cmd_output_string(cmd).await
@@ -847,6 +840,12 @@ impl Distrobox {
     }
 
     // help
+}
+
+impl Default for Distrobox {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

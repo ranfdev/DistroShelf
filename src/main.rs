@@ -30,7 +30,6 @@ mod exportable_apps_dialog;
 mod gtk_utils;
 mod known_distros;
 mod remote_resource;
-mod resource;
 mod sidebar_row;
 mod store;
 mod supported_terminals;

@@ -115,7 +115,7 @@ impl RootStore {
         this.distrobox_version()
             .connect_error_notify(move |resource| {
                 if resource.error().is_some() {
-                    this_clone.set_current_view(&TaggedObject::new("welcome"));
+                    this_clone.set_current_view(TaggedObject::new("welcome"));
                 }
             });
         this.distrobox_version().reload();
@@ -260,15 +260,11 @@ impl RootStore {
         let program: String = self.settings().string("selected-terminal").into();
         SUPPORTED_TERMINALS
             .iter()
-            .find(|x| &x.program == &program)
+            .find(|x| x.program == program)
             .cloned()
     }
     pub fn set_selected_terminal_program(&self, program: &str) {
-        if SUPPORTED_TERMINALS
-            .iter()
-            .find(|x| &x.program == &program)
-            .is_none()
-        {
+        if !SUPPORTED_TERMINALS.iter().any(|x| x.program == program) {
             panic!("Unsupported terminal");
         }
 

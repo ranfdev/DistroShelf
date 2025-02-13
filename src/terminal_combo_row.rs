@@ -55,8 +55,12 @@ mod imp {
                 obj,
                 move |combo| {
                     let selected: gtk::StringObject = combo.selected_item().and_downcast().unwrap();
-                    supported_terminals::terminal_by_name(&selected.string())
-                        .map(|x| obj.root_store().set_selected_terminal_program(&x.program));
+                    if let Some(terminal) =
+                        supported_terminals::terminal_by_name(&selected.string())
+                    {
+                        obj.root_store()
+                            .set_selected_terminal_program(&terminal.program)
+                    }
                 }
             ));
         }
@@ -125,5 +129,11 @@ impl TerminalComboRow {
         glib::Object::builder()
             .property("root-store", root_store)
             .build()
+    }
+}
+
+impl Default for TerminalComboRow {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -44,7 +44,7 @@ pub const DISTROS: LazyCell<
     .map(|(name, color, package_manager)| {
         (
             name.to_string(),
-            KnownDistro::new(name, color, package_manager.clone()),
+            KnownDistro::new(name, color, *package_manager),
         )
     })
     .collect()
@@ -99,7 +99,8 @@ pub fn known_distro_by_image(url: &str) -> Option<KnownDistro> {
 
 pub fn generate_css() -> String {
     let mut out = String::new();
-    for distro in DISTROS.values() {
+    let distros = DISTROS;
+    for distro in distros.values() {
         let name = distro.name();
         let color = distro.color();
         out.push_str(&format!(

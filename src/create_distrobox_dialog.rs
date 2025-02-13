@@ -4,7 +4,6 @@ use gtk::{gio, glib};
 use im_rc::Vector;
 
 use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
-use crate::resource::SharedResource;
 use crate::root_store::RootStore;
 
 use std::{cell::RefCell, rc::Rc};
@@ -31,7 +30,6 @@ mod imp {
         pub init_row: adw::SwitchRow,
         pub volume_rows: Rc<RefCell<Vec<adw::EntryRow>>>,
         pub scrolled_window: gtk::ScrolledWindow,
-        pub shared_resource: SharedResource<Vec<distrobox::ExportableApp>, anyhow::Error>,
         pub current_create_args: RefCell<CreateArgs>,
     }
 
@@ -161,11 +159,8 @@ mod imp {
                 move |_| {
                     let res = obj.update_create_args();
                     obj.update_errors(&res);
-                    match res {
-                        Ok(()) => {
-                            obj.emit_by_name_with_values("create-requested", &[]);
-                        }
-                        _ => {}
+                    if let Ok(()) = res {
+                        obj.emit_by_name_with_values("create-requested", &[]);
                     }
                 }
             ));
@@ -262,7 +257,7 @@ mod imp {
                 file_row,
                 move |_| {
                     if let Some(path) = file_row.subtitle() {
-                        obj.root_store().assemble_container(&path.to_string());
+                        obj.root_store().assemble_container(path.as_ref());
                         obj.close();
                     }
                 }
@@ -477,7 +472,7 @@ impl CreateDistroboxDialog {
         match res {
             Err(distrobox::Error::InvalidField(field, msg)) if field == "name" => {
                 imp.name_row.add_css_class("error");
-                imp.name_row.set_tooltip_text(Some(&msg));
+                imp.name_row.set_tooltip_text(Some(msg));
             }
             _ => {}
         }
