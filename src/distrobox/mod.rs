@@ -945,7 +945,6 @@ Categories=Utility;Network;
             .build(),
             false
         );
-        let output_tracker = db.output_tracker();
 
         let apps = block_on(db.list_apps("ubuntu"))?;
         assert_eq!(&apps[0].entry.name, "Vim");

@@ -3,11 +3,9 @@
 
 use glib::prelude::*;
 use glib::subclass::prelude::*;
-use glib::subclass::Signal;
 use glib::Properties;
 use gtk::glib;
 use std::cell::RefCell;
-use std::sync::OnceLock;
 
 mod imp {
     use super::*;

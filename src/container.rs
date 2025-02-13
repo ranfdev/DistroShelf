@@ -1,5 +1,5 @@
 use crate::{
-    distrobox::{ContainerInfo, ExportableApp, Status},
+    distrobox::{Command, ContainerInfo, ExportableApp, Status},
     known_distros::{known_distro_by_image, KnownDistro},
     remote_resource::RemoteResource,
     root_store::RootStore,
@@ -124,44 +124,35 @@ impl Container {
     }
     pub fn install(&self, path: &Path) {
         let this = self.clone();
-        todo!("read known distro");
-        // let package_manager = {
-        //     self.imp()
-        //         .containers
-        //         .borrow()
-        //         .data()
-        //         .and_then(|hash_map| hash_map.get(name))
-        //         .and_then(|container| container.distro())
-        //         .and_then(|known_distro: KnownDistro| known_distro.package_manager)
-        //         .expect(&format!("package manager not found for distro {}", name))
-        // };
-        // let path_clone = path.to_owned();
-        // let name_clone = name.to_string();
-        // let task = self.create_task(name, "install", move |_task| async move {
-        //     // The file provided from the portal is under /run/user/1000 which is not accessible by root.
-        //     // We can copy the file as a normal user to /tmp and then install.
+        let package_manager = {
+            self.distro().map(|d| d.package_manager().clone()).unwrap()
+        };
+        let path_clone = path.to_owned();
+        let name_clone = self.name();
+        self.root_store().create_task(&self.name(), "install", move |task| async move {
+            task.set_description(format!("Installing {:?}", path_clone));
+            // The file provided from the portal is under /run/user/1000 which is not accessible by root.
+            // We can copy the file as a normal user to /tmp and then install.
 
-        //     let enter_cmd = this.distrobox().enter_cmd(&name_clone);
+            let enter_cmd = this.root_store().distrobox().enter_cmd(&name_clone);
 
-        //     // the file of the package must have the correct extension (.deb for apt-get).
-        //     let tmp_path = format!(
-        //         "/tmp/com.ranfdev.DistroShelf.user_package{}",
-        //         package_manager.installable_file()
-        //     );
-        //     let tmp_path = Path::new(&tmp_path);
-        //     let cp_cmd_pure = Command::new_with_args("cp", [&path_clone, tmp_path]);
-        //     let install_cmd_pure = package_manager.install_cmd(&tmp_path);
+            // the file of the package must have the correct extension (.deb for apt-get).
+            let tmp_path = format!(
+                "/tmp/com.ranfdev.DistroShelf.user_package_{}",
+                package_manager.installable_file().unwrap()
+            );
+            let tmp_path = Path::new(&tmp_path);
+            let cp_cmd_pure = Command::new_with_args("cp", [&path_clone, tmp_path]);
+            let install_cmd_pure = package_manager.install_cmd(&tmp_path).unwrap();
 
-        //     let mut cp_cmd = enter_cmd.clone();
-        //     cp_cmd.extend("--", &cp_cmd_pure);
-        //     let mut install_cmd = enter_cmd.clone();
-        //     install_cmd.extend("--", &install_cmd_pure);
+            let mut cp_cmd = enter_cmd.clone();
+            cp_cmd.extend("--", &cp_cmd_pure);
+            let mut install_cmd = enter_cmd.clone();
+            install_cmd.extend("--", &install_cmd_pure);
 
-        //     this.spawn_terminal_cmd(name_clone.clone(), &cp_cmd).await?;
-        //     this.spawn_terminal_cmd(name_clone, &install_cmd).await
-        // });
-        // task.set_description(format!("Installing {:?}", path));
-        // task
+            this.root_store().spawn_terminal_cmd(name_clone.clone(), &cp_cmd).await?;
+            this.root_store().spawn_terminal_cmd(name_clone, &install_cmd).await
+        });
     }
     pub fn export(&self, desktop_file_path: &str) {
         let this = self.clone();

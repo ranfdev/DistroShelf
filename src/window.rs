@@ -179,7 +179,6 @@ impl DistrohomeWindow {
 
     fn build_sidebar(&self) {
         let imp = self.imp();
-        let this = self.clone();
 
         imp.sidebar_list_box
             .bind_model(Some(&self.root_store().containers()), |obj| {
@@ -189,7 +188,7 @@ impl DistrohomeWindow {
 
         let this = self.clone();
         self.root_store().containers().connect_items_changed(
-            move |list, position, removed, added| {
+            move |list, _position, _removed, _added| {
                 let visible_child_name = if list.n_items() == 0 {
                     "no-distroboxes"
                 } else {

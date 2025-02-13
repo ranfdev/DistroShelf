@@ -314,7 +314,7 @@ mod imp {
                 url_row,
                 move |_| {
                     let url = url_row.text();
-                    let task = obj.root_store().assemble_container(&url);
+                    obj.root_store().assemble_container(&url);
                     obj.close();
                 }
             ));

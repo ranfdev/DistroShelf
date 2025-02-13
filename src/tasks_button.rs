@@ -8,7 +8,6 @@ use gtk::{
     glib::{self},
 };
 use std::cell::RefCell;
-use std::sync::OnceLock;
 
 use glib::clone;
 
@@ -70,7 +69,7 @@ mod imp {
 
             let this_clone = obj.clone();
             obj.root_store().tasks().connect_items_changed(
-                move |tasks, position, removed, added| {
+                move |tasks, position, _removed, added| {
                     // Show warning if a task already failed
                     // This loop will reset the previous warning flag if there is no failed task
                     let mut has_warning = false;
