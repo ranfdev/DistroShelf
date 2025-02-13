@@ -50,6 +50,7 @@ macro_rules! reaction {
             cloned.$prop()
         };
         let closure = {
+            #[allow(unused)]
             let $obj = $obj.clone();
             $closure
         };
@@ -68,6 +69,7 @@ macro_rules! reaction {
             $(let $obj = $obj.clone();)+
             std::rc::Rc::new(move || ($($obj.$prop()),+))
         };
+        #[allow(unused)]
         let shared_closure = {
             $(let $obj = $obj.clone();)+
             std::rc::Rc::new($closure)
