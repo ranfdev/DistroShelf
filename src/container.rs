@@ -1,5 +1,6 @@
 use crate::{
     distrobox::{Command, ContainerInfo, ExportableApp, Status},
+    distrobox_task::DistroboxTask,
     known_distros::{known_distro_by_image, KnownDistro},
     remote_resource::RemoteResource,
     root_store::RootStore,
@@ -102,13 +103,13 @@ impl Container {
         this
     }
 
-    pub fn upgrade(&self) {
+    pub fn upgrade(&self) -> DistroboxTask {
         let this = self.clone();
         self.root_store()
             .create_task(&self.name(), "upgrade", move |task| async move {
                 let child = this.root_store().distrobox().upgrade(&this.name())?;
                 task.handle_child_output(child).await
-            });
+            })
     }
 
     pub fn launch(&self, app: ExportableApp) {

@@ -20,114 +20,118 @@
           <object class="GtkStackPage">
             <property name="name">main</property>
             <property name="child">
-              <object class="AdwNavigationSplitView" id="split_view">
-                <property name="min-sidebar-width">240</property>
-                <property name="max-sidebar-width">300</property>
-                <property name="sidebar">
-                  <object class="AdwNavigationPage">
-                    <property name="title" translatable="yes">DistroHome</property>
-                    <property name="child">
-                        <object class="AdwToolbarView">
-                        <child type="top">
-                          <object class="AdwHeaderBar">
-                            <child type="start">
-                              <object class="GtkButton" id="create_distrobox_btn">
-                                <property name="icon-name">list-add-symbolic</property>
-                                <property name="action-name">win.create-distrobox</property>
+              <object class="AdwToastOverlay" id="toast_overlay">
+                <child>
+                  <object class="AdwNavigationSplitView" id="split_view">
+                    <property name="min-sidebar-width">240</property>
+                    <property name="max-sidebar-width">300</property>
+                    <property name="sidebar">
+                      <object class="AdwNavigationPage">
+                        <property name="title" translatable="yes">DistroHome</property>
+                        <property name="child">
+                            <object class="AdwToolbarView">
+                            <child type="top">
+                              <object class="AdwHeaderBar">
+                                <child type="start">
+                                  <object class="GtkButton" id="create_distrobox_btn">
+                                    <property name="icon-name">list-add-symbolic</property>
+                                    <property name="action-name">win.create-distrobox</property>
+                                  </object>
+                                </child>
+                                <child type="end">
+                                  <object class="GtkMenuButton">
+                                    <property name="primary">True</property>
+                                    <property name="menu-model">primary_menu</property>
+                                    <property name="icon_name">open-menu-symbolic</property>
+                                  </object>
+                                </child>
                               </object>
                             </child>
-                            <child type="end">
-                              <object class="GtkMenuButton">
-                                <property name="primary">True</property>
-                                <property name="menu-model">primary_menu</property>
-                                <property name="icon_name">open-menu-symbolic</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                        <property name="content">
-                          <object class="GtkStack" id="sidebar_stack">
-                            <child>
-                              <object class="GtkStackPage">
-                                <property name="name">no-distroboxes</property>
-                                <property name="child">
-                                  <object class="AdwStatusPage">
-                                    <property name="title" translatable="yes">No Distroboxes Found</property>
-                                    <property name="description">Distrobox lets you run any Linux distribution inside your terminal.</property>
+                            <property name="content">
+                              <object class="GtkStack" id="sidebar_stack">
+                                <child>
+                                  <object class="GtkStackPage">
+                                    <property name="name">no-distroboxes</property>
                                     <property name="child">
-                                      <object class="GtkBox">
-                                        <property name="orientation">vertical</property>
-                                        <property name="spacing">6</property>
-                                        <child>
-                                          <object class="GtkButton">
-                                            <style>
-                                              <class name="pill"/>
-                                            </style>
-                                            <property name="label" translatable="yes">Learn More</property>
-                                            <property name="action-name">win.learn-more</property>
+                                      <object class="AdwStatusPage">
+                                        <property name="title" translatable="yes">No Distroboxes Found</property>
+                                        <property name="description">Distrobox lets you run any Linux distribution inside your terminal.</property>
+                                        <property name="child">
+                                          <object class="GtkBox">
+                                            <property name="orientation">vertical</property>
+                                            <property name="spacing">6</property>
+                                            <child>
+                                              <object class="GtkButton">
+                                                <style>
+                                                  <class name="pill"/>
+                                                </style>
+                                                <property name="label" translatable="yes">Learn More</property>
+                                                <property name="action-name">win.learn-more</property>
+                                              </object>
+                                            </child>
+                                            <child>
+                                              <object class="GtkButton">
+                                                <style>
+                                                <class name="pill"/>
+                                                <class name="suggested-action"/>
+                                                </style>
+                                                <property name="label" translatable="yes">Create Distrobox</property>
+                                                <property name="action-name">win.create-distrobox</property>
+                                              </object>
+                                            </child>
                                           </object>
-                                        </child>
-                                        <child>
-                                          <object class="GtkButton">
-                                            <style>
-                                            <class name="pill"/>
-                                            <class name="suggested-action"/>
-                                            </style>
-                                            <property name="label" translatable="yes">Create Distrobox</property>
-                                            <property name="action-name">win.create-distrobox</property>
-                                          </object>
-                                        </child>
+                                        </property>
                                       </object>
                                     </property>
                                   </object>
-                                </property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkStackPage">
-                                <property name="name">distroboxes</property>
-                                <property name="child">
-                                  <object class="GtkScrolledWindow">
+                                </child>
+                                <child>
+                                  <object class="GtkStackPage">
+                                    <property name="name">distroboxes</property>
                                     <property name="child">
-                                      <object class="GtkListBox" id="sidebar_list_box">
-                                        <property name="selection-mode">single</property>
-                                        <style>
-                                          <class name="navigation-sidebar"/>
-                                        </style>
+                                      <object class="GtkScrolledWindow">
+                                        <property name="child">
+                                          <object class="GtkListBox" id="sidebar_list_box">
+                                            <property name="selection-mode">single</property>
+                                            <style>
+                                              <class name="navigation-sidebar"/>
+                                            </style>
+                                          </object>
+                                        </property>
                                       </object>
                                     </property>
                                   </object>
-                                </property>
+                                </child>
+                              </object>
+                            </property>
+                            <child type="bottom">
+                              <object class="AdwBin" id="sidebar_bottom_slot">
+                              <!-- ... -->
                               </object>
                             </child>
-                          </object>
+                            </object>
                         </property>
-                        <child type="bottom">
-                          <object class="AdwBin" id="sidebar_bottom_slot">
-                          <!-- ... -->
-                          </object>
-                        </child>
-                        </object>
+                      </object>
                     </property>
-                  </object>
-                </property>
-                <property name="content">
-                  <object class="AdwNavigationPage">
-                    <property name="title" translatable="yes">Container</property>
-                    <property name="child">
-                      <object class="AdwToolbarView">
-                        <child type="top">
-                          <object class="AdwHeaderBar"/>
-                        </child>
-                        <property name="content">
-                          <object class="AdwBin" id="main_slot">
-                            <!-- ... -->
+                    <property name="content">
+                      <object class="AdwNavigationPage">
+                        <property name="title" translatable="yes">Container</property>
+                        <property name="child">
+                          <object class="AdwToolbarView">
+                            <child type="top">
+                              <object class="AdwHeaderBar"/>
+                            </child>
+                            <property name="content">
+                              <object class="AdwBin" id="main_slot">
+                                <!-- ... -->
+                              </object>
+                            </property>
                           </object>
                         </property>
                       </object>
                     </property>
                   </object>
-                </property>
+                </child>
               </object>
             </property>
           </object>

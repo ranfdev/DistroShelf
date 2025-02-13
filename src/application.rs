@@ -131,6 +131,11 @@ mod imp {
                 .status-dot.exited, .status-dot.created {{
                     background-color: alpha(@borders, 0.5);
                 }}
+
+                button.xs {{
+                    font-size: 0.8em;
+                    padding: 0.2em 0.2em;
+                }}
             "));
             // We give the CssProvided to the default screen so the CSS rules we added
             // can be applied to our window.

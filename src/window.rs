@@ -66,6 +66,8 @@ mod imp {
         #[template_child]
         pub split_view: TemplateChild<adw::NavigationSplitView>,
         #[template_child]
+        pub toast_overlay: TemplateChild<adw::ToastOverlay>,
+        #[template_child]
         pub welcome_view: TemplateChild<crate::welcome_view::WelcomeView>,
     }
 
@@ -222,15 +224,37 @@ impl DistrohomeWindow {
         title_label.set_xalign(0.0);
         title_label.add_css_class("title-1");
 
+        // Create image URL label
         let subtitle_label = gtk::Label::new(Some(&container.image()));
         subtitle_label.set_xalign(0.0);
-        subtitle_label.set_ellipsize(pango::EllipsizeMode::End);
+        subtitle_label.set_ellipsize(pango::EllipsizeMode::Middle);
         subtitle_label.add_css_class("subtitle");
 
-        // Create a vertical box to hold the title and subtitle
+        // Create a copy button next to the image URL label
+        let copy_btn = gtk::Button::from_icon_name("edit-copy-symbolic");
+        copy_btn.set_tooltip_text(Some("Copy image URL"));
+        copy_btn.add_css_class("flat");
+        copy_btn.add_css_class("xs");
+        // Capture a clone of the image URL for the closure
+        let image_url = container.image().to_string();
+        let toast_overlay = self.imp().toast_overlay.clone();
+        copy_btn.connect_clicked(move |_| {
+            if let Some(display) = gdk::Display::default() {
+                let clipboard = display.primary_clipboard();
+                clipboard.set_text(&image_url);
+                toast_overlay.add_toast(adw::Toast::new("Image URL copied"));
+            }
+        });
+
+        // Create a horizontal box that contains the subtitle label and copy button
+        let subtitle_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        subtitle_box.append(&subtitle_label);
+        subtitle_box.append(&copy_btn);
+
+        // Create a vertical box and add the title and the new subtitle_box
         let text_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
         text_box.append(&title_label);
-        text_box.append(&subtitle_label);
+        text_box.append(&subtitle_box);
 
         // Add the text box and status label to the header box
         let icon = gtk::Image::new();
@@ -382,7 +406,8 @@ impl DistrohomeWindow {
             #[weak(rename_to = this)]
             self,
             move |_| {
-                this.root_store().selected_container().unwrap().upgrade();
+                let task = this.root_store().selected_container().unwrap().upgrade();
+                this.root_store().view_task(&task);
             }
         ));
 
