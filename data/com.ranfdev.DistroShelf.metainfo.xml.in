@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.ranfdev.DistroHome</id>
+  <id>com.ranfdev.DistroShelf</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
 
-  <name>DistroHome</name>
+  <name>DistroShelf</name>
   <summary>Keep the summary shorter, between 10 and 35 characters</summary>
   <description>
     <p>No description</p>
@@ -33,10 +33,10 @@
   <!--URLs of this type should point to a webpage showing information on how to contribute to the described software project -->
   <url type="contribute">https://example.org/contribute</url>
 
-  <translation type="gettext">distrohome</translation>
+  <translation type="gettext">distroshelf</translation>
   <!-- All graphical applications having a desktop file must have this tag in the MetaInfo.
      If this is present, appstreamcli compose will pull icons, keywords and categories from the desktop file. -->
-  <launchable type="desktop-id">com.ranfdev.DistroHome.desktop</launchable>
+  <launchable type="desktop-id">com.ranfdev.DistroShelf.desktop</launchable>
   <!-- Use the OARS website (https://hughsie.github.io/oars/generate.html) to generate these and make sure to use oars-1.1 -->
   <content_rating type="oars-1.1" />
 

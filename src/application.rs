@@ -26,7 +26,7 @@ use gtk::{gio, glib};
 use crate::config::VERSION;
 use crate::distrobox::{Distrobox, DistroboxCommandRunnerResponse};
 use crate::root_store::RootStore;
-use crate::DistrohomeWindow;
+use crate::DistroShelfWindow;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
 #[enum_type(name = "DistroboxStoreTy")]
@@ -49,8 +49,8 @@ mod imp {
     use super::*;
 
     #[derive(Debug, Default, Properties)]
-    #[properties(wrapper_type = super::DistrohomeApplication)]
-    pub struct DistrohomeApplication {
+    #[properties(wrapper_type = super::DistroShelfApplication)]
+    pub struct DistroShelfApplication {
         #[property(get, set = Self::set_distrobox_store_ty, builder(DistroboxStoreTy::Real))]
         pub distrobox_store_ty: RefCell<DistroboxStoreTy>,
 
@@ -58,7 +58,7 @@ mod imp {
         pub root_store: RefCell<RootStore>,
     }
 
-    impl DistrohomeApplication {
+    impl DistroShelfApplication {
         fn set_distrobox_store_ty(&self, value: DistroboxStoreTy) {
             self.distrobox_store_ty.replace(value);
             if let Some(w) = self.obj().active_window() {
@@ -70,14 +70,14 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for DistrohomeApplication {
-        const NAME: &'static str = "DistrohomeApplication";
-        type Type = super::DistrohomeApplication;
+    impl ObjectSubclass for DistroShelfApplication {
+        const NAME: &'static str = "DistroShelfApplication";
+        type Type = super::DistroShelfApplication;
         type ParentType = adw::Application;
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for DistrohomeApplication {
+    impl ObjectImpl for DistroShelfApplication {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
@@ -86,7 +86,7 @@ mod imp {
         }
     }
 
-    impl ApplicationImpl for DistrohomeApplication {
+    impl ApplicationImpl for DistroShelfApplication {
         // We connect to the activate callback to create a window when the application
         // has been launched. Additionally, this callback notifies us when the user
         // tries to launch a "second instance" of the application. When they try
@@ -156,17 +156,17 @@ mod imp {
         }
     }
 
-    impl GtkApplicationImpl for DistrohomeApplication {}
-    impl AdwApplicationImpl for DistrohomeApplication {}
+    impl GtkApplicationImpl for DistroShelfApplication {}
+    impl AdwApplicationImpl for DistroShelfApplication {}
 }
 
 glib::wrapper! {
-    pub struct DistrohomeApplication(ObjectSubclass<imp::DistrohomeApplication>)
+    pub struct DistroShelfApplication(ObjectSubclass<imp::DistroShelfApplication>)
         @extends gio::Application, gtk::Application, adw::Application,
         @implements gio::ActionGroup, gio::ActionMap;
 }
 
-impl DistrohomeApplication {
+impl DistroShelfApplication {
     pub fn new(application_id: &str, flags: &gio::ApplicationFlags) -> Self {
         glib::Object::builder()
             .property("application-id", application_id)
@@ -202,7 +202,7 @@ impl DistrohomeApplication {
 
         self.set_root_store(RootStore::new(distrobox));
         let window =
-            DistrohomeWindow::new(self.upcast_ref::<adw::Application>(), self.root_store());
+            DistroShelfWindow::new(self.upcast_ref::<adw::Application>(), self.root_store());
         window.upcast()
     }
 
@@ -219,8 +219,8 @@ impl DistrohomeApplication {
     fn show_about(&self) {
         let window = self.active_window().unwrap();
         let about = adw::AboutDialog::builder()
-            .application_name("distrohome")
-            .application_icon("com.ranfdev.DistroHome")
+            .application_name("distroshelf")
+            .application_icon("com.ranfdev.DistroShelf")
             .developer_name("Lorenzo Miglietta")
             .version(VERSION)
             .developers(vec!["Lorenzo Miglietta"])

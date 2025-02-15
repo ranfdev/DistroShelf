@@ -1,6 +1,6 @@
 # List of source files containing translatable strings.
 # Please keep this file sorted alphabetically.
-data/com.ranfdev.DistroHome.desktop.in
-data/com.ranfdev.DistroHome.metainfo.xml.in
-data/com.ranfdev.DistroHome.gschema.xml
+data/com.ranfdev.DistroShelf.desktop.in
+data/com.ranfdev.DistroShelf.metainfo.xml.in
+data/com.ranfdev.DistroShelf.gschema.xml
 src/window.ui

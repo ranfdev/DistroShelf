@@ -42,9 +42,9 @@ mod imp {
     use super::*;
 
     #[derive(Default, gtk::CompositeTemplate, Properties)]
-    #[properties(wrapper_type = super::DistrohomeWindow)]
-    #[template(resource = "/com/ranfdev/DistroHome/window.ui")]
-    pub struct DistrohomeWindow {
+    #[properties(wrapper_type = super::DistroShelfWindow)]
+    #[template(resource = "/com/ranfdev/DistroShelf/window.ui")]
+    pub struct DistroShelfWindow {
         #[property(get, set, construct)]
         pub root_store: RefCell<RootStore>,
         #[property(get, set, nullable)]
@@ -72,9 +72,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for DistrohomeWindow {
-        const NAME: &'static str = "DistrohomeWindow";
-        type Type = super::DistrohomeWindow;
+    impl ObjectSubclass for DistroShelfWindow {
+        const NAME: &'static str = "DistroShelfWindow";
+        type Type = super::DistroShelfWindow;
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -118,19 +118,19 @@ mod imp {
     }
 
     #[derived_properties]
-    impl ObjectImpl for DistrohomeWindow {}
-    impl WidgetImpl for DistrohomeWindow {}
-    impl WindowImpl for DistrohomeWindow {}
-    impl ApplicationWindowImpl for DistrohomeWindow {}
-    impl AdwApplicationWindowImpl for DistrohomeWindow {}
+    impl ObjectImpl for DistroShelfWindow {}
+    impl WidgetImpl for DistroShelfWindow {}
+    impl WindowImpl for DistroShelfWindow {}
+    impl ApplicationWindowImpl for DistroShelfWindow {}
+    impl AdwApplicationWindowImpl for DistroShelfWindow {}
 }
 
 glib::wrapper! {
-    pub struct DistrohomeWindow(ObjectSubclass<imp::DistrohomeWindow>)
+    pub struct DistroShelfWindow(ObjectSubclass<imp::DistroShelfWindow>)
         @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow,        @implements gio::ActionGroup, gio::ActionMap;
 }
 
-impl DistrohomeWindow {
+impl DistroShelfWindow {
     pub fn new<P: IsA<gtk::Application>>(application: &P, root_store: RootStore) -> Self {
         let this: Self = glib::Object::builder()
             .property("application", application)

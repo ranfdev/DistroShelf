@@ -73,7 +73,7 @@ mod imp {
                 images: Default::default(),
                 tasks: gio::ListStore::new::<DistroboxTask>(),
                 selected_task: Default::default(),
-                settings: gio::Settings::new("com.ranfdev.DistroHome"),
+                settings: gio::Settings::new("com.ranfdev.DistroShelf"),
             }
         }
     }
@@ -285,7 +285,7 @@ impl RootStore {
         let mut cmd = Command::new(terminal.program.clone());
         cmd.arg(terminal.separator_arg)
             .arg("echo")
-            .arg("DistroHome terminal validation");
+            .arg("DistroShelf terminal validation");
         cmd = wrap_flatpak_cmd(cmd);
 
         let mut async_cmd: async_process::Command = cmd.into();

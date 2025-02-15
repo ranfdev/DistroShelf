@@ -1,1 +1,1 @@
-i18n.gettext('distrohome', preset: 'glib')
+i18n.gettext('distroshelf', preset: 'glib')

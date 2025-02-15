@@ -18,7 +18,7 @@
                 <property name="hexpand">true</property>
                 <property name="child">
                   <object class="AdwStatusPage">
-                    <property name="title" translatable="yes">Welcome to DistroHome</property>
+                    <property name="title" translatable="yes">Welcome to DistroShelf</property>
                     <property name="description" translatable="yes">Please install Distrobox to continue</property>
                     <child>
                       <object class="GtkBox">

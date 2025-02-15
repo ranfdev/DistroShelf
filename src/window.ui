@@ -2,7 +2,7 @@
 <interface>
   <requires lib="gtk" version="4.0"/>
   <requires lib="Adw" version="1.0"/>
-  <template class="DistrohomeWindow" parent="AdwApplicationWindow">
+  <template class="DistroShelfWindow" parent="AdwApplicationWindow">
     <property name="width-request">280</property>
     <property name="height-request">200</property>
     <property name="default-width">800</property>
@@ -27,7 +27,7 @@
                     <property name="max-sidebar-width">300</property>
                     <property name="sidebar">
                       <object class="AdwNavigationPage">
-                        <property name="title" translatable="yes">DistroHome</property>
+                        <property name="title" translatable="yes">DistroShelf</property>
                         <property name="child">
                             <object class="AdwToolbarView">
                             <child type="top">
@@ -143,7 +143,7 @@
               <object class="WelcomeView" id="welcome_view">
                 <binding name="root-store">
                   <lookup name="root-store">
-                    DistrohomeWindow
+                    DistroShelfWindow
                   </lookup>
                 </binding>
               </object>

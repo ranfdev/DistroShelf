@@ -1,4 +1,4 @@
-application_id = 'com.ranfdev.DistroHome'
+application_id = 'com.ranfdev.DistroShelf'
 
 scalable_dir = 'hicolor' / 'scalable' / 'apps'
 install_data(

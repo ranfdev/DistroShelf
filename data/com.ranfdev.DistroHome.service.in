@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=com.ranfdev.DistroHome
-Exec=@bindir@/distrohome --gapplication-service

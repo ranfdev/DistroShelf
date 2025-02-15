@@ -41,8 +41,8 @@ mod welcome_view;
 mod window;
 pub use store::root_store;
 
-use self::application::DistrohomeApplication;
-use window::DistrohomeWindow;
+use self::application::DistroShelfApplication;
+use window::DistroShelfWindow;
 
 use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
@@ -58,7 +58,7 @@ fn main() -> glib::ExitCode {
         .with(EnvFilter::from_default_env())
         .init();
 
-    info!("Starting DistroHome application");
+    info!("Starting DistroShelf application");
 
     // Set up gettext translations
     bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
@@ -67,14 +67,14 @@ fn main() -> glib::ExitCode {
     textdomain(GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
 
     // Load resources
-    let resources = gio::Resource::load(PKGDATADIR.to_owned() + "/distrohome.gresource")
+    let resources = gio::Resource::load(PKGDATADIR.to_owned() + "/distroshelf.gresource")
         .expect("Could not load resources");
     gio::resources_register(&resources);
 
     // Create a new GtkApplication. The application manages our main loop,
     // application windows, integration with the window manager/compositor, and
     // desktop features such as file opening and single-instance applications.
-    let app = DistrohomeApplication::new("com.ranfdev.DistroHome", &gio::ApplicationFlags::empty());
+    let app = DistroShelfApplication::new("com.ranfdev.DistroShelf", &gio::ApplicationFlags::empty());
 
     // Run the application. This function will block until the application
     // exits. Upon return, we have our exit code to return to the shell. (This

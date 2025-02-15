@@ -1,6 +1,6 @@
-# DistroHome - A GUI for Distrobox Containers
+# DistroShelf - A GUI for Distrobox Containers
 
-DistroHome is a graphical interface for managing [Distrobox](https://distrobox.it/) containers on Linux. It provides an easy way to:
+DistroShelf is a graphical interface for managing [Distrobox](https://distrobox.it/) containers on Linux. It provides an easy way to:
 
 - Create and manage containers
 - View container status and details
@@ -16,7 +16,7 @@ DistroHome is a graphical interface for managing [Distrobox](https://distrobox.i
 
 ### Flatpak (Recommended)
 ```bash
-flatpak install flathub com.ranfdev.DistroHome
+flatpak install flathub com.ranfdev.DistroShelf
 ```
 
 
@@ -31,8 +31,8 @@ flatpak install flathub com.ranfdev.DistroHome
 #### Steps
 1. Clone the repository:
 ```bash
-git clone https://github.com/ranfdev/DistroHome.git
-cd DistroHome
+git clone https://github.com/ranfdev/DistroShelf.git
+cd DistroShelf
 ```
 
 2. Build and install:
@@ -60,7 +60,7 @@ Contributions are welcome! Please open an issue or pull request on GitHub.
 
 ## License
 
-DistroHome is licensed under the GPL-3.0-or-later license.
+DistroShelf is licensed under the GPL-3.0-or-later license.
 
 ## Credits
 

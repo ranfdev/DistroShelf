@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/com/ranfdev/DistroHome">
+  <gresource prefix="/com/ranfdev/DistroShelf">
     <file preprocess="xml-stripblanks">window.ui</file>
     <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
   </gresource>
-  <gresource prefix="/com/ranfdev/DistroHome/icons/scalable/actions/">
+  <gresource prefix="/com/ranfdev/DistroShelf/icons/scalable/actions/">
     <file preprocess="xml-stripblanks" alias="terminal-symbolic.svg">../data/icons/terminal-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="package-symbolic.svg">../data/icons/package-symbolic.svg</file>
     

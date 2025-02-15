@@ -1,12 +1,12 @@
 {
-    "id" : "com.ranfdev.DistroHome",
+    "id" : "com.ranfdev.DistroShelf",
     "runtime" : "org.gnome.Platform",
     "runtime-version" : "master",
     "sdk" : "org.gnome.Sdk",
     "sdk-extensions" : [
         "org.freedesktop.Sdk.Extension.rust-stable"
     ],
-    "command" : "distrohome",
+    "command" : "distroshelf",
     "finish-args" : [
         "--share=network",
         "--share=ipc",
@@ -23,7 +23,7 @@
         ],
         "env" : {
             "RUST_BACKTRACE" : "1",
-            "RUST_LOG" : "distrohome=debug"
+            "RUST_LOG" : "distroshelf=debug"
         }
     },
     "cleanup" : [
@@ -39,13 +39,13 @@
     ],
     "modules" : [
         {
-            "name" : "distrohome",
+            "name" : "distroshelf",
             "builddir" : true,
             "buildsystem" : "meson",
             "sources" : [
                 {
-                    "type" : "git",
-                    "url" : "file:///home/lollo/Importante"
+                    "type" : "dir",
+                    "path" : "./"
                 }
             ],
             "config-opts" : [

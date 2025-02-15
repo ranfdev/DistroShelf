@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="distrohome">
-	<schema id="com.ranfdev.DistroHome" path="/com/ranfdev/DistroHome/">
+<schemalist gettext-domain="distroshelf">
+	<schema id="com.ranfdev.DistroShelf" path="/com/ranfdev/DistroShelf/">
 		<key name="selected-terminal" type="s">
             <default>'gnome-terminal'</default>
             <summary>Selected terminal emulator</summary>

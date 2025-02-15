@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=distrohome
-Exec=distrohome
-Icon=com.ranfdev.DistroHome
+Name=distroshelf
+Exec=distroshelf
+Icon=com.ranfdev.DistroShelf
 Terminal=false
 Type=Application
 Categories=Utility;
