@@ -10,7 +10,7 @@ DistroShelf is a graphical interface for managing [Distrobox](https://distrobox.
 - Upgrade containers
 - Clone and delete containers
 
-![Screenshot](data/screenshots/1.png) *Screenshot placeholder*
+![Screenshot](data/screenshots/1.png)
 
 ## Installation
 
@@ -65,4 +65,5 @@ DistroShelf is licensed under the GPL-3.0-or-later license.
 ## Credits
 
 - Distro icons from [font-logos](https://github.com/lukas-w/font-logos)
-- Inspired by [Distrobox](https://distrobox.it/)
+- Some snippets are from [BoxBuddy](https://github.com/Dvlv/BoxBuddyRS)
+- [Distrobox](https://distrobox.it/)
