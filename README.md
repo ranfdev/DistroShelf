@@ -1,5 +1,9 @@
 # DistroShelf - A GUI for Distrobox Containers
 
+<p align="center">
+  <img src="data/icons/hicolor/scalable/apps/com.ranfdev.DistroShelf.svg" alt="Icon">
+</p>
+
 DistroShelf is a graphical interface for managing [Distrobox](https://distrobox.it/) containers on Linux. It provides an easy way to:
 
 - Create and manage containers
