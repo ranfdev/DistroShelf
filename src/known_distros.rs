@@ -6,13 +6,13 @@ use gtk::glib::prelude::*;
 use gtk::glib::Properties;
 use std::cell::LazyCell;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::path::Path;
 
-use im_rc as im;
 
 pub const DISTROS: LazyCell<
-    im::HashMap<String, KnownDistro>,
-    fn() -> im::HashMap<String, KnownDistro>,
+    HashMap<String, KnownDistro>,
+    fn() -> HashMap<String, KnownDistro>,
 > = LazyCell::new(|| {
     [
         ("alma", "#dadada", PackageManager::Dnf),

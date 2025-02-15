@@ -37,9 +37,10 @@ pub fn reconcile_list_by_key<T: IsA<glib::Object>, K: Hash + std::cmp::Eq>(
             false
         }
     });
-    for (_key, (val, already_found)) in other_map {
-        if !already_found {
-            list.append(val);
+    for item in other {
+        let key = key_fn(item);
+        if !other_map[&key].1 {
+            list.append(item);
         }
     }
 }

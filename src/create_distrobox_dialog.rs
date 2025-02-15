@@ -1,7 +1,6 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
-use im_rc::Vector;
 
 use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
 use crate::root_store::RootStore;
@@ -368,7 +367,7 @@ impl CreateDistroboxDialog {
             this,
             move |resource| {
                 let string_list = gtk::StringList::new(&[]);
-                if let Some(images) = resource.data::<Vector<String>>() {
+                if let Some(images) = resource.data::<Vec<String>>() {
                     for image in images {
                         string_list.append(&image);
                     }

@@ -146,8 +146,8 @@ impl RootStore {
                     return;
                 };
                 let containers: Vec<_> = containers
-                    .into_iter()
-                    .map(|(_k, v)| Container::from_info(&this, v))
+                    .into_values()
+                    .map(|v| Container::from_info(&this, v))
                     .collect();
                 reconcile_list_by_key(
                     this.containers(),
@@ -314,7 +314,7 @@ impl RootStore {
     fn reload_till_up(&self, name: String, times: usize) {
         let this = self.clone();
         glib::MainContext::ref_thread_default().spawn_local(async move {
-            for i in 0..times {
+            for i in 1..times {
                 glib::timeout_future(Duration::from_millis(i as u64 * 300)).await;
 
                 // refresh the status of the container
@@ -323,7 +323,7 @@ impl RootStore {
 
                 // if the container is running, we finally update the UI
                 if let Status::Up(_) = &container.status {
-                    // this.load_container_infos();
+                    this.load_containers();
                     return;
                 }
             }
