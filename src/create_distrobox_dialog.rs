@@ -334,8 +334,14 @@ mod imp {
             content_box.append(&view_switcher);
             content_box.append(&view_stack);
 
+            // Wrap content_box in a scrolled window
+            let scrolled_window = gtk::ScrolledWindow::new();
+            scrolled_window.set_propagate_natural_height(true);
+            scrolled_window.set_child(Some(&content_box));
+
             toolbar_view.add_top_bar(&header);
-            toolbar_view.set_content(Some(&content_box));
+            toolbar_view.set_vexpand(true);
+            toolbar_view.set_content(Some(&scrolled_window));
 
             self.obj().set_child(Some(&toolbar_view));
         }

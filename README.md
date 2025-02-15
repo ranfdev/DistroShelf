@@ -10,11 +10,11 @@ DistroShelf is a graphical interface for managing [Distrobox](https://distrobox.
 - Upgrade containers
 - Clone and delete containers
 
-![Screenshot](screenshot.png) *Screenshot placeholder*
+![Screenshot](data/screenshots/1.png) *Screenshot placeholder*
 
 ## Installation
 
-### Flatpak (Recommended)
+### Flatpak (not yet)
 ```bash
 flatpak install flathub com.ranfdev.DistroShelf
 ```

@@ -48,12 +48,13 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://example.org/example1.png</image>
-      <caption>A caption</caption>
+      <image type="source">https://raw.githubusercontent.com/ranfdev/DistroShelf/master/data/screenshots/1.png</image>
     </screenshot>
     <screenshot>
-      <image>https://example.org/example2.png</image>
-      <caption>A caption</caption>
+      <image type="source">https://raw.githubusercontent.com/ranfdev/Geopard/DistroShelf/data/screenshots/2.png</image>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/ranfdev/Geopard/DistroShelf/data/screenshots/3.png</image>
     </screenshot>
   </screenshots>
 

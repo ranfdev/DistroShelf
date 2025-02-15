@@ -251,7 +251,7 @@ impl DistroboxCommandRunnerResponse {
             .map(|(id, name, image)| ContainerInfo {
                 id: id.to_string(),
                 name: name.to_string(),
-                status: Status::Created("Created".into()),
+                status: Status::Created("2 minutes ago".into()),
                 image: image.to_string(),
             })
             .collect()
@@ -313,7 +313,8 @@ impl DistroboxCommandRunnerResponse {
             output.push_str(" | ");
             output.push_str(&container.name);
             output.push_str(" | ");
-            output.push_str("Created | ");
+            let status = container.status.to_string();
+            output.push_str(&format!("{status} | "));
             output.push_str(&container.image);
             output.push('\n');
         }
