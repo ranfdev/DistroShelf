@@ -1,16 +1,22 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use gtk::gio::File;
 use gtk::{gio, glib};
 
 use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
 use crate::root_store::RootStore;
 
+use std::path::PathBuf;
 use std::{cell::RefCell, rc::Rc};
 
 use crate::distro_combo_row_item;
 use glib::clone;
 use gtk::glib::{derived_properties, Properties};
 
+pub enum FileRowSelection {
+    File,
+    Folder
+}
 mod imp {
     use super::*;
 
@@ -24,7 +30,13 @@ mod imp {
         pub content: gtk::Box,
         pub name_row: adw::EntryRow,
         pub image_row: adw::ComboRow,
-        pub home_row: adw::SwitchRow,
+        pub home_row_expander: adw::ExpanderRow,
+        #[property(get, set, nullable)]
+        pub home_folder: RefCell<Option<String>>,
+        #[property(get, set, nullable)]
+        pub assemble_file: RefCell<Option<String>>,
+        #[property(get, set, nullable)]
+        pub assemble_url: RefCell<Option<String>>,
         pub nvidia_row: adw::SwitchRow,
         pub init_row: adw::SwitchRow,
         pub volume_rows: Rc<RefCell<Vec<adw::EntryRow>>>,
@@ -37,6 +49,7 @@ mod imp {
         fn constructed(&self) {
             self.obj().set_title("Create a Distrobox");
             self.obj().set_content_width(480);
+
 
             let toolbar_view = adw::ToolbarView::new();
             let header = adw::HeaderBar::new();
@@ -85,52 +98,25 @@ mod imp {
             self.image_row.set_title("Base Image");
             self.image_row.set_use_subtitle(true);
 
-            self.home_row.set_title("Mount Home Directory");
-
-            let file_chooser_fun = clone!(move || {
-                // let file_chooser = gtk::FileChooserDialog::new(
-                //     Some("Select Home Directory"),
-                //     Some(&obj),
-                //     gtk::FileChooserAction::SelectFolder,
-                //     &[
-                //         ("Cancel", gtk::ResponseType::Cancel),
-                //         ("Select", gtk::ResponseType::Accept),
-                //     ],
-                // );
-
-                // file_chooser.connect_response(
-                //     clone!(@weak home_row => move |file_chooser, response| {
-                //     if response == gtk::ResponseType::Accept {
-                //     if let Some(folder) = file_chooser.file() {
-                //     home_row.set_subtitle(&folder.path().unwrap().display().to_string());
-                //     }
-                //     }
-                //     file_chooser.close();
-                //     }),
-                // );
-
-                // file_chooser.show();
+            let obj = self.obj().clone();
+            let home_row = self.obj().build_file_row("Select Home Directory", FileRowSelection::Folder, move |path| {
+                obj.set_home_folder(Some(path.display().to_string()));
             });
-
-            let home_path_button = gtk::Button::from_icon_name("folder-symbolic");
-            home_path_button.set_sensitive(false);
-            home_path_button.set_valign(gtk::Align::Center);
-            home_path_button.set_tooltip_text(Some("Select Home Directory"));
-            home_path_button.add_css_class("flat");
-            let file_chooser_fun_clone = file_chooser_fun.clone();
-            self.home_row.connect_active_notify(clone!(
+            self.home_row_expander.set_title("Custom Home Directory");
+            self.home_row_expander.set_show_enable_switch(true);
+            self.home_row_expander.set_enable_expansion(false);
+            self.home_row_expander.add_row(&home_row);
+            let obj = self.obj().clone();
+            self.home_row_expander.connect_enable_expansion_notify(clone!(
                 #[weak]
-                home_path_button,
-                move |row| {
-                    if row.is_active() {
-                        file_chooser_fun_clone();
+                home_row,
+                move |expander| {
+                    if !expander.enables_expansion() {
+                        obj.set_home_folder(None::<&str>);
                     }
-                    home_path_button.set_sensitive(row.is_active());
+                    home_row.set_subtitle(obj.home_folder().as_deref().unwrap_or(""));
                 }
             ));
-            home_path_button.connect_clicked(move |_| file_chooser_fun());
-
-            self.home_row.add_suffix(&home_path_button);
 
             let nvidia_row = adw::SwitchRow::new();
             nvidia_row.set_title("NVIDIA Support");
@@ -140,7 +126,7 @@ mod imp {
 
             preferences_group.add(&self.name_row);
             preferences_group.add(&self.image_row);
-            preferences_group.add(&self.home_row);
+            preferences_group.add(&self.home_row_expander);
             preferences_group.add(&nvidia_row);
             preferences_group.add(&init_row);
 
@@ -180,50 +166,10 @@ mod imp {
             assemble_group.set_title("Assemble from File");
             assemble_group.set_description(Some("Create a container from an assemble file"));
 
-            let file_row = adw::ActionRow::new();
-            file_row.set_title("Select File");
-            file_row.set_subtitle("No file selected");
-            file_row.set_activatable(true);
-
-            let file_icon = gtk::Image::from_icon_name("document-open-symbolic");
-            file_row.add_suffix(&file_icon);
-
-            let obj = self.obj();
-            file_row.connect_activated(clone!(
-                #[weak]
-                obj,
-                #[weak]
-                file_row,
-                move |_| {
-                    let file_dialog = gtk::FileDialog::builder()
-                        .title("Select Assemble File")
-                        .modal(true)
-                        .build();
-
-                    file_dialog.open(
-                        None::<&gtk::Window>,
-                        None::<&gio::Cancellable>,
-                        clone!(
-                            #[weak]
-                            obj,
-                            #[weak]
-                            file_row,
-                            move |res| {
-                                if let Ok(file) = res {
-                                    if let Some(path) = file.path() {
-                                        file_row.set_subtitle(&path.display().to_string());
-
-                                        obj.root_store()
-                                            .assemble_container(&path.to_string_lossy());
-                                        obj.close();
-                                    }
-                                }
-                            }
-                        ),
-                    );
-                }
-            ));
-
+            let obj = self.obj().clone();
+            let file_row = self.obj().build_file_row("Select Assemble File", FileRowSelection::File, move |path| {
+                obj.set_assemble_file(Some(path.display().to_string()));
+            });
             assemble_group.add(&file_row);
             assemble_page.append(&assemble_group);
 
@@ -234,35 +180,27 @@ mod imp {
             create_btn.add_css_class("pill");
             create_btn.set_margin_top(12);
             create_btn.set_sensitive(false);
-
-            // Enable button when file is selected
-            file_row.connect_subtitle_notify(clone!(
-                #[weak]
-                create_btn,
-                move |row| {
-                    create_btn.set_sensitive(
-                        row.subtitle().map(|x| x.to_string())
-                            != Some("No file selected".to_string()),
-                    );
-                }
-            ));
+            assemble_page.append(&create_btn);
 
             // Handle create click
             let obj = self.obj();
             create_btn.connect_clicked(clone!(
                 #[weak]
                 obj,
-                #[weak]
-                file_row,
                 move |_| {
-                    if let Some(path) = file_row.subtitle() {
+                    if let Some(path) = obj.assemble_file() {
                         obj.root_store().assemble_container(path.as_ref());
                         obj.close();
                     }
                 }
             ));
 
-            assemble_page.append(&create_btn);
+            // Enable button when file is selected
+            self.obj().connect_assemble_file_notify(move |obj| {
+                create_btn.set_sensitive(obj.assemble_file().is_some());
+            });
+
+
 
             // Create page for URL creation
             let url_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
@@ -289,13 +227,14 @@ mod imp {
             create_btn.add_css_class("pill");
             create_btn.set_margin_top(12);
             create_btn.set_sensitive(false);
+            url_page.append(&create_btn);
 
             // Enable button when URL is entered
             url_row.connect_changed(clone!(
                 #[weak]
-                create_btn,
+                obj,
                 move |entry| {
-                    create_btn.set_sensitive(!entry.text().is_empty());
+                    obj.set_assemble_url(Some(entry.text()));
                 }
             ));
 
@@ -304,16 +243,16 @@ mod imp {
             create_btn.connect_clicked(clone!(
                 #[weak]
                 obj,
-                #[weak]
-                url_row,
                 move |_| {
-                    let url = url_row.text();
-                    obj.root_store().assemble_container(&url);
+                    obj.root_store().assemble_container(&obj.assemble_url().as_ref().unwrap());
                     obj.close();
                 }
             ));
 
-            url_page.append(&create_btn);
+            obj.connect_assemble_url_notify(move |obj| {
+                create_btn.set_sensitive(obj.assemble_url().is_some());
+            });
+
 
             // Add pages to view stack
             view_stack.add_titled(&gui_page, Some("create"), "Guided");
@@ -386,6 +325,57 @@ impl CreateDistroboxDialog {
         this
     }
 
+    pub fn build_file_row(&self, title: &str, selection: FileRowSelection, cb: impl Fn(PathBuf) + Clone + 'static) -> adw::ActionRow {
+            let row = adw::ActionRow::new();
+            row.set_title(title);
+            row.set_subtitle("No file selected");
+            row.set_activatable(true);
+
+            let file_icon = gtk::Image::from_icon_name("document-open-symbolic");
+            row.add_suffix(&file_icon);
+
+            let title = title.to_owned();
+            let dialog_cb = clone!(
+                            #[weak]
+                            row,
+                            move |res: Result<File, _>| {
+                                if let Ok(file) = res {
+                                    if let Some(path) = file.path() {
+                                        row.set_subtitle(&path.display().to_string());
+                                        cb(path);
+                                    }
+                                }
+                            }
+                        );
+            row.connect_activated(
+                move |_| {
+                    let file_dialog = gtk::FileDialog::builder()
+                        .title(&title)
+                        .modal(true)
+                        .build();
+                    let dialog_cb = dialog_cb.clone();
+                    match selection {
+                        FileRowSelection::File => {
+                            file_dialog.open(
+                                None::<&gtk::Window>,
+                                None::<&gio::Cancellable>,
+                                dialog_cb,
+                            );
+                        }
+                        FileRowSelection::Folder => {
+                            file_dialog.select_folder(
+                                None::<&gtk::Window>,
+                                None::<&gio::Cancellable>,
+                                dialog_cb,
+                            );
+                        }
+                    }
+                }
+            );
+            row
+
+    }
+
     pub fn update_create_args(&self) -> Result<(), Error> {
         let imp = self.imp();
         let image = imp
@@ -414,7 +404,7 @@ impl CreateDistroboxDialog {
             name,
             image: image.to_string(),
             nvidia: imp.nvidia_row.is_active(),
-            home_path: imp.home_row.subtitle().map(|s| s.to_string()).unwrap(), // TODO: handle None,
+            home_path: self.home_folder(),
             init: imp.init_row.is_active(),
             volumes,
         };

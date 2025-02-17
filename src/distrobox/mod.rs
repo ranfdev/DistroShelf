@@ -182,7 +182,7 @@ impl CreateArgName {
 pub struct CreateArgs {
     pub init: bool,
     pub nvidia: bool,
-    pub home_path: String,
+    pub home_path: Option<String>,
     pub image: String,
     pub name: CreateArgName,
     pub volumes: Vec<String>,
@@ -707,8 +707,8 @@ impl Distrobox {
         if args.nvidia {
             cmd.arg("--nvidia");
         }
-        if !args.home_path.is_empty() {
-            cmd.arg("--home").arg(args.home_path);
+        if let Some(home_path) = args.home_path {
+            cmd.arg("--home").arg(home_path);
         }
         for volume in args.volumes {
             cmd.arg("--volume").arg(volume);
@@ -957,7 +957,7 @@ Categories=Utility;Network;
             image: "docker.io/library/ubuntu:latest".into(),
             init: true,
             nvidia: true,
-            home_path: "/home/me".into(),
+            home_path: Some("/home/me".into()),
             volumes: vec!["/mnt/sdb1".into(), "/mnt/sdb4".into()],
             ..Default::default()
         };
