@@ -8,6 +8,7 @@ use gtk::{
     glib::{self},
 };
 use std::cell::RefCell;
+use std::time::Duration;
 
 use glib::clone;
 
@@ -81,7 +82,7 @@ mod imp {
                             break;
                         }
                     }
-                    this_clone.imp().warning_icon.set_visible(has_warning);
+                    this_clone.set_has_warning(has_warning);
 
                     // Listen when a new task will fail
                     for i in position..position + added {
@@ -91,7 +92,7 @@ mod imp {
                         let this_clone = this_clone.clone();
                         item.connect_status_notify(move |item| {
                             if item.is_failed() {
-                                this_clone.imp().warning_icon.set_visible(true);
+                                this_clone.set_has_warning(true);
                             }
                         });
                     }
@@ -116,5 +117,15 @@ impl TasksButton {
         glib::Object::builder()
             .property("root-store", root_store)
             .build()
+    }
+    pub fn set_has_warning(&self, has_warning: bool) {
+        self.imp().warning_icon.set_visible(has_warning);
+        // trigger the animation
+        self.imp().warning_icon.remove_css_class("task-warning");
+        let this = self.clone();
+        glib::timeout_add_local_full(Duration::from_millis(100), glib::Priority::LOW, move || {
+            this.imp().warning_icon.remove_css_class("task-warning");
+            glib::ControlFlow::Break
+        });
     }
 }

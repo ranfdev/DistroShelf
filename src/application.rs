@@ -136,6 +136,23 @@ mod imp {
                     font-size: 0.8em;
                     padding: 0.2em 0.2em;
                 }}
+
+                @keyframes pop-warning {{
+                    0% {{
+                        transform: scale(1.0);
+                    }}
+                    30% {{
+                        transform: scale(1.2) rotateZ(20deg);
+                    }}
+                    70% {{
+                        transform: scale(1.4) rotateZ(-15deg);
+                    }}
+                }}
+
+                .task-warning {{
+                    animation: pop-warning 1s;
+                    animation-iteration-count: 3;
+                }}
             "));
             // We give the CssProvided to the default screen so the CSS rules we added
             // can be applied to our window.
