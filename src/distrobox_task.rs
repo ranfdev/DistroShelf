@@ -6,6 +6,7 @@ use glib::subclass::prelude::*;
 use glib::Properties;
 use gtk::glib;
 use gtk::prelude::*;
+use std::cell::Ref;
 use std::cell::RefCell;
 use std::future::Future;
 use tracing::{debug, error, info, warn};
@@ -119,6 +120,9 @@ impl DistroboxTask {
     }
     pub fn ended(&self) -> bool {
         self.is_failed() || self.is_successful()
+    }
+    pub fn error(&self) -> Ref<Option<anyhow::Error>> {
+        self.imp().error.borrow()
     }
     pub fn take_error(&self) -> Option<anyhow::Error> {
         self.imp().error.borrow_mut().take()

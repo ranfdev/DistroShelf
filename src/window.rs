@@ -218,6 +218,10 @@ impl DistroShelfWindow {
             .set_child(Some(&tasks_button));
     }
 
+    fn add_toast(&self, toast: adw::Toast) {
+        self.imp().toast_overlay.add_toast(toast);
+    }
+
     pub fn build_container_header(&self, container: &Container) -> gtk::Box {
         // Create labels for the title and subtitle
         let title_label = gtk::Label::new(Some(&container.name()));
@@ -237,12 +241,12 @@ impl DistroShelfWindow {
         copy_btn.add_css_class("xs");
         // Capture a clone of the image URL for the closure
         let image_url = container.image().to_string();
-        let toast_overlay = self.imp().toast_overlay.clone();
+        let this = self.clone();
         copy_btn.connect_clicked(move |_| {
             if let Some(display) = gdk::Display::default() {
                 let clipboard = display.primary_clipboard();
                 clipboard.set_text(&image_url);
-                toast_overlay.add_toast(adw::Toast::new("Image URL copied"));
+                this.add_toast(adw::Toast::new("Image URL copied"));
             }
         });
 
@@ -318,10 +322,25 @@ impl DistroShelfWindow {
             #[weak(rename_to = this)]
             self,
             move |_| {
-                this.root_store()
+                let task = this.root_store()
                     .selected_container()
                     .unwrap()
                     .spawn_terminal();
+                task.connect_status_notify(move |task| {
+                    if let Some(_) = &*task.error()  {
+                        let toast = adw::Toast::new("Check your terminal settings.");
+                        toast.set_button_label(Some("Preferences"));
+                        toast.connect_button_clicked(clone!(
+                            #[weak]
+                            this,
+                            move |_| {
+                                this.root_store()
+                                    .set_current_dialog(TaggedObject::new("preferences"));
+                            }
+                        ));
+                        this.add_toast(toast);
+                    }
+                }); 
             }
         ));
         status_child.append(&terminal_btn);
@@ -562,15 +581,11 @@ impl DistroShelfWindow {
 
         let page = adw::PreferencesPage::new();
 
-        let preferences_group = adw::PreferencesGroup::new();
-        preferences_group.set_title("General");
-
         let terminal_group = adw::PreferencesGroup::new();
         terminal_group.set_title("Terminal Settings");
         terminal_group.add(&TerminalComboRow::new_with_params(self.root_store()));
         page.add(&terminal_group);
 
-        page.add(&preferences_group);
         dialog.add(&page);
         dialog.upcast()
     }

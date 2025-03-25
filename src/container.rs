@@ -217,7 +217,7 @@ impl Container {
                 Ok(())
             });
     }
-    pub fn spawn_terminal(&self) {
+    pub fn spawn_terminal(&self) -> DistroboxTask {
         let this = self.clone();
         self.root_store()
             .create_task(&self.name(), "spawn-terminal", move |_task| async move {
@@ -225,7 +225,7 @@ impl Container {
                 this.root_store()
                     .spawn_terminal_cmd(this.name(), &enter_cmd)
                     .await
-            });
+            })
     }
 }
 
