@@ -1,10 +1,11 @@
 {
     "id" : "com.ranfdev.DistroShelf",
     "runtime" : "org.gnome.Platform",
-    "runtime-version" : "master",
+    "runtime-version" : "48",
     "sdk" : "org.gnome.Sdk",
     "sdk-extensions" : [
-        "org.freedesktop.Sdk.Extension.rust-stable"
+        "org.freedesktop.Sdk.Extension.rust-stable",
+        "org.freedesktop.Sdk.Extension.llvm19"
     ],
     "command" : "distroshelf",
     "finish-args" : [
@@ -17,13 +18,17 @@
     ],
     "build-options" : {
         "prepend-path": "/app/bin:/usr/bin",
-        "append-path" : "/usr/lib/sdk/rust-stable/bin",
+        "append-path" : "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm19/bin",
         "build-args" : [
             "--share=network"
         ],
         "env" : {
             "RUST_BACKTRACE" : "1",
-            "RUST_LOG" : "distroshelf=debug"
+            "RUST_LOG" : "distroshelf=debug",
+            "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER" : "clang",
+            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER" : "clang",
+            "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS" : "-C link-arg=-fuse-ld=/usr/lib/sdk/rust-stable/bin/mold",
+            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS" : "-C link-arg=-fuse-ld=/usr/lib/sdk/rust-stable/bin/mold"
         }
     },
     "cleanup" : [
