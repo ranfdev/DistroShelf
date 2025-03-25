@@ -1,4 +1,4 @@
-project('distroshelf', 'rust', 
+project('distroshelf', 'rust',
           version: '0.1.0',
     meson_version: '>= 1.0.0',
   default_options: [ 'warning_level=2', 'werror=false', ],
@@ -7,8 +7,13 @@ project('distroshelf', 'rust',
 i18n = import('i18n')
 gnome = import('gnome')
 
+version = meson.project_version()
 
-
+meson.add_dist_script(
+  'build-aux/dist-vendor.sh',
+  join_paths(meson.project_build_root(), 'meson-dist', meson.project_name() + '-' + version),
+  meson.project_source_root()
+)
 
 subdir('data')
 subdir('src')

@@ -40,6 +40,11 @@ else
   rust_target = 'debug'
 endif
 
+if get_option('offline')
+  cargo_opt += [ '--offline' ]
+  message('Building offline')
+endif
+
 cargo_build = custom_target(
   'cargo-build',
   build_by_default: true,
