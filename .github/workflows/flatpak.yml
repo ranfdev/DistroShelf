@@ -1,12 +1,17 @@
 on:
   push:
-    branches: [ ci ]
+    branches: [ main ]
+    tags: [ v*.*.* ]
   pull_request:
   workflow_dispatch:
 
 concurrency:
   group: flatpak
   cancel-in-progress: true
+
+
+permissions:
+  contents: write
 
 jobs:
   build-and-dist:
@@ -53,7 +58,6 @@ jobs:
 
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
         with:
           tag_name: ${{ github.ref_name }}      # defaults to this if omitted
           name: Release ${{ github.ref_name }}  # defaults to tag name if omitted
