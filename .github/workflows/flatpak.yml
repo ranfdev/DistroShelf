@@ -1,19 +1,61 @@
 on:
   push:
-    branches: [main]
+    branches: [ ci ]
   pull_request:
-name: CI
+  workflow_dispatch:
+
+concurrency:
+  group: flatpak
+  cancel-in-progress: true
+
 jobs:
-  flatpak:
-    name: "Flatpak"
+  build-and-dist:
     runs-on: ubuntu-latest
-    container:
-      image: bilelmoussaoui/flatpak-github-actions:gnome-nightly
-      options: --privileged
+
     steps:
-    - uses: actions/checkout@v4
-    - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
-      with:
-        bundle: distroshelf.flatpak
-        manifest-path: com.ranfdev.DistroShelf.json
-        cache-key: flatpak-builder-${{ github.sha }}
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Install Flatpak & Builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+
+      - name: Add Flathub remote
+        run: |
+          flatpak --user remote-add --if-not-exists flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo
+        # Required to pull SDK/runtime deps
+
+      - name: Build & run Meson dist in sandbox
+        run: |
+          # Perform a clean build, installing deps from Flathub into 'build' dir
+          flatpak-builder --user \
+                          --force-clean \
+                          --install-deps-from=flathub \
+                          --repo=repo \
+                          --keep-build-dirs \
+                          build \
+                          com.ranfdev.DistroShelf.json
+
+          # Test the build
+          flatpak-builder --run build com.ranfdev.DistroShelf.json ninja test "-C.flatpak-builder/build/distroshelf/_flatpak_build"
+
+          # Spawn a shell inside the build sandbox and run `meson dist`
+          flatpak-builder --run build com.ranfdev.DistroShelf.json meson dist --no-tests "-C.flatpak-builder/build/distroshelf/_flatpak_build"
+        # `--run` spawns the build sandbox and executes the given command
+
+      - name: Upload Meson distribution artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: meson-dist
+          path: '.flatpak-builder/build/distroshelf/_flatpak_build/meson-dist/*.tar.xz'
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          tag_name: ${{ github.ref_name }}      # defaults to this if omitted
+          name: Release ${{ github.ref_name }}  # defaults to tag name if omitted
+          files: '.flatpak-builder/build/distroshelf/_flatpak_build/meson-dist/*.tar.xz'
+          generate_release_notes: true         # optional: auto-generate notes
