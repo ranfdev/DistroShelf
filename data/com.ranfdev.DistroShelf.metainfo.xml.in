@@ -5,13 +5,25 @@
   <project_license>GPL-3.0-or-later</project_license>
 
   <name>DistroShelf</name>
-  <summary>Keep the summary shorter, between 10 and 35 characters</summary>
+  <summary>Graphical interface for managing Distrobox containers</summary>
   <description>
-    <p>No description</p>
+    <p>
+    DistroShelf is a graphical interface for managing Distrobox containers on Linux.
+    It provides an easy way to:
+    </p>
+    <ul>
+      <li>Create and manage containers</li>
+      <li>View container status and details</li>
+      <li>Install packages</li>
+      <li>Manage exported applications</li>
+      <li>Open terminal sessions</li>
+      <li>Upgrade containers</li>
+      <li>Clone and delete containers</li>
+    </ul>
   </description>
 
-  <developer id="tld.vendor">
-    <name>Developer name</name>
+  <developer id="com.ranfdev">
+    <name>Lorenzo Miglietta</name>
   </developer>
 
   <!-- Requered: Should be a link to the upstream homepage for the component -->
