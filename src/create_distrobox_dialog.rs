@@ -145,7 +145,9 @@ mod imp {
                     let res = obj.update_create_args();
                     obj.update_errors(&res);
                     if let Ok(()) = res {
-                        obj.emit_by_name_with_values("create-requested", &[]);
+                        obj.root_store().create_container(
+                            obj.imp().current_create_args.borrow().clone(),
+                        );
                     }
                 }
             ));
