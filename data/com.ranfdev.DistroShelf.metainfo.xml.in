@@ -71,6 +71,13 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.2" date="2025-04-25">
+      <description translate="no">
+        <ul>
+          <li>Fixed create container button not working</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.1" date="2025-03-25">
       <description translate="no">
         <p>First release</p>
