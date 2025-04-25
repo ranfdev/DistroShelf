@@ -75,6 +75,7 @@
       <description translate="no">
         <ul>
           <li>Fixed create container button not working</li>
+          <li>Fixed continue button in welcome screen not working after having installed distrobox</li>
         </ul>
       </description>
     </release>
