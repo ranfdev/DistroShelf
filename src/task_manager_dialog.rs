@@ -135,6 +135,11 @@ mod imp {
                 this.root_store().set_selected_task(None::<&DistroboxTask>);
             });
 
+            let this = self.obj().clone();
+            self.obj().connect_closed(move |_| {
+                this.root_store().set_selected_task(None::<&DistroboxTask>);
+            });
+
             self.scrolled_window.set_child(Some(&self.stack));
             self.content.append(&self.scrolled_window);
 

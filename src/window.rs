@@ -143,6 +143,8 @@ impl DistroShelfWindow {
                 if let Some(container) = root_store.selected_container() {
                     this_clone.build_main_content(&container);
                     this_clone.imp().split_view.set_show_content(true);
+                } else {
+                    this_clone.imp().main_slot.set_child(None::<&gtk::Widget>);
                 }
             });
         let this_clone = this.clone();
@@ -533,6 +535,7 @@ impl DistroShelfWindow {
                         this,
                         move |dialog, _| {
                             this.root_store().selected_container().unwrap().delete();
+                            this.root_store().set_selected_container(None::<Container>);
                             dialog.close();
                         }
                     ),

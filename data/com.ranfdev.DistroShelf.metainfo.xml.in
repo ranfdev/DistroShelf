@@ -71,6 +71,15 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.3" date="2025-04-25">
+      <description translate="no">
+        <ul>
+          <li>Wait for export commands to finish before reloading app list</li>
+          <li>Close selected task when closing the entire task dialog</li>
+          <li>Remove main view of container actions after container is deleted</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.2" date="2025-04-25">
       <description translate="no">
         <ul>
