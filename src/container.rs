@@ -167,9 +167,9 @@ impl Container {
                     .distrobox()
                     .export_app(&this.name(), &desktop_file_path)
                     .await?;
+                this.apps().reload();
                 Ok(())
             });
-        self.apps().reload();
     }
     pub fn unexport(&self, desktop_file_path: &str) {
         let this = self.clone();
@@ -180,9 +180,9 @@ impl Container {
                     .distrobox()
                     .unexport_app(&this.name(), &desktop_file_path)
                     .await?;
+                this.apps().reload();
                 Ok(())
             });
-        self.apps().reload();
     }
     pub fn clone_to(&self, target_name: &str) {
         let this = self.clone();
