@@ -5,7 +5,7 @@
   <project_license>GPL-3.0-or-later</project_license>
 
   <name>DistroShelf</name>
-  <name xml:lang="id">RakDistro</name>
+  <name xml:lang="id">DistroSelf</name>
   <summary>Graphical interface for managing Distrobox containers</summary>
   <summary xml:lang="id">Antarmuka grafis untuk mengelola kontainer Distrobox</summary>
   <description>
