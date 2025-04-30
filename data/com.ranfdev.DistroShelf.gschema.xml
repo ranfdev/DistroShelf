@@ -5,6 +5,8 @@
             <default>'gnome-terminal'</default>
             <summary>Selected terminal emulator</summary>
             <description>The terminal emulator selected by the user.</description>
+            <summary xml:lang="id">Emulator terminal yang dipilih</summary>
+            <description xml:lang="id">Emulator terminal yang dipilih oleh pengguna.</description>
         </key>
 	</schema>
 </schemalist>

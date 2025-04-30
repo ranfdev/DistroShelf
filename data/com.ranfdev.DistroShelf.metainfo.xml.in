@@ -5,7 +5,9 @@
   <project_license>GPL-3.0-or-later</project_license>
 
   <name>DistroShelf</name>
+  <name xml:lang="id">DistroSelf</name>
   <summary>Graphical interface for managing Distrobox containers</summary>
+  <summary xml:lang="id">Antarmuka grafis untuk mengelola kontainer Distrobox</summary>
   <description>
     <p>
     DistroShelf is a graphical interface for managing Distrobox containers on Linux.
@@ -19,6 +21,21 @@
       <li>Open terminal sessions</li>
       <li>Upgrade containers</li>
       <li>Clone and delete containers</li>
+    </ul>
+  </description>
+  <description xml:lang="id">
+    <p>
+    DistroShelf adalah antarmuka grafis untuk mengelola kontainer Distrobox di Linux.
+    Ini menyediakan cara mudah untuk:
+    </p>
+    <ul>
+      <li>Membuat dan mengelola kontainer</li>
+      <li>Melihat status dan detail kontainer</li>
+      <li>Menginstal paket</li>
+      <li>Mengelola aplikasi yang diekspor</li>
+      <li>Membuka sesi terminal</li>
+      <li>Memperbarui kontainer</li>
+      <li>Mengkloning dan menghapus kontainer</li>
     </ul>
   </description>
 

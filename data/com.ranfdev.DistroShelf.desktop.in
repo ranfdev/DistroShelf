@@ -1,5 +1,6 @@
 [Desktop Entry]
 Name=DistroShelf
+Name[id]=DistroShelf
 Exec=distroshelf
 Icon=com.ranfdev.DistroShelf
 Terminal=false
