@@ -71,6 +71,11 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.5" date="2025-04-30">
+      <description translate="no">
+        <p>Lighter, bigger items in icon</p>
+      </description>
+    </release>
    <release version="1.0.4" date="2025-04-29">
       <description translate="no">
         <p>Fix appstream metadata, showing more screenshots and improving banner colors</p>
