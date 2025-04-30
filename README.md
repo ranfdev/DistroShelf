@@ -26,7 +26,7 @@ DistroShelf is a graphical interface for managing [Distrobox](https://distrobox.
 or
 
 ```bash
-flatpak install flathub com.ranfdev.DistroShelf
+flatpak install com.ranfdev.DistroShelf
 ```
 
 
