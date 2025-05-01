@@ -997,20 +997,20 @@ Categories=Utility;Network;
         assert_eq!(
             cmd_outputs[0].1().unwrap(),
             "ID           | NAME                 | STATUS             | IMAGE  
-1 | Ubuntu | Created | docker.io/library/ubuntu:latest
-2 | Fedora | Created | docker.io/library/fedora:latest
-3 | Kali | Created | docker.io/kalilinux/kali-rolling
-4 | Debian | Created | docker.io/library/debian:latest
-5 | Arch Linux | Created | docker.io/library/archlinux:latest
-6 | CentOS | Created | docker.io/library/centos:latest
-7 | Alpine | Created | docker.io/library/alpine:latest
-8 | OpenSUSE | Created | docker.io/library/opensuse:latest
-9 | Gentoo | Created | docker.io/library/gentoo:latest
-10 | Slackware | Created | docker.io/library/slackware:latest
-11 | Void Linux | Created | docker.io/library/voidlinux:latest
-13 | Deepin | Created | docker.io/library/deepin:latest
-16 | Rocky Linux | Created | docker.io/library/rockylinux:latest
-17 | Crystal Linux | Created | docker.io/library/crystal-linux:latest\n"
+1 | Ubuntu | Created 2 minutes ago | docker.io/library/ubuntu:latest
+2 | Fedora | Created 2 minutes ago | docker.io/library/fedora:latest
+3 | Kali | Created 2 minutes ago | docker.io/kalilinux/kali-rolling
+4 | Debian | Created 2 minutes ago | docker.io/library/debian:latest
+5 | Arch Linux | Created 2 minutes ago | docker.io/library/archlinux:latest
+6 | CentOS | Created 2 minutes ago | docker.io/library/centos:latest
+7 | Alpine | Created 2 minutes ago | docker.io/library/alpine:latest
+8 | OpenSUSE | Created 2 minutes ago | docker.io/library/opensuse:latest
+9 | Gentoo | Created 2 minutes ago | docker.io/library/gentoo:latest
+10 | Slackware | Created 2 minutes ago | docker.io/library/slackware:latest
+11 | Void Linux | Created 2 minutes ago | docker.io/library/voidlinux:latest
+13 | Deepin | Created 2 minutes ago | docker.io/library/deepin:latest
+16 | Rocky Linux | Created 2 minutes ago | docker.io/library/rockylinux:latest
+17 | Crystal Linux | Created 2 minutes ago | docker.io/library/crystal-linux:latest\n"
         );
     }
 }
