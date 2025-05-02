@@ -3,13 +3,9 @@ use std::{
 };
 use tracing::{debug, error, info, warn};
 
-mod command;
-mod command_runner;
-mod desktop_file;
+use async_trait::async_trait;
+use super::{parse_desktop_file, wrap_capture_cmd, wrap_flatpak_cmd, Child, Command, CommandRunner, ContainerCli, DesktopEntry, NullCommandRunner, NullCommandRunnerBuilder, RealCommandRunner};
 
-pub use command::*;
-pub use command_runner::*;
-pub use desktop_file::*;
 
 #[derive(Default, Clone, Debug)]
 pub struct OutputTracker<T> {
@@ -606,7 +602,11 @@ impl Distrobox {
         Ok(res)
     }
 
-    pub async fn list_apps(&self, box_name: &str) -> Result<Vec<ExportableApp>, Error> {
+}
+
+#[async_trait(?Send)]
+impl ContainerCli for Distrobox {
+    async fn list_apps(&self, box_name: &str) -> Result<Vec<ExportableApp>, Error> {
         let files = self.get_desktop_files(box_name).await?;
         debug!(desktop_files=?files);
         let exported = self.get_exported_desktop_files().await?;
@@ -637,7 +637,7 @@ impl Distrobox {
         Ok(res)
     }
 
-    pub fn launch_app(
+    fn launch_app(
         &self,
         container: &str,
         app: &ExportableApp,
@@ -652,7 +652,7 @@ impl Distrobox {
         self.cmd_spawn(cmd)
     }
 
-    pub async fn export_app(
+    async fn export_app(
         &self,
         container: &str,
         desktop_file_path: &str,
@@ -665,7 +665,7 @@ impl Distrobox {
 
         self.cmd_output_string(cmd).await
     }
-    pub async fn unexport_app(
+    async fn unexport_app(
         &self,
         container: &str,
         desktop_file_path: &str,
@@ -680,19 +680,19 @@ impl Distrobox {
     }
 
     // assemble
-    pub fn assemble(&self, file_path: &str) -> Result<Box<dyn Child + Send>, Error> {
+    fn assemble(&self, file_path: &str) -> Result<Box<dyn Child + Send>, Error> {
         let mut cmd = dbcmd();
         cmd.arg("assemble").arg("--file").arg(file_path);
         self.cmd_spawn(cmd)
     }
 
-    pub fn assemble_from_url(&self, url: &str) -> Result<Box<dyn Child + Send>, Error> {
+    fn assemble_from_url(&self, url: &str) -> Result<Box<dyn Child + Send>, Error> {
         let mut cmd = dbcmd();
         cmd.arg("assemble").arg("--file").arg(url);
         self.cmd_spawn(cmd)
     }
     // create
-    pub async fn create(&self, args: CreateArgs) -> Result<Box<dyn Child + Send>, Error> {
+    async fn create(&self, args: CreateArgs) -> Result<Box<dyn Child + Send>, Error> {
         let mut cmd = dbcmd();
         cmd.arg("create").arg("--yes");
         if !args.image.is_empty() {
@@ -716,7 +716,7 @@ impl Distrobox {
         self.cmd_spawn(cmd)
     }
     // create --compatibility
-    pub async fn list_images(&self) -> Result<Vec<String>, Error> {
+    async fn list_images(&self) -> Result<Vec<String>, Error> {
         let mut cmd = dbcmd();
         cmd.arg("create").arg("--compatibility");
         let text = self.cmd_output_string(cmd).await?;
@@ -733,13 +733,13 @@ impl Distrobox {
         Ok(lines)
     }
     // enter
-    pub fn enter_cmd(&self, name: &str) -> Command {
+    fn enter_cmd(&self, name: &str) -> Command {
         let mut cmd = dbcmd();
         cmd.arg("enter").arg(name);
         cmd
     }
     // clone
-    pub async fn clone_to(
+    async fn clone_to(
         &self,
         source_name: &str,
         target_name: &str,
@@ -753,7 +753,7 @@ impl Distrobox {
         self.cmd_spawn(cmd)
     }
     // list | ls
-    pub async fn list(&self) -> Result<BTreeMap<String, ContainerInfo>, Error> {
+    async fn list(&self) -> Result<BTreeMap<String, ContainerInfo>, Error> {
         let mut cmd = dbcmd();
         cmd.arg("ls").arg("--no-color");
         let text = self.cmd_output_string(cmd).await?;
@@ -780,30 +780,30 @@ impl Distrobox {
         Ok(out)
     }
     // rm
-    pub async fn remove(&self, name: &str) -> Result<String, Error> {
+    async fn remove(&self, name: &str) -> Result<String, Error> {
         let mut cmd = dbcmd();
         cmd.arg("rm").arg("--force").arg(name);
         self.cmd_output_string(cmd).await
     }
     // stop
-    pub async fn stop(&self, name: &str) -> Result<String, Error> {
+    async fn stop(&self, name: &str) -> Result<String, Error> {
         let mut cmd = dbcmd();
         cmd.arg("stop").arg("--yes").arg(name);
         self.cmd_output_string(cmd).await
     }
-    pub async fn stop_all(&self) -> Result<String, Error> {
+    async fn stop_all(&self) -> Result<String, Error> {
         let mut cmd = dbcmd();
         cmd.arg("stop").arg("--all").arg("--yes");
         self.cmd_output_string(cmd).await
     }
     // upgrade
-    pub fn upgrade(&self, name: &str) -> Result<Box<dyn Child + Send>, Error> {
+    fn upgrade(&self, name: &str) -> Result<Box<dyn Child + Send>, Error> {
         let mut cmd = dbcmd();
         cmd.arg("upgrade").arg(name);
 
         self.cmd_spawn(cmd)
     }
-    pub async fn upgrade_all(&mut self) -> Result<String, Error> {
+    async fn upgrade_all(&mut self) -> Result<String, Error> {
         let mut cmd = dbcmd();
         cmd.arg("upgrade").arg("--all");
         self.cmd_output_string(cmd).await
@@ -811,7 +811,7 @@ impl Distrobox {
     // ephemeral
     // generate-entry
     // version
-    pub async fn version(&self) -> Result<String, Error> {
+    async fn version(&self) -> Result<String, Error> {
         let mut cmd = dbcmd();
         cmd.arg("version");
         let text = self.cmd_output_string(cmd).await?;

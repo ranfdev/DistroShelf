@@ -1,6 +1,6 @@
 use crate::{
-    distrobox::{Command, ContainerInfo, ExportableApp, Status},
-    distrobox_task::DistroboxTask,
+    container_cli::{Command, ContainerInfo, ExportableApp, Status},
+    distrobox_task::ContainerCliTask,
     known_distros::{known_distro_by_image, KnownDistro},
     remote_resource::RemoteResource,
     root_store::RootStore,
@@ -86,7 +86,7 @@ impl Container {
             async move {
                 let apps = this
                     .root_store()
-                    .distrobox()
+                    .container_cli()
                     .list_apps(&this.name())
                     .await?;
 
@@ -103,11 +103,11 @@ impl Container {
         this
     }
 
-    pub fn upgrade(&self) -> DistroboxTask {
+    pub fn upgrade(&self) -> ContainerCliTask {
         let this = self.clone();
         self.root_store()
             .create_task(&self.name(), "upgrade", move |task| async move {
-                let child = this.root_store().distrobox().upgrade(&this.name())?;
+                let child = this.root_store().container_cli().upgrade(&this.name())?;
                 task.handle_child_output(child).await
             })
     }
@@ -118,7 +118,7 @@ impl Container {
             .create_task(&self.name(), "launch-app", move |task| async move {
                 let child = this
                     .root_store()
-                    .distrobox()
+                    .container_cli()
                     .launch_app(&this.name(), &app)?;
                 task.handle_child_output(child).await
             });
@@ -134,7 +134,7 @@ impl Container {
                 // The file provided from the portal is under /run/user/1000 which is not accessible by root.
                 // We can copy the file as a normal user to /tmp and then install.
 
-                let enter_cmd = this.root_store().distrobox().enter_cmd(&name_clone);
+                let enter_cmd = this.root_store().container_cli().enter_cmd(&name_clone);
 
                 // the file of the package must have the correct extension (.deb for apt-get).
                 let tmp_path = format!(
@@ -164,7 +164,7 @@ impl Container {
         self.root_store()
             .create_task(&self.name(), "export", move |_task| async move {
                 this.root_store()
-                    .distrobox()
+                    .container_cli()
                     .export_app(&this.name(), &desktop_file_path)
                     .await?;
                 this.apps().reload();
@@ -177,7 +177,7 @@ impl Container {
         self.root_store()
             .create_task(&self.name(), "unexport", move |_task| async move {
                 this.root_store()
-                    .distrobox()
+                    .container_cli()
                     .unexport_app(&this.name(), &desktop_file_path)
                     .await?;
                 this.apps().reload();
@@ -192,7 +192,7 @@ impl Container {
             .create_task(&this.name(), "clone", move |task| async move {
                 let child = this
                     .root_store()
-                    .distrobox()
+                    .container_cli()
                     .clone_to(&this.name(), &target_name_clone)
                     .await?;
                 task.handle_child_output(child).await?;
@@ -204,7 +204,7 @@ impl Container {
         let this = self.clone();
         self.root_store()
             .create_task(&self.name(), "delete", move |_task| async move {
-                this.root_store().distrobox().remove(&this.name()).await?;
+                this.root_store().container_cli().remove(&this.name()).await?;
                 Ok(())
             });
     }
@@ -212,16 +212,16 @@ impl Container {
         let this = self.clone();
         self.root_store()
             .create_task(&self.name(), "stop", move |_task| async move {
-                this.root_store().distrobox().stop(&this.name()).await?;
+                this.root_store().container_cli().stop(&this.name()).await?;
                 // this.load_container_infos();
                 Ok(())
             });
     }
-    pub fn spawn_terminal(&self) -> DistroboxTask {
+    pub fn spawn_terminal(&self) -> ContainerCliTask {
         let this = self.clone();
         self.root_store()
             .create_task(&self.name(), "spawn-terminal", move |_task| async move {
-                let enter_cmd = this.root_store().distrobox().enter_cmd(&this.name());
+                let enter_cmd = this.root_store().container_cli().enter_cmd(&this.name());
                 this.root_store()
                     .spawn_terminal_cmd(this.name(), &enter_cmd)
                     .await

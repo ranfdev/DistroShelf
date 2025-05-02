@@ -1,4 +1,4 @@
-use crate::distrobox::Command;
+use crate::container_cli::Command;
 use glib::subclass::prelude::*;
 use gtk::glib;
 use gtk::glib::derived_properties;

@@ -1,5 +1,5 @@
 use crate::tagged_object::TaggedObject;
-use crate::{distrobox_task::DistroboxTask, root_store::RootStore};
+use crate::{distrobox_task::ContainerCliTask, root_store::RootStore};
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib::{derived_properties, Properties};
@@ -76,7 +76,7 @@ mod imp {
                     let mut has_warning = false;
                     for i in 0..tasks.n_items() {
                         let item = tasks.item(i);
-                        let item: &DistroboxTask = item.and_downcast_ref().unwrap();
+                        let item: &ContainerCliTask = item.and_downcast_ref().unwrap();
                         if item.is_failed() {
                             has_warning = true;
                             break;
@@ -88,7 +88,7 @@ mod imp {
                     for i in position..position + added {
                         dbg!(i);
                         let item = tasks.item(i);
-                        let item: &DistroboxTask = item.and_downcast_ref().unwrap();
+                        let item: &ContainerCliTask = item.and_downcast_ref().unwrap();
                         let this_clone = this_clone.clone();
                         item.connect_status_notify(move |item| {
                             if item.is_failed() {

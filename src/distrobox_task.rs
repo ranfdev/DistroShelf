@@ -11,13 +11,13 @@ use std::cell::RefCell;
 use std::future::Future;
 use tracing::{debug, error, info, warn};
 
-use crate::distrobox::Child;
+use crate::container_cli::Child;
 
 mod imp {
     use super::*;
 
     #[derive(Properties, Default)]
-    #[properties(wrapper_type = super::DistroboxTask)]
+    #[properties(wrapper_type = super::ContainerCliTask)]
     pub struct DistroboxTask {
         #[property(get, construct_only)]
         target: RefCell<String>,
@@ -38,14 +38,14 @@ mod imp {
     #[glib::object_subclass]
     impl ObjectSubclass for DistroboxTask {
         const NAME: &'static str = "DistroboxTask";
-        type Type = super::DistroboxTask;
+        type Type = super::ContainerCliTask;
     }
 }
 
 glib::wrapper! {
-    pub struct DistroboxTask(ObjectSubclass<imp::DistroboxTask>);
+    pub struct ContainerCliTask(ObjectSubclass<imp::DistroboxTask>);
 }
-impl DistroboxTask {
+impl ContainerCliTask {
     pub fn new<F: Future<Output = anyhow::Result<()>>>(
         target: &str,
         name: &str,

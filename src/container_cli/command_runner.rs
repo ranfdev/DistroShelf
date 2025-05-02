@@ -11,7 +11,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::distrobox::Command;
+use crate::container_cli::Command;
 use async_process::{Command as AsyncCommand, Output};
 use futures::{
     io::{AsyncRead, AsyncWrite, Cursor},

@@ -4,7 +4,7 @@ use gtk::glib::{clone, BoxedAnyObject};
 use gtk::{gio, glib};
 
 use crate::container::Container;
-use crate::distrobox::ExportableApp;
+use crate::container_cli::ExportableApp;
 
 use std::cell::RefCell;
 

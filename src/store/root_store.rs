@@ -12,13 +12,9 @@ use tracing::debug;
 use tracing::error;
 use tracing::info;
 
-use crate::container::Container;
-use crate::distrobox::wrap_flatpak_cmd;
-use crate::distrobox::Command;
-use crate::distrobox::CreateArgs;
-use crate::distrobox::Distrobox;
-use crate::distrobox::Status;
-use crate::distrobox_task::DistroboxTask;
+use crate::container::{self, Container};
+use crate::container_cli::{wrap_flatpak_cmd, Command, ContainerCli, ContainerInfo, CreateArgs, Status};
+use crate::distrobox_task::ContainerCliTask;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
 use crate::supported_terminals::SupportedTerminal;
@@ -35,7 +31,7 @@ mod imp {
     #[derive(Properties)]
     #[properties(wrapper_type = super::RootStore)]
     pub struct RootStore {
-        pub distrobox: OnceCell<crate::distrobox::Distrobox>,
+        pub container_cli: OnceCell<Box<dyn ContainerCli>>,
         #[property(get, set)]
         pub distrobox_version: RefCell<RemoteResource>,
 
@@ -50,7 +46,7 @@ mod imp {
         #[property(get)]
         pub tasks: gio::ListStore,
         #[property(get, set, nullable)]
-        pub selected_task: RefCell<Option<DistroboxTask>>,
+        pub selected_task: RefCell<Option<ContainerCliTask>>,
 
         #[property(get)]
         pub settings: gio::Settings,
@@ -68,10 +64,10 @@ mod imp {
                 selected_container: Default::default(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
-                distrobox: Default::default(),
+                container_cli: Default::default(),
                 distrobox_version: Default::default(),
                 images: Default::default(),
-                tasks: gio::ListStore::new::<DistroboxTask>(),
+                tasks: gio::ListStore::new::<ContainerCliTask>(),
                 selected_task: Default::default(),
                 settings: gio::Settings::new("com.ranfdev.DistroShelf"),
             }
@@ -92,12 +88,12 @@ glib::wrapper! {
     pub struct RootStore(ObjectSubclass<imp::RootStore>);
 }
 impl RootStore {
-    pub fn new(distrobox: Distrobox) -> Self {
+    pub fn new(container_cli: Box<dyn ContainerCli>) -> Self {
         let this: Self = glib::Object::builder().build();
 
         this.imp()
-            .distrobox
-            .set(distrobox)
+            .container_cli
+            .set(container_cli)
             .or(Err("distrobox already set"))
             .unwrap();
 
@@ -107,8 +103,8 @@ impl RootStore {
             .replace(RemoteResource::new(move |_| {
                 let this_clone = this_clone.clone();
                 async move {
-                    let distrobox = this_clone.distrobox();
-                    distrobox.version().map_err(|e| e.into()).await
+                    let container_cli = this_clone.container_cli();
+                    container_cli.version().map_err(|e| e.into()).await
                 }
             }));
         let this_clone = this.clone();
@@ -124,8 +120,8 @@ impl RootStore {
         this.set_images(RemoteResource::new(move |_| {
             let this_clone = this_clone.clone();
             async move {
-                let distrobox = this_clone.distrobox();
-                distrobox.list_images().map_err(|e| e.into()).await
+                let container_cli = this_clone.container_cli();
+                container_cli.list_images().map_err(|e| e.into()).await
             }
         }));
 
@@ -133,8 +129,8 @@ impl RootStore {
         this
     }
 
-    pub fn distrobox(&self) -> &crate::distrobox::Distrobox {
-        self.imp().distrobox.get().unwrap()
+    pub fn container_cli(&self) -> &dyn crate::container_cli::ContainerCli {
+        self.imp().container_cli.get().unwrap().as_ref()
     }
 
     pub fn load_containers(&self) {
@@ -142,7 +138,7 @@ impl RootStore {
         glib::MainContext::ref_thread_default().spawn_local_with_priority(
             glib::Priority::LOW,
             async move {
-                let Ok(containers) = this.distrobox().list().await else {
+                let Ok(containers) = this.container_cli().list().await else {
                     return;
                 };
                 let containers: Vec<_> = containers
@@ -162,17 +158,17 @@ impl RootStore {
         self.selected_container().map(|c| c.name())
     }
 
-    pub fn create_task<F, Fut>(&self, name: &str, action: &str, operation: F) -> DistroboxTask
+    pub fn create_task<F, Fut>(&self, name: &str, action: &str, operation: F) -> ContainerCliTask
     where
-        F: FnOnce(DistroboxTask) -> Fut + 'static,
+        F: FnOnce(ContainerCliTask) -> Fut + 'static,
         Fut: std::future::Future<Output = Result<(), anyhow::Error>> + 'static,
     {
         let this = self.clone();
-        info!("Creating new distrobox task");
+        info!("Creating new container_cli task");
         let name = name.to_string();
         let action = action.to_string();
 
-        let task = DistroboxTask::new(&name, &action, move |task| async move {
+        let task = ContainerCliTask::new(&name, &action, move |task| async move {
             debug!("Starting task execution");
             let result = operation(task).await;
             if let Err(ref e) = result {
@@ -188,7 +184,7 @@ impl RootStore {
 
     pub fn clear_ended_tasks(&self) {
         self.tasks().retain(|task| {
-            let task: &DistroboxTask = task.downcast_ref().unwrap();
+            let task: &ContainerCliTask = task.downcast_ref().unwrap();
             !task.ended()
         });
     }
@@ -200,7 +196,7 @@ impl RootStore {
             task.set_description(
                 "Creation requires downloading the container image, which may take some time...",
             );
-            let child = this.distrobox().create(create_args).await?;
+            let child = this.container_cli().create(create_args).await?;
             task.handle_child_output(child).await
         });
         self.view_task(&task);
@@ -209,7 +205,7 @@ impl RootStore {
         let this = self.clone();
         let file_path = file_path.to_string();
         self.create_task("assemble", "assemble", move |task| async move {
-            let child = this.distrobox().assemble(&file_path)?;
+            let child = this.container_cli().assemble(&file_path)?;
             task.handle_child_output(child).await
         });
     }
@@ -220,7 +216,7 @@ impl RootStore {
         }
     }
 
-    pub fn view_task(&self, task: &DistroboxTask) {
+    pub fn view_task(&self, task: &ContainerCliTask) {
         self.set_selected_task(Some(task));
         self.set_current_dialog(TaggedObject::new("task-manager"));
     }
@@ -318,7 +314,7 @@ impl RootStore {
                 glib::timeout_future(Duration::from_millis(i as u64 * 300)).await;
 
                 // refresh the status of the container
-                let containers = this.distrobox().list().await.unwrap();
+                let containers = this.container_cli().list().await.unwrap();
                 let container = containers.get(&name).unwrap();
 
                 // if the container is running, we finally update the UI

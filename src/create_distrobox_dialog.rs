@@ -3,7 +3,7 @@ use adw::subclass::prelude::*;
 use gtk::gio::File;
 use gtk::{gio, glib};
 
-use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
+use crate::container_cli::{self, CreateArgName, CreateArgs, Error};
 use crate::root_store::RootStore;
 
 use std::path::PathBuf;
@@ -462,12 +462,12 @@ impl CreateDistroboxDialog {
         volumes_group
     }
 
-    fn update_errors(&self, res: &Result<(), distrobox::Error>) {
+    fn update_errors(&self, res: &Result<(), container_cli::Error>) {
         let imp = self.imp();
         imp.name_row.remove_css_class("error");
         imp.name_row.set_tooltip_text(None);
         match res {
-            Err(distrobox::Error::InvalidField(field, msg)) if field == "name" => {
+            Err(container_cli::Error::InvalidField(field, msg)) if field == "name" => {
                 imp.name_row.add_css_class("error");
                 imp.name_row.set_tooltip_text(Some(msg));
             }

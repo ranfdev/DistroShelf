@@ -3,7 +3,7 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 use gtk::glib::clone;
 
-use crate::distrobox_task::DistroboxTask;
+use crate::distrobox_task::ContainerCliTask;
 use crate::gtk_utils::reaction;
 use crate::root_store::RootStore;
 
@@ -69,7 +69,7 @@ mod imp {
             let root_store = self.obj().root_store();
             self.list_box
                 .bind_model(Some(&root_store.tasks()), move |obj| {
-                    let task = obj.downcast_ref::<DistroboxTask>().unwrap();
+                    let task = obj.downcast_ref::<ContainerCliTask>().unwrap();
                     this.build_row(task).upcast()
                 });
 
@@ -120,7 +120,7 @@ mod imp {
 
             let this = self.obj().clone();
             reaction!(root_store.selected_task(), move |task: Option<
-                DistroboxTask,
+                ContainerCliTask,
             >| {
                 if let Some(task) = task {
                     this.build_task_view(&task);
@@ -132,12 +132,12 @@ mod imp {
             });
             let this = self.obj().clone();
             self.navigation_view.connect_popped(move |_, _| {
-                this.root_store().set_selected_task(None::<&DistroboxTask>);
+                this.root_store().set_selected_task(None::<&ContainerCliTask>);
             });
 
             let this = self.obj().clone();
             self.obj().connect_closed(move |_| {
-                this.root_store().set_selected_task(None::<&DistroboxTask>);
+                this.root_store().set_selected_task(None::<&ContainerCliTask>);
             });
 
             self.scrolled_window.set_child(Some(&self.stack));
@@ -175,7 +175,7 @@ impl TaskManagerDialog {
     }
 
     // Build a row representing a running task.
-    pub fn build_row(&self, task: &DistroboxTask) -> adw::ActionRow {
+    pub fn build_row(&self, task: &ContainerCliTask) -> adw::ActionRow {
         let row = adw::ActionRow::new();
         row.set_title(&format!("{}: {}", task.target(), task.name()));
         row.set_subtitle(&task.status());
@@ -192,7 +192,7 @@ impl TaskManagerDialog {
         row
     }
 
-    fn build_task_view(&self, task: &DistroboxTask) {
+    fn build_task_view(&self, task: &ContainerCliTask) {
         let content = gtk::Box::new(gtk::Orientation::Vertical, 6);
         content.set_margin_start(12);
         content.set_margin_end(12);
