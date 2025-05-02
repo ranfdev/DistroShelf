@@ -1,6 +1,6 @@
 use crate::{
     container_cli::{Command, ContainerInfo, ExportableApp, Status},
-    distrobox_task::ContainerCliTask,
+    container_cli_task::ContainerCliTask,
     known_distros::{known_distro_by_image, KnownDistro},
     remote_resource::RemoteResource,
     root_store::RootStore,

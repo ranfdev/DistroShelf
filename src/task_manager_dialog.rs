@@ -3,7 +3,7 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 use gtk::glib::clone;
 
-use crate::distrobox_task::ContainerCliTask;
+use crate::container_cli_task::ContainerCliTask;
 use crate::gtk_utils::reaction;
 use crate::root_store::RootStore;
 

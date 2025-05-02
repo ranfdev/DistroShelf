@@ -14,7 +14,7 @@ use tracing::info;
 
 use crate::container::{self, Container};
 use crate::container_cli::{wrap_flatpak_cmd, Command, ContainerCli, ContainerInfo, CreateArgs, Status};
-use crate::distrobox_task::ContainerCliTask;
+use crate::container_cli_task::ContainerCliTask;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
 use crate::supported_terminals::SupportedTerminal;
