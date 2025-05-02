@@ -21,7 +21,7 @@ mod imp {
         root_store: RefCell<RootStore>,
 
         #[property(get, set, nullable)]
-        distrobox_error: RefCell<Option<String>>,
+        container_cli_error: RefCell<Option<String>>,
         #[property(get, set, nullable)]
         terminal_error: RefCell<Option<String>>,
 
@@ -30,7 +30,7 @@ mod imp {
         #[template_child]
         terminal_preferences_page: TemplateChild<adw::Clamp>,
         #[template_child]
-        distrobox_page: TemplateChild<adw::Clamp>,
+        container_cli_page: TemplateChild<adw::Clamp>,
         #[template_child]
         terminal_combo_row: TemplateChild<TerminalComboRow>,
     }
@@ -63,19 +63,19 @@ mod imp {
         fn continue_to_terminal_page(&self, _: &gtk::Button) {
             let obj = self.obj();
             let obj = obj.clone();
-            obj.root_store().distrobox_version()
+            obj.root_store().container_cli_version()
                 .connect_loading_notify(move |resource| {
                     if resource.loading() {
                         return
                     }
                     if let Some(e) = resource.error() {
-                        obj.set_distrobox_error(Some(e.as_str()));
+                        obj.set_container_cli_error(Some(e.as_str()));
                     } else {
                         obj.imp().carousel
                             .scroll_to(&*obj.imp().terminal_preferences_page, true);
                     }
                 });
-            self.obj().root_store().distrobox_version().reload();
+            self.obj().root_store().container_cli_version().reload();
             self.obj().root_store().load_containers();
         }
         #[template_callback]

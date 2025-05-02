@@ -13,7 +13,7 @@
             <property name="interactive">false</property>
             <property name="spacing">12</property>
             <child>
-              <object class="AdwClamp" id="distrobox_page">
+              <object class="AdwClamp" id="container_cli_page">
                 <property name="maximum-size">500</property>
                 <property name="hexpand">true</property>
                 <property name="child">
@@ -45,13 +45,13 @@
                           </object>
                         </child>
                         <child>
-                          <object class="GtkLabel" id="distrobox_command_missing_label">
+                          <object class="GtkLabel">
                             <property name="wrap">true</property>
                             <style>
                               <class name="error"/>
                             </style>
                             <binding name="label">
-                              <lookup name="distrobox-error">
+                              <lookup name="container-cli-error">
                                 WelcomeView
                               </lookup>
                             </binding>

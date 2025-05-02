@@ -54,7 +54,7 @@ mod imp {
         #[template_child]
         pub sidebar_stack: TemplateChild<gtk::Stack>,
         #[template_child]
-        pub create_distrobox_btn: TemplateChild<gtk::Button>,
+        pub create_container_btn: TemplateChild<gtk::Button>,
         #[template_child]
         pub sidebar_bottom_slot: TemplateChild<adw::Bin>,
         #[template_child]
@@ -106,9 +106,9 @@ mod imp {
                 );
             });
 
-            klass.install_action("win.create-distrobox", None, |win, _action, _target| {
+            klass.install_action("win.create-container", None, |win, _action, _target| {
                 win.root_store()
-                    .set_current_dialog(TaggedObject::new("create-distrobox"));
+                    .set_current_dialog(TaggedObject::new("create-container"));
             });
         }
 
@@ -166,7 +166,7 @@ impl DistroShelfWindow {
                         &this_clone.root_store().selected_container().unwrap(),
                     )
                     .upcast(),
-                    "create-distrobox" => {
+                    "create-container" => {
                         CreateDistroboxDialog::new(this_clone.root_store()).upcast()
                     }
                     "task-manager" => TaskManagerDialog::new(root_store).upcast(),
@@ -194,9 +194,9 @@ impl DistroShelfWindow {
         self.root_store().containers().connect_items_changed(
             move |list, _position, _removed, _added| {
                 let visible_child_name = if list.n_items() == 0 {
-                    "no-distroboxes"
+                    "no-containers"
                 } else {
-                    "distroboxes"
+                    "containers"
                 };
                 this.imp()
                     .sidebar_stack

@@ -33,7 +33,7 @@ mod imp {
     pub struct RootStore {
         pub container_cli: OnceCell<Box<dyn ContainerCli>>,
         #[property(get, set)]
-        pub distrobox_version: RefCell<RemoteResource>,
+        pub container_cli_version: RefCell<RemoteResource>,
 
         #[property(get, set)]
         pub images: RefCell<RemoteResource>,
@@ -65,7 +65,7 @@ mod imp {
                 current_view: Default::default(),
                 current_dialog: Default::default(),
                 container_cli: Default::default(),
-                distrobox_version: Default::default(),
+                container_cli_version: Default::default(),
                 images: Default::default(),
                 tasks: gio::ListStore::new::<ContainerCliTask>(),
                 selected_task: Default::default(),
@@ -94,12 +94,12 @@ impl RootStore {
         this.imp()
             .container_cli
             .set(container_cli)
-            .or(Err("distrobox already set"))
+            .or(Err("container_cli already set"))
             .unwrap();
 
         let this_clone = this.clone();
         this.imp()
-            .distrobox_version
+            .container_cli_version
             .replace(RemoteResource::new(move |_| {
                 let this_clone = this_clone.clone();
                 async move {
@@ -108,13 +108,13 @@ impl RootStore {
                 }
             }));
         let this_clone = this.clone();
-        this.distrobox_version()
+        this.container_cli_version()
             .connect_error_notify(move |resource| {
                 if resource.error().is_some() {
                     this_clone.set_current_view(TaggedObject::new("welcome"));
                 }
             });
-        this.distrobox_version().reload();
+        this.container_cli_version().reload();
 
         let this_clone = this.clone();
         this.set_images(RemoteResource::new(move |_| {
