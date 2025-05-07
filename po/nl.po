@@ -21,7 +21,7 @@ msgstr ""
 #: data/com.ranfdev.DistroShelf.desktop.in:2
 #: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/window.ui:30
 msgid "DistroShelf"
-msgstr "Distroplank"
+msgstr "DistroShelf"
 
 #: data/com.ranfdev.DistroShelf.desktop.in:8
 msgid "GTK;"
@@ -36,7 +36,7 @@ msgid ""
 "DistroShelf is a graphical interface for managing Distrobox containers on "
 "Linux. It provides an easy way to:"
 msgstr ""
-"Distroplank is een grafische toepassing voor het beheren van Distrobox-"
+"DistroShelf is een grafische toepassing voor het beheren van Distrobox-"
 "containers op Linux. Kenmerken:"
 
 #: data/com.ranfdev.DistroShelf.metainfo.xml.in:15
