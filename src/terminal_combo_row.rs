@@ -31,10 +31,12 @@ mod imp {
             obj.set_title("Preferred Terminal");
             obj.set_use_subtitle(true);
 
-            let terminals = SUPPORTED_TERMINALS
+            let mut terminals = SUPPORTED_TERMINALS
                 .iter()
                 .map(|x| x.name.as_ref())
                 .collect::<Vec<&str>>();
+            // case-insensitive sort
+            terminals.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
             let selected_position = terminals.iter().position(|x| {
                 Some(x)
                     == obj
