@@ -71,6 +71,16 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.6" date="2025-05-12">
+      <description translate="no">
+        <ul>
+          <li>Added Italian translation</li>
+          <li>Added Dutch translation</li>
+          <li>Added Ghostty terminal support</li>
+          <li>Added Terminator terminal support</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5" date="2025-04-30">
       <description translate="no">
         <p>Lighter, bigger items in icon</p>
