@@ -23,6 +23,7 @@ pub static SUPPORTED_TERMINALS: LazyLock<Vec<SupportedTerminal>> = LazyLock::new
         ("Xterm", "xterm", "-e"),
         ("COSMIC Terminal", "cosmic-term", "-e"),
         ("Ghostty", "ghostty", "-e"),
+        ("Terminator", "terminator", "-x"),
     ]
     .iter()
     .map(|(name, program, separator_arg)| SupportedTerminal {
