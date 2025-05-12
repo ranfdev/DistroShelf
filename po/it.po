@@ -1,0 +1,115 @@
+# ITALIAN TRANSLATION.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the distroshelf package.
+# ALBANO BATTISTELLA <ALBANOBATTISTELLA@GMAIL.COM>, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: distroshelf\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-04-30 10:16+0200\n"
+"PO-Revision-Date: 2025-05-09 17:12+0100\n"
+"Last-Translator: Albano Battistella <albanobattistella@gmail.com>\n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.6\n"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:2
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/window.ui:30
+msgid "DistroShelf"
+msgstr "DistroShelf"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:8
+msgid "GTK;"
+msgstr "GTK;"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:8
+msgid "Graphical interface for managing Distrobox containers"
+msgstr "Interfaccia grafica per la gestione dei containers Distrobox"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:10
+msgid ""
+"DistroShelf is a graphical interface for managing Distrobox containers on "
+"Linux. It provides an easy way to:"
+msgstr ""
+"DistroShelf è un'interfaccia grafica per la gestione dei containers Distrobox su "
+"Linux. Offre un modo semplice per:"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:15
+msgid "Create and manage containers"
+msgstr "Creare e gestire containers"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:16
+msgid "View container status and details"
+msgstr "Visualizzazione dello stato e dei dettagli del container"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:17
+msgid "Install packages"
+msgstr "Installare pacchetti"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:18
+msgid "Manage exported applications"
+msgstr "Gestire le applicazioni esportate"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:19
+msgid "Open terminal sessions"
+msgstr "Aprire sessioni di terminali"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:20
+msgid "Upgrade containers"
+msgstr "Aggiornare containers"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:21
+msgid "Clone and delete containers"
+msgstr "Clonare ed eliminare i containers"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:26
+msgid "Lorenzo Miglietta"
+msgstr "Lorenzo Miglietta"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:6
+msgid "Selected terminal emulator"
+msgstr "Emulatore di terminale selezionato"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:7
+msgid "The terminal emulator selected by the user."
+msgstr "L'emulatore di terminale selezionato dall'utente."
+
+#: src/window.ui:57
+msgid "No Distroboxes Found"
+msgstr "Nessuna distrobox trovata"
+
+#: src/window.ui:68
+msgid "Learn More"
+msgstr "Ulteriori informazioni"
+
+#: src/window.ui:78
+msgid "Create Distrobox"
+msgstr "Crea Distrobox"
+
+#: src/window.ui:118
+msgid "Container"
+msgstr "Container"
+
+#: src/window.ui:159
+msgid "_Refresh"
+msgstr "_Aggiorna"
+
+#: src/window.ui:163
+msgid "_Upgrade All"
+msgstr "_Aggiorna tutto"
+
+#: src/window.ui:169
+msgid "_Settings"
+msgstr "_Impostazioni"
+
+#: src/window.ui:173
+msgid "_About"
+msgstr "_Informazioni"
+
+#: src/window.ui:177
+msgid "Discover _Distrobox"
+msgstr "Scopri _Distrobox"
