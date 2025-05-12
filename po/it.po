@@ -35,7 +35,7 @@ msgid ""
 "DistroShelf is a graphical interface for managing Distrobox containers on "
 "Linux. It provides an easy way to:"
 msgstr ""
-DistroShelf è un'interfaccia grafica per la gestione dei containers Distrobox su "
+"DistroShelf è un'interfaccia grafica per la gestione dei containers Distrobox su "
 "Linux. Offre un modo semplice per:"
 
 #: data/com.ranfdev.DistroShelf.metainfo.xml.in:15
