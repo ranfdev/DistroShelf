@@ -1,7 +1,7 @@
-# ITALIAN TRANSLATION.
+# BRAZILIAN PORTUGUESE TRANSLATION.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the distroshelf package.
-# ALBANO BATTISTELLA <ALBANOBATTISTELLA@GMAIL.COM>, 2025.
+# JOHN PETER SA <johnppetersa@gmail.com>, 2025.
 #
 msgid ""
 msgstr ""
