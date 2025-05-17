@@ -28,7 +28,7 @@ msgstr "GTK;"
 
 #: data/com.ranfdev.DistroShelf.metainfo.xml.in:8
 msgid "Graphical interface for managing Distrobox containers"
-msgstr "Interfaccia grafica per la gestione dei containers Distrobox"
+msgstr "Interfaccia grafica per la gestione dei containers su Distrobox"
 
 #: data/com.ranfdev.DistroShelf.metainfo.xml.in:10
 msgid ""
