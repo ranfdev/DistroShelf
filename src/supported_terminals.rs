@@ -62,7 +62,7 @@ mod imp {
 
     impl Default for TerminalRepository {
         fn default() -> Self {
-        let custom_list_path = glib::user_data_dir().join("distroshelf-terminals.json");
+            let custom_list_path = glib::user_data_dir().join("distroshelf-terminals.json");
             Self {
                 list: RefCell::new(vec![]),
                 custom_list_path,
@@ -79,30 +79,32 @@ mod imp {
     }
 }
 
-
 glib::wrapper! {
     pub struct TerminalRepository(ObjectSubclass<imp::TerminalRepository>);
 }
 
 impl TerminalRepository {
     pub fn new() -> Self {
-        let this: Self = glib::Object::builder()
-            .build();
+        let this: Self = glib::Object::builder().build();
 
         let mut list = SUPPORTED_TERMINALS.clone();
         if let Ok(loaded_list) = Self::load_terminals_from_json(&this.imp().custom_list_path) {
             list.extend(loaded_list);
         } else {
-            error!("Failed to load custom terminals from JSON file {:?}", &this.imp().custom_list_path);
+            error!(
+                "Failed to load custom terminals from JSON file {:?}",
+                &this.imp().custom_list_path
+            );
         }
-        
+
         list.sort_by(|a, b| a.name.cmp(&b.name));
         this.imp().list.replace(list);
         this
     }
 
     pub fn is_read_only(&self, name: &str) -> bool {
-        self.imp().list
+        self.imp()
+            .list
             .borrow()
             .iter()
             .find(|x| x.name == name)
@@ -113,11 +115,13 @@ impl TerminalRepository {
         if self.is_read_only(terminal.name.as_str()) {
             return Err(anyhow::anyhow!("Cannot modify read-only terminal"));
         }
-        let mut list = self.imp().list.borrow_mut();
-        list.retain(|x| x.name != terminal.name);
-        list.push(terminal);
+        {
+            let mut list = self.imp().list.borrow_mut();
+            list.retain(|x| x.name != terminal.name);
+            list.push(terminal);
 
-        list.sort_by(|a, b| a.name.cmp(&b.name));
+            list.sort_by(|a, b| a.name.cmp(&b.name));
+        }
 
         self.save_terminals_to_json();
         Ok(())
@@ -127,16 +131,25 @@ impl TerminalRepository {
         if self.is_read_only(name) {
             return Err(anyhow::anyhow!("Cannot modify read-only terminal"));
         }
-        self.imp().list.borrow_mut().retain(|x| x.name != name);
+        {
+            self.imp().list.borrow_mut().retain(|x| x.name != name);
+        }
+        self.save_terminals_to_json();
         Ok(())
     }
 
     pub fn terminal_by_name(&self, name: &str) -> Option<Terminal> {
-        self.imp().list.borrow().iter().find(|x| x.name == name).cloned()
+        self.imp()
+            .list
+            .borrow()
+            .iter()
+            .find(|x| x.name == name)
+            .cloned()
     }
 
     pub fn terminal_by_program(&self, program: &str) -> Option<Terminal> {
-        self.imp().list
+        self.imp()
+            .list
             .borrow()
             .iter()
             .find(|x| x.program == program)
@@ -148,7 +161,14 @@ impl TerminalRepository {
     }
 
     fn save_terminals_to_json(&self) {
-        let list: Vec<Terminal> = self.imp().list.borrow().iter().filter(|x| !x.read_only).cloned().collect::<Vec<_>>();
+        let list: Vec<Terminal> = self
+            .imp()
+            .list
+            .borrow()
+            .iter()
+            .filter(|x| !x.read_only)
+            .cloned()
+            .collect::<Vec<_>>();
         let json = serde_json::to_string(&*list).unwrap();
         std::fs::write(&self.imp().custom_list_path, json).unwrap();
     }
@@ -160,9 +180,16 @@ impl TerminalRepository {
     }
 
     pub async fn default_terminal(&self) -> Option<Terminal> {
-        let command = Command::new_with_args("flatpak-spawn", &["--host", "--", "get",
+        let command = Command::new_with_args(
+            "flatpak-spawn",
+            &[
+                "--host",
+                "--",
+                "get",
                 "org.gnome.desktop.default-applications.terminal",
-                "exec",]);
+                "exec",
+            ],
+        );
         let output = self.imp().command_runner.borrow().output(command.clone());
         let Ok(output) = output.await else {
             error!("Failed to get default terminal, running {:?}", &command);
@@ -173,11 +200,13 @@ impl TerminalRepository {
             return None;
         }
         info!("Default terminal program: {}", terminal_program);
-        self.terminal_by_program(&terminal_program)
-            .or_else(|| {
-                error!("Terminal program {} not found in the list", terminal_program);
-                None
-            })
+        self.terminal_by_program(&terminal_program).or_else(|| {
+            error!(
+                "Terminal program {} not found in the list",
+                terminal_program
+            );
+            None
+        })
     }
 }
 
