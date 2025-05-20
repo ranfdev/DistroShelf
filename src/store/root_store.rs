@@ -7,6 +7,7 @@ use glib::Properties;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::RefCell;
+use std::default;
 use std::time::Duration;
 use tracing::debug;
 use tracing::error;
@@ -21,8 +22,7 @@ use crate::distrobox::Status;
 use crate::distrobox_task::DistroboxTask;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
-use crate::supported_terminals::SupportedTerminal;
-use crate::supported_terminals::SUPPORTED_TERMINALS;
+use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
 
 mod imp {
@@ -36,6 +36,8 @@ mod imp {
     #[properties(wrapper_type = super::RootStore)]
     pub struct RootStore {
         pub distrobox: OnceCell<crate::distrobox::Distrobox>,
+        pub terminal_repository: TerminalRepository,
+
         #[property(get, set)]
         pub distrobox_version: RefCell<RemoteResource>,
 
@@ -65,6 +67,7 @@ mod imp {
         fn default() -> Self {
             Self {
                 containers: gio::ListStore::new::<crate::container::Container>(),
+                terminal_repository: Default::default(),
                 selected_container: Default::default(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
@@ -129,12 +132,29 @@ impl RootStore {
             }
         }));
 
+        if this.selected_terminal().is_none() {
+            let this = this.clone();
+            glib::MainContext::ref_thread_default().spawn_local(async move {
+                let Some(default_terminal) = this
+                    .terminal_repository()
+                    .default_terminal()
+                    .await else {
+                        return;
+                    };
+                this.set_selected_terminal_name(&default_terminal.name);
+            });
+        }
+
         this.load_containers();
         this
     }
 
     pub fn distrobox(&self) -> &crate::distrobox::Distrobox {
         self.imp().distrobox.get().unwrap()
+    }
+
+    pub fn terminal_repository(&self) -> &TerminalRepository {
+        &self.imp().terminal_repository
     }
 
     pub fn load_containers(&self) {
@@ -256,21 +276,32 @@ impl RootStore {
         }
         Ok(())
     }
-    pub fn selected_terminal(&self) -> Option<SupportedTerminal> {
-        let program: String = self.settings().string("selected-terminal").into();
-        SUPPORTED_TERMINALS
-            .iter()
-            .find(|x| x.program == program)
-            .cloned()
-    }
-    pub fn set_selected_terminal_program(&self, program: &str) {
-        if !SUPPORTED_TERMINALS.iter().any(|x| x.program == program) {
-            panic!("Unsupported terminal");
-        }
+    pub fn selected_terminal(&self) -> Option<Terminal> {
+        // Old version stored the program, such as "gnome-terminal", now we store the name "GNOME console".
+        let name_or_program: String = self.settings().string("selected-terminal").into();
 
+        let by_name = self
+            .imp()
+            .terminal_repository
+            .terminal_by_name(&name_or_program);
+        
+        if let Some(terminal) = by_name {
+            Some(terminal)
+        } else if let Some(terminal) = self
+            .imp()
+            .terminal_repository
+            .terminal_by_program(&name_or_program)
+        {
+            Some(terminal)
+        } else {
+            error!("Terminal not found: {}", name_or_program);
+            None
+        }
+    }
+    pub fn set_selected_terminal_name(&self, name: &str) {
         self.imp()
             .settings
-            .set_string("selected-terminal", program)
+            .set_string("selected-terminal", name)
             .expect("Failed to save setting");
     }
 
