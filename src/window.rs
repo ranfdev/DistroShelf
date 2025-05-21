@@ -650,10 +650,23 @@ impl DistroShelfWindow {
                                 .delete_terminal(&selected)
                             {
                                 Ok(_) => {
-                                    terminal_combo_row.reload_terminals();
-                                    this.add_toast(adw::Toast::new(
-                                        "Terminal removed successfully",
-                                    ));
+                                    glib::MainContext::ref_thread_default().spawn_local(
+                                        async move {
+                                            terminal_combo_row.reload_terminals();
+                                            terminal_combo_row.set_selected_by_name(
+                                                &dbg!(this.root_store()
+                                                    .terminal_repository()
+                                                    .default_terminal()
+                                                    .await
+                                                    .map(|x| x.name)
+                                                    .unwrap_or_default()),
+                                            );
+
+                                            this.add_toast(adw::Toast::new(
+                                                "Terminal removed successfully",
+                                            ));
+                                        },
+                                    );
                                 }
                                 Err(err) => {
                                     error!(error = %err, "Failed to delete terminal");
@@ -830,8 +843,7 @@ impl DistroShelfWindow {
                                 let toast = adw::Toast::new("Custom terminal added successfully");
 
                                 terminal_combo_row.reload_terminals();
-                                terminal_combo_row
-                                    .set_selected_by_name(&terminal.name);
+                                terminal_combo_row.set_selected_by_name(&terminal.name);
 
                                 this.add_toast(toast);
                                 custom_dialog.close();

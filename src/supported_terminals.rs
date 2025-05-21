@@ -1,16 +1,14 @@
 use std::{
     cell::RefCell,
     path::{Path, PathBuf},
+    rc::Rc,
     sync::LazyLock,
 };
 
 use gtk::glib;
 use tracing::{error, info};
 
-use crate::{
-    config,
-    distrobox::{Command, CommandRunner, RealCommandRunner},
-};
+use crate::distrobox::{wrap_capture_cmd, Command, CommandRunner, NullCommandRunner};
 
 use gtk::subclass::prelude::*;
 
@@ -52,12 +50,15 @@ static SUPPORTED_TERMINALS: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
 
 mod imp {
     use super::*;
-    use std::cell::RefCell;
+    use std::{
+        cell::{OnceCell, RefCell},
+        rc::Rc,
+    };
 
     pub struct TerminalRepository {
         pub list: RefCell<Vec<Terminal>>,
         pub custom_list_path: PathBuf,
-        pub command_runner: RefCell<Box<dyn CommandRunner>>,
+        pub command_runner: OnceCell<Rc<dyn CommandRunner>>,
     }
 
     impl Default for TerminalRepository {
@@ -66,7 +67,7 @@ mod imp {
             Self {
                 list: RefCell::new(vec![]),
                 custom_list_path,
-                command_runner: RefCell::new(Box::new(RealCommandRunner {})),
+                command_runner: OnceCell::new(),
             }
         }
     }
@@ -84,8 +85,13 @@ glib::wrapper! {
 }
 
 impl TerminalRepository {
-    pub fn new() -> Self {
+    pub fn new(command_runner: Rc<dyn CommandRunner>) -> Self {
         let this: Self = glib::Object::builder().build();
+        this.imp()
+            .command_runner
+            .set(command_runner)
+            .map_err(|e| "command runner already set")
+            .unwrap();
 
         let mut list = SUPPORTED_TERMINALS.clone();
         if let Ok(loaded_list) = Self::load_terminals_from_json(&this.imp().custom_list_path) {
@@ -180,22 +186,27 @@ impl TerminalRepository {
     }
 
     pub async fn default_terminal(&self) -> Option<Terminal> {
-        let command = Command::new_with_args(
-            "flatpak-spawn",
+        let mut command = Command::new_with_args(
+            "gsettings",
             &[
-                "--host",
-                "--",
                 "get",
                 "org.gnome.desktop.default-applications.terminal",
                 "exec",
             ],
         );
-        let output = self.imp().command_runner.borrow().output(command.clone());
+        wrap_capture_cmd(&mut command);
+        let output = self
+            .imp()
+            .command_runner
+            .get()
+            .unwrap()
+            .output(command.clone());
         let Ok(output) = output.await else {
             error!("Failed to get default terminal, running {:?}", &command);
             return None;
         };
         let terminal_program = String::from_utf8(output.stdout).unwrap().trim().to_string();
+        let terminal_program = terminal_program.trim_matches('\'');
         if terminal_program.is_empty() {
             return None;
         }
@@ -212,6 +223,6 @@ impl TerminalRepository {
 
 impl Default for TerminalRepository {
     fn default() -> Self {
-        Self::new()
+        Self::new(Rc::new(NullCommandRunner::default()))
     }
 }

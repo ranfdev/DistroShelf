@@ -8,17 +8,18 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::RefCell;
 use std::default;
+use std::rc::Rc;
 use std::time::Duration;
 use tracing::debug;
 use tracing::error;
 use tracing::info;
 
 use crate::container::Container;
-use crate::distrobox::wrap_flatpak_cmd;
 use crate::distrobox::Command;
 use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
+use crate::distrobox::{wrap_flatpak_cmd, CommandRunner};
 use crate::distrobox_task::DistroboxTask;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
@@ -26,9 +27,9 @@ use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
 
 mod imp {
-    use std::cell::OnceCell;
+    use std::{cell::OnceCell, rc::Rc};
 
-    use crate::remote_resource::RemoteResource;
+    use crate::{distrobox::NullCommandRunner, remote_resource::RemoteResource};
 
     use super::*;
 
@@ -36,7 +37,8 @@ mod imp {
     #[properties(wrapper_type = super::RootStore)]
     pub struct RootStore {
         pub distrobox: OnceCell<crate::distrobox::Distrobox>,
-        pub terminal_repository: TerminalRepository,
+        pub terminal_repository: RefCell<TerminalRepository>,
+        pub command_runner: OnceCell<Rc<dyn crate::distrobox::CommandRunner>>,
 
         #[property(get, set)]
         pub distrobox_version: RefCell<RemoteResource>,
@@ -67,7 +69,8 @@ mod imp {
         fn default() -> Self {
             Self {
                 containers: gio::ListStore::new::<crate::container::Container>(),
-                terminal_repository: Default::default(),
+                command_runner: OnceCell::new(),
+                terminal_repository: RefCell::new(TerminalRepository::new(Rc::new(NullCommandRunner::default()))),
                 selected_container: Default::default(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
@@ -95,12 +98,22 @@ glib::wrapper! {
     pub struct RootStore(ObjectSubclass<imp::RootStore>);
 }
 impl RootStore {
-    pub fn new(distrobox: Distrobox) -> Self {
+    pub fn new(command_runner: Rc<dyn CommandRunner>) -> Self {
         let this: Self = glib::Object::builder().build();
 
         this.imp()
+            .command_runner
+            .set(command_runner.clone())
+            .or(Err("command_runner already set"))
+            .unwrap();
+
+        this.imp()
+            .terminal_repository
+            .replace(TerminalRepository::new(command_runner.clone()));
+
+        this.imp()
             .distrobox
-            .set(distrobox)
+            .set(Distrobox::new(command_runner.clone()))
             .or(Err("distrobox already set"))
             .unwrap();
 
@@ -135,12 +148,10 @@ impl RootStore {
         if this.selected_terminal().is_none() {
             let this = this.clone();
             glib::MainContext::ref_thread_default().spawn_local(async move {
-                let Some(default_terminal) = this
-                    .terminal_repository()
-                    .default_terminal()
-                    .await else {
-                        return;
-                    };
+                let Some(default_terminal) = this.terminal_repository().default_terminal().await
+                else {
+                    return;
+                };
                 this.set_selected_terminal_name(&default_terminal.name);
             });
         }
@@ -153,8 +164,8 @@ impl RootStore {
         self.imp().distrobox.get().unwrap()
     }
 
-    pub fn terminal_repository(&self) -> &TerminalRepository {
-        &self.imp().terminal_repository
+    pub fn terminal_repository(&self) -> TerminalRepository {
+        self.imp().terminal_repository.borrow().clone()
     }
 
     pub fn load_containers(&self) {
@@ -283,6 +294,7 @@ impl RootStore {
         let by_name = self
             .imp()
             .terminal_repository
+            .borrow()
             .terminal_by_name(&name_or_program);
         
         if let Some(terminal) = by_name {
@@ -290,6 +302,7 @@ impl RootStore {
         } else if let Some(terminal) = self
             .imp()
             .terminal_repository
+            .borrow()
             .terminal_by_program(&name_or_program)
         {
             Some(terminal)

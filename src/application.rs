@@ -18,13 +18,19 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+use std::path::Path;
+use std::rc::Rc;
+
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib};
 
 use crate::config::VERSION;
-use crate::distrobox::{Distrobox, DistroboxCommandRunnerResponse};
+use crate::distrobox::{
+    CommandRunner, Distrobox, DistroboxCommandRunnerResponse, FlatpakCommandRunner,
+    RealCommandRunner,
+};
 use crate::root_store::RootStore;
 use crate::DistroShelfWindow;
 
@@ -191,33 +197,41 @@ impl DistroShelfApplication {
             .build()
     }
 
+    fn get_is_in_flatpak() -> bool {
+        let fp_env = std::env::var("FLATPAK_ID").is_ok();
+        if fp_env {
+            return true;
+        }
+
+        Path::new("/.flatpak-info").exists()
+    }
+
     fn recreate_window(&self) -> adw::ApplicationWindow {
-        let distrobox = match { self.imp().distrobox_store_ty.borrow().to_owned() } {
-            DistroboxStoreTy::NullWorking => Distrobox::new_null_with_responses(
-                &[
-                    DistroboxCommandRunnerResponse::Version,
-                    DistroboxCommandRunnerResponse::new_list_common_distros(),
-                    DistroboxCommandRunnerResponse::new_common_images(),
-                    DistroboxCommandRunnerResponse::new_common_exported_apps(),
-                ],
-                false,
-            ),
-            DistroboxStoreTy::NullEmpty => Distrobox::new_null_with_responses(
-                &[
-                    DistroboxCommandRunnerResponse::Version,
-                    DistroboxCommandRunnerResponse::List(vec![]),
-                    DistroboxCommandRunnerResponse::new_common_images(),
-                ],
-                false,
-            ),
-            DistroboxStoreTy::NullNoVersion => Distrobox::new_null_with_responses(
-                &[DistroboxCommandRunnerResponse::NoVersion],
-                false,
-            ),
-            _ => Distrobox::new(),
+        let command_runner = match { self.imp().distrobox_store_ty.borrow().to_owned() } {
+            DistroboxStoreTy::NullWorking => Distrobox::null_command_runner(&[
+                DistroboxCommandRunnerResponse::Version,
+                DistroboxCommandRunnerResponse::new_list_common_distros(),
+                DistroboxCommandRunnerResponse::new_common_images(),
+                DistroboxCommandRunnerResponse::new_common_exported_apps(),
+            ]),
+            DistroboxStoreTy::NullEmpty => Distrobox::null_command_runner(&[
+                DistroboxCommandRunnerResponse::Version,
+                DistroboxCommandRunnerResponse::List(vec![]),
+                DistroboxCommandRunnerResponse::new_common_images(),
+            ]),
+            DistroboxStoreTy::NullNoVersion => {
+                Distrobox::null_command_runner(&[DistroboxCommandRunnerResponse::NoVersion])
+            }
+            _ => {
+                if Self::get_is_in_flatpak() {
+                    Rc::new(FlatpakCommandRunner::new(Rc::new(RealCommandRunner {}))) as Rc<dyn CommandRunner>
+                } else {
+                    Rc::new(RealCommandRunner {}) as Rc<dyn CommandRunner>
+                }
+            }
         };
 
-        self.set_root_store(RootStore::new(distrobox));
+        self.set_root_store(RootStore::new(command_runner));
         let window =
             DistroShelfWindow::new(self.upcast_ref::<adw::Application>(), self.root_store());
         window.upcast()
