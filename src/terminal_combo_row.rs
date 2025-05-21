@@ -22,6 +22,7 @@ mod imp {
     pub struct TerminalComboRow {
         #[property(get, set)]
         root_store: RefCell<RootStore>,
+        pub selected_item_signal_handler: RefCell<Option<glib::SignalHandlerId>>,
     }
 
     #[glib::derived_properties]
@@ -33,13 +34,15 @@ mod imp {
             obj.set_title("Preferred Terminal");
             obj.set_use_subtitle(true);
 
-            obj.connect_selected_item_notify(clone!(
+            let signal_handler = obj.connect_selected_item_notify(clone!(
                 #[weak]
                 obj,
                 move |combo| {
-                    let Some(selected) = combo.selected_item().and_downcast::<StringObject>() else {
+                    let Some(selected) = combo.selected_item().and_downcast::<StringObject>()
+                    else {
                         return;
                     };
+
                     if let Some(terminal) = obj
                         .root_store()
                         .terminal_repository()
@@ -49,6 +52,9 @@ mod imp {
                     }
                 }
             ));
+
+            self.selected_item_signal_handler
+                .replace(Some(signal_handler));
 
             obj.reload_terminals();
         }
@@ -120,7 +126,8 @@ impl TerminalComboRow {
     }
 
     pub fn set_selected_by_name(&self, name: &str) {
-        let Some(terminals_strings) = self.model().unwrap().downcast::<gtk::StringList>().ok() else {
+        let Some(terminals_strings) = self.model().unwrap().downcast::<gtk::StringList>().ok()
+        else {
             return;
         };
         for i in 0..terminals_strings.n_items() {
@@ -145,11 +152,16 @@ impl TerminalComboRow {
             .collect::<Vec<_>>();
 
         let terminal_list = gtk::StringList::new(&terminals);
-        self.set_model(Some(&terminal_list));
 
-        if let Some(selected_terminal) = self.root_store().selected_terminal() {
-            self.set_selected_by_name(&selected_terminal.name);
+        let signal_handler = self.imp().selected_item_signal_handler.borrow();
+        self.block_signal(&signal_handler.as_ref().unwrap());
+        {
+            self.set_model(Some(&terminal_list));
+            if let Some(selected_terminal) = self.root_store().selected_terminal() {
+                self.set_selected_by_name(&selected_terminal.name);
+            }
         }
+        self.unblock_signal(&signal_handler.as_ref().unwrap());
     }
 }
 
