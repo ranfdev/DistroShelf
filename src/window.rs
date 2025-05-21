@@ -23,7 +23,7 @@ use crate::create_distrobox_dialog::CreateDistroboxDialog;
 use crate::exportable_apps_dialog::ExportableAppsDialog;
 use crate::gtk_utils::reaction;
 use crate::known_distros::PackageManager;
-use crate::root_store::RootStore;
+use crate::root_store::{AppCommand, RootStore};
 use crate::sidebar_row::SidebarRow;
 use crate::supported_terminals;
 use crate::tagged_object::TaggedObject;
@@ -314,7 +314,9 @@ impl DistroShelfWindow {
             #[weak(rename_to=this)]
             self,
             move |_| {
-                this.root_store().selected_container().unwrap().stop();
+                this.root_store().execute_command(AppCommand::StopContainer {
+                    name: this.root_store().selected_container().unwrap().name(),
+                });
             }
         ));
         status_child.append(&stop_btn);
@@ -325,26 +327,27 @@ impl DistroShelfWindow {
             #[weak(rename_to = this)]
             self,
             move |_| {
-                let task = this
-                    .root_store()
-                    .selected_container()
-                    .unwrap()
-                    .spawn_terminal();
-                task.connect_status_notify(move |task| {
-                    if let Some(_) = &*task.error() {
-                        let toast = adw::Toast::new("Check your terminal settings.");
-                        toast.set_button_label(Some("Preferences"));
-                        toast.connect_button_clicked(clone!(
-                            #[weak]
-                            this,
-                            move |_| {
-                                this.root_store()
-                                    .set_current_dialog(TaggedObject::new("preferences"));
-                            }
-                        ));
-                        this.add_toast(toast);
-                    }
-                });
+                todo!();
+                // let task = this
+                //     .root_store()
+                //     .selected_container()
+                //     .unwrap()
+                //     .spawn_terminal();
+                // task.connect_status_notify(move |task| {
+                //     if let Some(_) = &*task.error() {
+                //         let toast = adw::Toast::new("Check your terminal settings.");
+                //         toast.set_button_label(Some("Preferences"));
+                //         toast.connect_button_clicked(clone!(
+                //             #[weak]
+                //             this,
+                //             move |_| {
+                //                 this.root_store()
+                //                     .set_current_dialog(TaggedObject::new("preferences"));
+                //             }
+                //         ));
+                //         this.add_toast(toast);
+                //     }
+                // });
             }
         ));
         status_child.append(&terminal_btn);
@@ -365,187 +368,191 @@ impl DistroShelfWindow {
         let actions_group = adw::PreferencesGroup::new();
         actions_group.set_title("Quick Actions");
 
-        let upgrade_row = Self::create_button_row(
-            "Upgrade Container",
-            "software-update-available-symbolic",
-            "Update all packages",
-        );
-        actions_group.add(&upgrade_row);
-
-        let apps_row = Self::create_button_row(
-            "Applications",
-            "view-list-bullet-symbolic",
-            "Manage exportable applications",
-        );
-        actions_group.add(&apps_row);
+        let mut rows = vec![
+            (
+                AppCommand::UpgradeContainer {
+                    name: container.name(),
+                },
+                "Upgrade Container".to_string(),
+                "software-update-available-symbolic".to_string(),
+                "Update all packages".to_string(),
+            ),
+            (
+                AppCommand::ViewExportableAppsDialog {
+                    container_name: container.name(),
+                },
+                "Applications".to_string(),
+                "view-list-bullet-symbolic".to_string(),
+                "Manage exportable applications".to_string(),
+            ),
+            (
+                AppCommand::ViewCloneContainerDialog {
+                    container_name: container.name(),
+                },
+                "Clone Container".to_string(),
+                "edit-copy-symbolic".to_string(),
+                "Create a copy of this container".to_string(),
+            ),
+            (
+                AppCommand::RequestConfirmation {
+                    message: format!(
+                        "{} will be deleted.\nThis action cannot be undone.",
+                        container.name()
+                    ),
+                    title: "Delete this container?".to_string(),
+                    command: Box::new(AppCommand::DeleteContainer {
+                        container_name: container.name(),
+                    }),
+                },
+                "Delete Container".to_string(),
+                "user-trash-symbolic".to_string(),
+                "Permanently remove this container and all its data".to_string(),
+            ),
+        ];
 
         if let Some(distro) = container.distro() {
             let pm = distro.package_manager();
             if pm != PackageManager::Unknown {
-                let install_package_row = Self::create_button_row(
-                    &format!("Install {} Package", pm.installable_file().unwrap()),
-                    "package-symbolic",
-                    "Install packages into container",
+                let install_package_row = (AppCommand::ViewInstallPackageDialog {container_name: container.name()},
+                    format!("Install {} Package", pm.installable_file().unwrap()),
+                    "package-symbolic".to_string(),
+                    "Install packages into container".to_string(),
                 );
-                actions_group.add(&install_package_row);
-                install_package_row.connect_activated(clone!(
-                    #[weak(rename_to = this)]
-                    self,
-                    move |_| {
-                        this.build_install_package_dialog();
-                    }
-                ));
+                rows.push(install_package_row);
             }
         }
 
-        let clone_row = Self::create_button_row(
-            "Clone Container",
-            "edit-copy-symbolic",
-            "Create a copy of this container",
-        );
-        actions_group.add(&clone_row);
-
-        // Danger Zone Group
-        let danger_group = adw::PreferencesGroup::new();
-        danger_group.set_title("Danger Zone");
-        danger_group.add_css_class("danger-group");
-
-        let delete_row = Self::create_button_row(
-            "Delete Container",
-            "user-trash-symbolic",
-            "Permanently remove this container and all its data",
-        );
-        delete_row.add_css_class("error");
-
-        danger_group.add(&delete_row);
-
+        for row in rows {
+            let (command, title, icon_name, subtitle) = row;
+            let action_row = self.create_button_row_new(command, &title, &icon_name, &subtitle);
+            actions_group.add(&action_row);
+        }
         // Add all groups to main box
         main_box.append(&self.build_container_header(container));
         main_box.append(&status_group);
         main_box.append(&actions_group);
-        main_box.append(&danger_group);
 
-        upgrade_row.connect_activated(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                let task = this.root_store().selected_container().unwrap().upgrade();
-                this.root_store().view_task(&task);
-            }
-        ));
+        // upgrade_row.connect_activated(clone!(
+        //     #[weak(rename_to = this)]
+        //     self,
+        //     move |_| {
+        //         let task = this.root_store().selected_container().unwrap().upgrade();
+        //         this.root_store().view_task(&task);
+        //     }
+        // ));
 
-        apps_row.connect_activated(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                this.root_store().view_exportable_apps();
-            }
-        ));
+        // apps_row.connect_activated(clone!(
+        //     #[weak(rename_to = this)]
+        //     self,
+        //     move |_| {
+        //         this.root_store().view_exportable_apps();
+        //     }
+        // ));
 
-        clone_row.connect_activated(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                let dialog = adw::Dialog::new();
-                dialog.set_title("Clone Container");
+        // clone_row.connect_activated(clone!(
+        //     #[weak(rename_to = this)]
+        //     self,
+        //     move |_| {
+        //         let dialog = adw::Dialog::new();
+        //         dialog.set_title("Clone Container");
 
-                let toolbar_view = adw::ToolbarView::new();
-                toolbar_view.add_top_bar(&adw::HeaderBar::new());
+        //         let toolbar_view = adw::ToolbarView::new();
+        //         toolbar_view.add_top_bar(&adw::HeaderBar::new());
 
-                let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
-                content.set_margin_start(12);
-                content.set_margin_end(12);
-                content.set_margin_top(12);
-                content.set_margin_bottom(12);
+        //         let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        //         content.set_margin_start(12);
+        //         content.set_margin_end(12);
+        //         content.set_margin_top(12);
+        //         content.set_margin_bottom(12);
 
-                let info_label =
-                    gtk::Label::new(Some("Cloning a container may take several minutes."));
-                info_label.add_css_class("dim-label");
-                info_label.set_wrap(true);
-                content.append(&info_label);
+        //         let info_label =
+        //             gtk::Label::new(Some("Cloning a container may take several minutes."));
+        //         info_label.add_css_class("dim-label");
+        //         info_label.set_wrap(true);
+        //         content.append(&info_label);
 
-                let group = adw::PreferencesGroup::new();
-                let entry = adw::EntryRow::builder().title("New container name").build();
-                group.add(&entry);
+        //         let group = adw::PreferencesGroup::new();
+        //         let entry = adw::EntryRow::builder().title("New container name").build();
+        //         group.add(&entry);
 
-                content.append(&group);
+        //         content.append(&group);
 
-                let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-                button_box.set_homogeneous(true);
+        //         let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        //         button_box.set_homogeneous(true);
 
-                let cancel_btn = gtk::Button::with_label("Cancel");
-                cancel_btn.add_css_class("pill");
-                let clone_btn = gtk::Button::with_label("Clone");
-                clone_btn.add_css_class("suggested-action");
-                clone_btn.add_css_class("pill");
+        //         let cancel_btn = gtk::Button::with_label("Cancel");
+        //         cancel_btn.add_css_class("pill");
+        //         let clone_btn = gtk::Button::with_label("Clone");
+        //         clone_btn.add_css_class("suggested-action");
+        //         clone_btn.add_css_class("pill");
 
-                button_box.append(&cancel_btn);
-                button_box.append(&clone_btn);
-                content.append(&button_box);
+        //         button_box.append(&cancel_btn);
+        //         button_box.append(&clone_btn);
+        //         content.append(&button_box);
 
-                toolbar_view.set_content(Some(&content));
-                dialog.set_child(Some(&toolbar_view));
+        //         toolbar_view.set_content(Some(&content));
+        //         dialog.set_child(Some(&toolbar_view));
 
-                cancel_btn.connect_clicked(clone!(
-                    #[weak]
-                    dialog,
-                    move |_| {
-                        dialog.close();
-                    }
-                ));
+        //         cancel_btn.connect_clicked(clone!(
+        //             #[weak]
+        //             dialog,
+        //             move |_| {
+        //                 dialog.close();
+        //             }
+        //         ));
 
-                clone_btn.connect_clicked(clone!(
-                    #[weak(rename_to = this)]
-                    this,
-                    #[weak]
-                    entry,
-                    move |_| {
-                        this.root_store()
-                            .selected_container()
-                            .unwrap()
-                            .clone_to(&entry.text());
-                    }
-                ));
+        //         clone_btn.connect_clicked(clone!(
+        //             #[weak(rename_to = this)]
+        //             this,
+        //             #[weak]
+        //             entry,
+        //             move |_| {
+        //                 this.root_store()
+        //                     .selected_container()
+        //                     .unwrap()
+        //                     .clone_to(&entry.text());
+        //             }
+        //         ));
 
-                dialog.present(Some(&this));
-            }
-        ));
+        //         dialog.present(Some(&this));
+        //     }
+        // ));
 
-        delete_row.connect_activated(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                let dialog = adw::AlertDialog::builder()
-                    .heading("Delete this container?")
-                    .body(format!(
-                        "{} will be deleted.\nThis action cannot be undone.",
-                        this.root_store()
-                            .selected_container_name()
-                            .unwrap_or_default()
-                    ))
-                    .close_response("cancel")
-                    .default_response("cancel")
-                    .build();
-                dialog.add_response("cancel", "Cancel");
-                dialog.add_response("delete", "Delete");
+        // delete_row.connect_activated(clone!(
+        //     #[weak(rename_to = this)]
+        //     self,
+        //     move |_| {
+        //         let dialog = adw::AlertDialog::builder()
+        //             .heading("Delete this container?")
+        //             .body(format!(
+        //                 "{} will be deleted.\nThis action cannot be undone.",
+        //                 this.root_store()
+        //                     .selected_container_name()
+        //                     .unwrap_or_default()
+        //             ))
+        //             .close_response("cancel")
+        //             .default_response("cancel")
+        //             .build();
+        //         dialog.add_response("cancel", "Cancel");
+        //         dialog.add_response("delete", "Delete");
 
-                dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
-                dialog.connect_response(
-                    Some("delete"),
-                    clone!(
-                        #[weak(rename_to = this)]
-                        this,
-                        move |dialog, _| {
-                            this.root_store().selected_container().unwrap().delete();
-                            this.root_store().set_selected_container(None::<Container>);
-                            dialog.close();
-                        }
-                    ),
-                );
+        //         dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+        //         dialog.connect_response(
+        //             Some("delete"),
+        //             clone!(
+        //                 #[weak(rename_to = this)]
+        //                 this,
+        //                 move |dialog, _| {
+        //                     this.root_store().selected_container().unwrap().delete();
+        //                     this.root_store().set_selected_container(None::<Container>);
+        //                     dialog.close();
+        //                 }
+        //             ),
+        //         );
 
-                dialog.present(Some(&this));
-            }
-        ));
+        //         dialog.present(Some(&this));
+        //     }
+        // ));
 
         // Finish layout
         scrolled_window.set_child(Some(&main_box));
@@ -862,6 +869,34 @@ impl DistroShelfWindow {
         row.add_prefix(&icon);
 
         row.set_activatable(true);
+
+        row
+    }
+    fn create_button_row_new(
+        &self,
+        command: AppCommand,
+        title: &str,
+        icon_name: &str,
+        subtitle: &str,
+    ) -> adw::ActionRow {
+        let row = adw::ActionRow::new();
+        row.set_title(title);
+        row.set_subtitle(subtitle);
+
+        let icon = gtk::Image::from_icon_name(icon_name);
+        row.add_prefix(&icon);
+
+        row.set_activatable(true);
+
+        row.connect_activated(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                if let Err(e) = this.root_store().execute_command(command.clone()) {
+                    error!(error = %e, "Failed to execute command");
+                }
+            }
+        ));
 
         row
     }

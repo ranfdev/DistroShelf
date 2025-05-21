@@ -7,7 +7,6 @@ use glib::Properties;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::RefCell;
-use std::default;
 use std::time::Duration;
 use tracing::debug;
 use tracing::error;
@@ -16,14 +15,120 @@ use tracing::info;
 use crate::container::Container;
 use crate::distrobox::wrap_flatpak_cmd;
 use crate::distrobox::Command;
+use crate::distrobox::CreateArgName;
 use crate::distrobox::CreateArgs;
+use crate::distrobox::DesktopEntry;
 use crate::distrobox::Distrobox;
+use crate::distrobox::ExportableApp;
 use crate::distrobox::Status;
 use crate::distrobox_task::DistroboxTask;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
 use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
+
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+
+/// Serializable commands that can be executed by the application
+///
+/// These commands represent all operations that can be performed in the DistroShelf app,
+/// and can be serialized to/from JSON for storage or IPC.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AppCommand {
+    // Container management
+    CreateContainer {
+        image: String,
+        init: bool,
+        nvidia: bool,
+        name: String,
+        home_path: Option<String>,
+        volumes: Vec<String>,
+    },
+    AssembleContainer {
+        file_path: String,
+    },
+    AssembleContainerFromUrl {
+        url: String,
+    },
+    DeleteContainer {
+        container_name: String,
+    },
+    CloneContainer {
+        source_name: String,
+        target_name: String,
+    },
+    StopContainer {
+        name: String,
+    },
+    StopAllContainers,
+    UpgradeContainer {
+        name: String,
+    },
+    UpgradeAllContainers,
+    SpawnTerminal {
+        name: String,
+    },
+
+    LaunchApp {
+        container_name: String,
+        app: ExportableApp,
+    },
+    ExportApp {
+        container_name: String,
+        desktop_file_path: String,
+    },
+    UnexportApp {
+        container_name: String,
+        desktop_file_path: String,
+    },
+
+    InstallPackage {
+        container_name: String,
+        package_path: PathBuf,
+    },
+
+    // UI operations
+    RequestConfirmation {
+        message: String,
+        title: String,
+        command: Box<AppCommand>,
+    },
+    ViewTask {
+        task_id: String,
+    },
+    ViewExportableAppsDialog {
+        container_name: String,
+    },
+    ViewInstallPackageDialog {
+        container_name: String,
+    },
+    ViewCloneContainerDialog {
+        container_name: String,
+    },
+    ClearEndedTasks,
+
+    // Terminal settings
+    SetSelectedTerminal {
+        name: String,
+    },
+    ValidateTerminal,
+
+    // Container list management
+    ReloadContainers,
+}
+
+impl AppCommand {
+    /// Serialize this command to a JSON string
+    pub fn serialize(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(self)
+    }
+
+    /// Deserialize a command from a JSON string
+    pub fn deserialize(json: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(json)
+    }
+}
 
 mod imp {
     use std::cell::OnceCell;
@@ -135,12 +240,10 @@ impl RootStore {
         if this.selected_terminal().is_none() {
             let this = this.clone();
             glib::MainContext::ref_thread_default().spawn_local(async move {
-                let Some(default_terminal) = this
-                    .terminal_repository()
-                    .default_terminal()
-                    .await else {
-                        return;
-                    };
+                let Some(default_terminal) = this.terminal_repository().default_terminal().await
+                else {
+                    return;
+                };
                 this.set_selected_terminal_name(&default_terminal.name);
             });
         }
@@ -236,7 +339,7 @@ impl RootStore {
     pub fn upgrade_all(&self) {
         for container in self.containers().snapshot() {
             let container: &Container = container.downcast_ref().unwrap();
-            container.upgrade();
+            // container.upgrade();
         }
     }
 
@@ -284,7 +387,7 @@ impl RootStore {
             .imp()
             .terminal_repository
             .terminal_by_name(&name_or_program);
-        
+
         if let Some(terminal) = by_name {
             Some(terminal)
         } else if let Some(terminal) = self
@@ -359,6 +462,259 @@ impl RootStore {
                 }
             }
         });
+    }
+
+    /// Execute a serializable AppCommand
+    pub fn execute_command(&self, command: AppCommand) -> anyhow::Result<()> {
+        println!("Executing command: {}", command.serialize()?);
+        match command {
+            AppCommand::CreateContainer {
+                image,
+                init,
+                nvidia,
+                name,
+                home_path,
+                volumes,
+            } => {
+                let create_args = CreateArgs {
+                    image,
+                    init,
+                    nvidia,
+                    name: CreateArgName::new(&name)?,
+                    home_path,
+                    volumes,
+                };
+                self.create_container(create_args);
+            }
+            AppCommand::AssembleContainer { file_path } => {
+                self.assemble_container(&file_path);
+            }
+            AppCommand::AssembleContainerFromUrl { url } => {
+                let this = self.clone();
+                self.create_task("assemble", "assemble-url", move |task| async move {
+                    let child = this.distrobox().assemble_from_url(&url)?;
+                    task.handle_child_output(child).await
+                });
+            }
+            AppCommand::DeleteContainer { container_name } => {
+                if let Some(container) = self.find_container_by_name(&container_name) {
+                    let this = self.clone();
+                    self.create_task(&container.name(), "delete", move |_task| async move {
+                        this.distrobox().remove(&container.name()).await?;
+                        Ok(())
+                    });
+                }
+            }
+            AppCommand::CloneContainer {
+                source_name,
+                target_name,
+            } => {
+                if let Some(container) = self.find_container_by_name(&source_name) {
+                    let this = self.clone();
+                    let target_name_clone = target_name.to_string();
+                    let task = self.create_task(&source_name, "clone", move |task| async move {
+                        let child = this
+                            .distrobox()
+                            .clone_to(&container.name(), &target_name_clone)
+                            .await?;
+                        task.handle_child_output(child).await?;
+                        Ok(())
+                    });
+                    self.view_task(&task);
+                }
+            }
+            AppCommand::StopContainer { name } => {
+                if let Some(container) = self.find_container_by_name(&name) {
+                    let this = self.clone();
+                    self.create_task(&container.name(), "stop", move |_task| async move {
+                        this.distrobox().stop(&container.name()).await?;
+                        // this.load_container_infos();
+                        Ok(())
+                    });
+                }
+            }
+            AppCommand::StopAllContainers => {
+                let this = self.clone();
+                self.create_task("stop-all", "stop-all", move |_task| async move {
+                    this.distrobox().stop_all().await?;
+                    Ok(())
+                });
+            }
+            AppCommand::UpgradeContainer { name } => {
+                let this = self.clone();
+                if let Some(container) = self.find_container_by_name(&name) {
+                    let task = self.create_task(&name, "upgrade", move |task| async move {
+                        let child = this.distrobox().upgrade(&container.name())?;
+                        task.handle_child_output(child).await
+                    });
+                    self.view_task(&task);
+                }
+            }
+            AppCommand::UpgradeAllContainers => {
+                self.upgrade_all();
+            }
+            AppCommand::SpawnTerminal { name } => {
+                if let Some(container) = self.find_container_by_name(&name) {
+                    let this = self.clone();
+                    self.create_task(
+                        &container.name(),
+                        "spawn-terminal",
+                        move |_task| async move {
+                            let enter_cmd = this.distrobox().enter_cmd(&container.name());
+                            this.spawn_terminal_cmd(container.name(), &enter_cmd).await
+                        },
+                    );
+                }
+            }
+            AppCommand::LaunchApp {
+                container_name,
+                app,
+            } => {
+                if let Some(container) = self.find_container_by_name(&container_name) {
+                    let this = self.clone();
+                    self.create_task(&container_name, "launch-app", move |task| async move {
+                        let child = this.distrobox().launch_app(&container.name(), &app)?;
+                        task.handle_child_output(child).await
+                    });
+                }
+            }
+            AppCommand::ExportApp {
+                container_name,
+                desktop_file_path,
+            } => {
+                if let Some(container) = self.find_container_by_name(&container_name) {
+                    let this = self.clone();
+                    self.create_task(&container.name(), "export", move |_task| async move {
+                        this.distrobox()
+                            .export_app(&container.name(), &desktop_file_path)
+                            .await?;
+                        container.apps().reload();
+                        Ok(())
+                    });
+                }
+            }
+            AppCommand::UnexportApp {
+                container_name,
+                desktop_file_path,
+            } => {
+                if let Some(container) = self.find_container_by_name(&container_name) {
+                    let this = self.clone();
+                    self.create_task(&container.name(), "unexport", move |_task| async move {
+                        this.distrobox()
+                            .unexport_app(&container.name(), &desktop_file_path)
+                            .await?;
+                        container.apps().reload();
+                        Ok(())
+                    });
+                }
+            }
+            AppCommand::InstallPackage {
+                container_name,
+                package_path,
+            } => {
+                if let Some(container) = self.find_container_by_name(&container_name) {
+                    {
+                        let this = self.clone();
+                        let package_manager =
+                            { container.distro().map(|d| d.package_manager()).unwrap() };
+                        self.create_task(&container.name(), "install", move |task| async move {
+                            task.set_description(format!("Installing {:?}", package_path));
+                            // The file provided from the portal is under /run/user/1000 which is not accessible by root.
+                            // We can copy the file as a normal user to /tmp and then install.
+
+                            let enter_cmd = this.distrobox().enter_cmd(&container.name());
+
+                            // the file of the package must have the correct extension (.deb for apt-get).
+                            let tmp_path = format!(
+                                "/tmp/com.ranfdev.DistroShelf.user_package_{}",
+                                package_manager.installable_file().unwrap()
+                            );
+                            let tmp_path = Path::new(&tmp_path);
+                            let cp_cmd_pure =
+                                Command::new_with_args("cp", [&package_path, tmp_path]);
+                            let install_cmd_pure = package_manager.install_cmd(tmp_path).unwrap();
+
+                            let mut cp_cmd = enter_cmd.clone();
+                            cp_cmd.extend("--", &cp_cmd_pure);
+                            let mut install_cmd = enter_cmd.clone();
+                            install_cmd.extend("--", &install_cmd_pure);
+
+                            this.spawn_terminal_cmd(container.name().clone(), &cp_cmd)
+                                .await?;
+                            this.spawn_terminal_cmd(container.name().clone(), &install_cmd)
+                                .await
+                        });
+                    };
+                }
+            }
+            AppCommand::RequestConfirmation {
+                message,
+                title,
+                command,
+            } => {
+                self.set_current_dialog(TaggedObject::new("confirmation"));
+                // TODO: continue
+            }
+            AppCommand::ViewTask { task_id } => {
+                if let Some(task) = self.find_task_by_id(&task_id) {
+                    self.view_task(&task);
+                }
+            }
+            AppCommand::ViewExportableAppsDialog { container_name } => {
+                if let Some(_) = self.find_container_by_name(&container_name) {
+                    self.view_exportable_apps();
+                }
+            }
+            AppCommand::ViewInstallPackageDialog { container_name } => {
+                self.set_current_dialog(TaggedObject::new("confirmation"));
+                // TODO: continue
+            }
+            AppCommand::ViewCloneContainerDialog { container_name } => {
+                if let Some(container) = self.find_container_by_name(&container_name) {
+                    self.set_current_dialog(TaggedObject::new("clone-container"));
+                    self.set_selected_container(Some(container));
+                }
+                // TODO: continue
+            }
+            AppCommand::ClearEndedTasks => {
+                self.clear_ended_tasks();
+            }
+            AppCommand::SetSelectedTerminal { name } => {
+                self.set_selected_terminal_name(&name);
+            }
+            AppCommand::ValidateTerminal => {
+                let this = self.clone();
+                glib::MainContext::ref_thread_default().spawn_local(async move {
+                    let _ = this.validate_terminal().await;
+                });
+            }
+            AppCommand::ReloadContainers => {
+                self.load_containers();
+            }
+        }
+        Ok(())
+    }
+
+    // Helper method to find a container by name
+    fn find_container_by_name(&self, name: &str) -> Option<Container> {
+        for i in 0..self.containers().n_items() {
+            let container = self.containers().item(i)?.downcast::<Container>().ok()?;
+            if container.name() == name {
+                return Some(container);
+            }
+        }
+        None
+    }
+
+    // Helper method to find a task by ID
+    fn find_task_by_id(&self, task_id: &str) -> Option<DistroboxTask> {
+        for i in 0..self.tasks().n_items() {
+            let task = self.tasks().item(i)?.downcast::<DistroboxTask>().ok()?;
+            if task.target() == task_id {
+                return Some(task);
+            }
+        }
+        None
     }
 }
 

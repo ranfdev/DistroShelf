@@ -5,6 +5,7 @@ use gtk::{gio, glib};
 
 use crate::container::Container;
 use crate::distrobox::ExportableApp;
+use crate::root_store::AppCommand;
 
 use std::cell::RefCell;
 
@@ -86,7 +87,12 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let file_path = target.unwrap().str().unwrap();
-                    this.container().export(file_path);
+                    this.container().root_store().execute_command(
+                        AppCommand::ExportApp {
+                            container_name: this.container().name().to_string(),
+                            desktop_file_path: file_path.to_string(),
+                        },
+                    );
                 },
             );
             klass.install_action(
@@ -94,7 +100,12 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let file_path = target.unwrap().str().unwrap();
-                    this.container().unexport(file_path);
+                    this.container().root_store().execute_command(
+                        AppCommand::UnexportApp {
+                            container_name: this.container().name().to_string(),
+                            desktop_file_path: file_path.to_string(),
+                        },
+                    );
                 },
             );
         }
@@ -161,7 +172,10 @@ impl ExportableAppsDialog {
             #[strong]
             app,
             move |_| {
-                this.container().launch(app.clone());
+                this.container().root_store().execute_command(AppCommand::ExportApp {
+                    container_name: this.container().name().to_string(),
+                    desktop_file_path: app.desktop_file_path.clone(),
+                }); 
             }
         ));
 

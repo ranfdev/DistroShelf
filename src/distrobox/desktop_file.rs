@@ -1,4 +1,6 @@
-#[derive(Debug, Default, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct DesktopEntry {
     pub name: String,
     pub exec: String,

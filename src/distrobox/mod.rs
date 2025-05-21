@@ -2,6 +2,7 @@ use std::{
     cell::{LazyCell, RefCell}, collections::BTreeMap, io, path::{Path, PathBuf}, process::Output, rc::Rc, str::FromStr
 };
 use tracing::{debug, error, info, warn};
+use serde::{Deserialize, Serialize};
 
 mod command;
 mod command_runner;
@@ -148,7 +149,7 @@ impl FromStr for ContainerInfo {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportableApp {
     pub entry: DesktopEntry,
     pub desktop_file_path: String,
