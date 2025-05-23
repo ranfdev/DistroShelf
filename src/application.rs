@@ -24,7 +24,7 @@ use gettextrs::gettext;
 use gtk::{gio, glib};
 
 use crate::config::VERSION;
-use crate::container_cli::{Distrobox, DistroboxCommandRunnerResponse};
+use crate::container_cli::{Distrobox, DistroboxCommandRunnerResponse, Toolbox};
 use crate::root_store::RootStore;
 use crate::DistroShelfWindow;
 
@@ -217,7 +217,8 @@ impl DistroShelfApplication {
             _ => Distrobox::new(),
         };
 
-        self.set_root_store(RootStore::new(Box::new(distrobox)));
+        let toolbox = Toolbox::new();
+        self.set_root_store(RootStore::new(Box::new(toolbox)));
         let window =
             DistroShelfWindow::new(self.upcast_ref::<adw::Application>(), self.root_store());
         window.upcast()
