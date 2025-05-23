@@ -164,6 +164,10 @@ impl RootStore {
         self.imp().distrobox.get().unwrap()
     }
 
+    pub fn command_runner(&self) -> Rc<dyn crate::distrobox::CommandRunner> {
+        self.imp().command_runner.get().unwrap().clone()
+    }
+
     pub fn terminal_repository(&self) -> TerminalRepository {
         self.imp().terminal_repository.borrow().clone()
     }
@@ -273,16 +277,15 @@ impl RootStore {
             .arg(supported_terminal.separator_arg)
             .arg(cmd.program.clone())
             .args(cmd.args.clone());
-        spawn_cmd = wrap_flatpak_cmd(spawn_cmd);
 
         debug!(?spawn_cmd, "Spawning terminal command");
-        let mut async_cmd: async_process::Command = spawn_cmd.into();
-        let mut child = async_cmd.spawn()?;
+        let mut child = self.command_runner().spawn(spawn_cmd)?;
+
         let this = self.clone();
         glib::MainContext::ref_thread_default().spawn_local(async move {
             this.reload_till_up(name, 5);
         });
-        if !child.status().await?.success() {
+        if !child.wait().await?.success() {
             return Err(anyhow::anyhow!("Failed to spawn terminal"));
         }
         Ok(())
