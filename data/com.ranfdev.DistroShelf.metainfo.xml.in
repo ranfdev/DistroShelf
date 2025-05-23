@@ -71,6 +71,14 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.7" date="2025-05-23">
+      <description translate="no">
+        <ul>
+          <li>Added support for custom terminal commands</li>
+          <li>Refactored code to improve support of flatpak and non-flatpak versions</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.6" date="2025-05-12">
       <description translate="no">
         <ul>
