@@ -18,6 +18,8 @@ use futures::{
     FutureExt,
 };
 
+use super::wrap_flatpak_cmd;
+
 pub trait CommandRunner {
     fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>>;
     fn output(
@@ -42,6 +44,29 @@ impl CommandRunner for RealCommandRunner {
         command.output().boxed()
     }
 }
+
+#[derive(Clone)]
+pub struct FlatpakCommandRunner {
+    pub command_runner: Rc<dyn CommandRunner>,
+}
+impl FlatpakCommandRunner {
+    pub fn new(command_runner: Rc<dyn CommandRunner>) -> Self {
+        FlatpakCommandRunner { command_runner }
+    }
+}
+
+impl CommandRunner for FlatpakCommandRunner {
+    fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
+        self.command_runner.spawn(wrap_flatpak_cmd(command))
+    }
+    fn output(
+        &self,
+        command: Command,
+    ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
+        self.command_runner.output(wrap_flatpak_cmd(command))
+    }
+}
+
 
 #[derive(Default, Clone)]
 pub struct NullCommandRunnerBuilder {

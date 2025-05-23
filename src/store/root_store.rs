@@ -7,28 +7,29 @@ use glib::Properties;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::RefCell;
+use std::default;
+use std::rc::Rc;
 use std::time::Duration;
 use tracing::debug;
 use tracing::error;
 use tracing::info;
 
 use crate::container::Container;
-use crate::distrobox::wrap_flatpak_cmd;
 use crate::distrobox::Command;
 use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
+use crate::distrobox::{wrap_flatpak_cmd, CommandRunner};
 use crate::distrobox_task::DistroboxTask;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
-use crate::supported_terminals::SupportedTerminal;
-use crate::supported_terminals::SUPPORTED_TERMINALS;
+use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
 
 mod imp {
-    use std::cell::OnceCell;
+    use std::{cell::OnceCell, rc::Rc};
 
-    use crate::remote_resource::RemoteResource;
+    use crate::{distrobox::NullCommandRunner, remote_resource::RemoteResource};
 
     use super::*;
 
@@ -36,6 +37,9 @@ mod imp {
     #[properties(wrapper_type = super::RootStore)]
     pub struct RootStore {
         pub distrobox: OnceCell<crate::distrobox::Distrobox>,
+        pub terminal_repository: RefCell<TerminalRepository>,
+        pub command_runner: OnceCell<Rc<dyn crate::distrobox::CommandRunner>>,
+
         #[property(get, set)]
         pub distrobox_version: RefCell<RemoteResource>,
 
@@ -65,6 +69,8 @@ mod imp {
         fn default() -> Self {
             Self {
                 containers: gio::ListStore::new::<crate::container::Container>(),
+                command_runner: OnceCell::new(),
+                terminal_repository: RefCell::new(TerminalRepository::new(Rc::new(NullCommandRunner::default()))),
                 selected_container: Default::default(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
@@ -92,12 +98,22 @@ glib::wrapper! {
     pub struct RootStore(ObjectSubclass<imp::RootStore>);
 }
 impl RootStore {
-    pub fn new(distrobox: Distrobox) -> Self {
+    pub fn new(command_runner: Rc<dyn CommandRunner>) -> Self {
         let this: Self = glib::Object::builder().build();
 
         this.imp()
+            .command_runner
+            .set(command_runner.clone())
+            .or(Err("command_runner already set"))
+            .unwrap();
+
+        this.imp()
+            .terminal_repository
+            .replace(TerminalRepository::new(command_runner.clone()));
+
+        this.imp()
             .distrobox
-            .set(distrobox)
+            .set(Distrobox::new(command_runner.clone()))
             .or(Err("distrobox already set"))
             .unwrap();
 
@@ -129,12 +145,31 @@ impl RootStore {
             }
         }));
 
+        if this.selected_terminal().is_none() {
+            let this = this.clone();
+            glib::MainContext::ref_thread_default().spawn_local(async move {
+                let Some(default_terminal) = this.terminal_repository().default_terminal().await
+                else {
+                    return;
+                };
+                this.set_selected_terminal_name(&default_terminal.name);
+            });
+        }
+
         this.load_containers();
         this
     }
 
     pub fn distrobox(&self) -> &crate::distrobox::Distrobox {
         self.imp().distrobox.get().unwrap()
+    }
+
+    pub fn command_runner(&self) -> Rc<dyn crate::distrobox::CommandRunner> {
+        self.imp().command_runner.get().unwrap().clone()
+    }
+
+    pub fn terminal_repository(&self) -> TerminalRepository {
+        self.imp().terminal_repository.borrow().clone()
     }
 
     pub fn load_containers(&self) {
@@ -242,35 +277,47 @@ impl RootStore {
             .arg(supported_terminal.separator_arg)
             .arg(cmd.program.clone())
             .args(cmd.args.clone());
-        spawn_cmd = wrap_flatpak_cmd(spawn_cmd);
 
         debug!(?spawn_cmd, "Spawning terminal command");
-        let mut async_cmd: async_process::Command = spawn_cmd.into();
-        let mut child = async_cmd.spawn()?;
+        let mut child = self.command_runner().spawn(spawn_cmd)?;
+
         let this = self.clone();
         glib::MainContext::ref_thread_default().spawn_local(async move {
             this.reload_till_up(name, 5);
         });
-        if !child.status().await?.success() {
+        if !child.wait().await?.success() {
             return Err(anyhow::anyhow!("Failed to spawn terminal"));
         }
         Ok(())
     }
-    pub fn selected_terminal(&self) -> Option<SupportedTerminal> {
-        let program: String = self.settings().string("selected-terminal").into();
-        SUPPORTED_TERMINALS
-            .iter()
-            .find(|x| x.program == program)
-            .cloned()
-    }
-    pub fn set_selected_terminal_program(&self, program: &str) {
-        if !SUPPORTED_TERMINALS.iter().any(|x| x.program == program) {
-            panic!("Unsupported terminal");
-        }
+    pub fn selected_terminal(&self) -> Option<Terminal> {
+        // Old version stored the program, such as "gnome-terminal", now we store the name "GNOME console".
+        let name_or_program: String = self.settings().string("selected-terminal").into();
 
+        let by_name = self
+            .imp()
+            .terminal_repository
+            .borrow()
+            .terminal_by_name(&name_or_program);
+        
+        if let Some(terminal) = by_name {
+            Some(terminal)
+        } else if let Some(terminal) = self
+            .imp()
+            .terminal_repository
+            .borrow()
+            .terminal_by_program(&name_or_program)
+        {
+            Some(terminal)
+        } else {
+            error!("Terminal not found: {}", name_or_program);
+            None
+        }
+    }
+    pub fn set_selected_terminal_name(&self, name: &str) {
         self.imp()
             .settings
-            .set_string("selected-terminal", program)
+            .set_string("selected-terminal", name)
             .expect("Failed to save setting");
     }
 

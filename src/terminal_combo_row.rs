@@ -2,17 +2,19 @@
 // This file is licensed under the same terms as the project it belongs to
 
 use crate::root_store::RootStore;
-use crate::{supported_terminals, supported_terminals::SUPPORTED_TERMINALS};
+use crate::supported_terminals;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::clone;
 use glib::subclass::Signal;
 use glib::Properties;
-use gtk::glib;
+use gtk::{glib, StringObject};
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
 mod imp {
+    use gtk::StringObject;
+
     use super::*;
 
     #[derive(Properties, Default)]
@@ -20,6 +22,7 @@ mod imp {
     pub struct TerminalComboRow {
         #[property(get, set)]
         root_store: RefCell<RootStore>,
+        pub selected_item_signal_handler: RefCell<Option<glib::SignalHandlerId>>,
     }
 
     #[glib::derived_properties]
@@ -31,40 +34,29 @@ mod imp {
             obj.set_title("Preferred Terminal");
             obj.set_use_subtitle(true);
 
-            let mut terminals = SUPPORTED_TERMINALS
-                .iter()
-                .map(|x| x.name.as_ref())
-                .collect::<Vec<&str>>();
-            // case-insensitive sort
-            terminals.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
-            let selected_position = terminals.iter().position(|x| {
-                Some(x)
-                    == obj
-                        .root_store()
-                        .selected_terminal()
-                        .as_ref()
-                        .map(|x| x.name.as_str())
-                        .as_ref()
-            });
-
-            let terminal_list = gtk::StringList::new(&terminals);
-            obj.set_model(Some(&terminal_list));
-            if let Some(selected_position) = selected_position {
-                obj.set_selected(selected_position as u32);
-            }
-            obj.connect_selected_item_notify(clone!(
+            let signal_handler = obj.connect_selected_item_notify(clone!(
                 #[weak]
                 obj,
                 move |combo| {
-                    let selected: gtk::StringObject = combo.selected_item().and_downcast().unwrap();
-                    if let Some(terminal) =
-                        supported_terminals::terminal_by_name(&selected.string())
+                    let Some(selected) = combo.selected_item().and_downcast::<StringObject>()
+                    else {
+                        return;
+                    };
+
+                    if let Some(terminal) = obj
+                        .root_store()
+                        .terminal_repository()
+                        .terminal_by_name(&selected.string())
                     {
-                        obj.root_store()
-                            .set_selected_terminal_program(&terminal.program)
+                        obj.root_store().set_selected_terminal_name(&terminal.name);
                     }
                 }
             ));
+
+            self.selected_item_signal_handler
+                .replace(Some(signal_handler));
+
+            obj.reload_terminals();
         }
 
         fn signals() -> &'static [Signal] {
@@ -131,6 +123,45 @@ impl TerminalComboRow {
         glib::Object::builder()
             .property("root-store", root_store)
             .build()
+    }
+
+    pub fn set_selected_by_name(&self, name: &str) {
+        let Some(terminals_strings) = self.model().unwrap().downcast::<gtk::StringList>().ok()
+        else {
+            return;
+        };
+        for i in 0..terminals_strings.n_items() {
+            let Some(item) = terminals_strings.item(i).and_downcast::<StringObject>() else {
+                continue;
+            };
+            if item.string() == name {
+                self.set_selected(i);
+                return;
+            }
+        }
+    }
+    pub fn reload_terminals(&self) {
+        let terminals = self
+            .root_store()
+            .clone()
+            .terminal_repository()
+            .all_terminals();
+        let terminals = terminals
+            .iter()
+            .map(|x| x.name.as_ref())
+            .collect::<Vec<_>>();
+
+        let terminal_list = gtk::StringList::new(&terminals);
+
+        let signal_handler = self.imp().selected_item_signal_handler.borrow();
+        self.block_signal(&signal_handler.as_ref().unwrap());
+        {
+            self.set_model(Some(&terminal_list));
+            if let Some(selected_terminal) = self.root_store().selected_terminal() {
+                self.set_selected_by_name(&selected_terminal.name);
+            }
+        }
+        self.unblock_signal(&signal_handler.as_ref().unwrap());
     }
 }
 

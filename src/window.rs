@@ -25,6 +25,7 @@ use crate::gtk_utils::reaction;
 use crate::known_distros::PackageManager;
 use crate::root_store::RootStore;
 use crate::sidebar_row::SidebarRow;
+use crate::supported_terminals;
 use crate::tagged_object::TaggedObject;
 use crate::task_manager_dialog::TaskManagerDialog;
 use crate::tasks_button::TasksButton;
@@ -32,11 +33,11 @@ use crate::terminal_combo_row::TerminalComboRow;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{derived_properties, Properties};
-use gtk::gdk;
 use gtk::glib::clone;
+use gtk::{gdk, DeleteType};
 use gtk::{gio, glib, pango};
 use std::cell::RefCell;
-use tracing::info;
+use tracing::{error, info};
 
 mod imp {
     use super::*;
@@ -324,12 +325,13 @@ impl DistroShelfWindow {
             #[weak(rename_to = this)]
             self,
             move |_| {
-                let task = this.root_store()
+                let task = this
+                    .root_store()
                     .selected_container()
                     .unwrap()
                     .spawn_terminal();
                 task.connect_status_notify(move |task| {
-                    if let Some(_) = &*task.error()  {
+                    if let Some(_) = &*task.error() {
                         let toast = adw::Toast::new("Check your terminal settings.");
                         toast.set_button_label(Some("Preferences"));
                         toast.connect_button_clicked(clone!(
@@ -342,7 +344,7 @@ impl DistroShelfWindow {
                         ));
                         this.add_toast(toast);
                     }
-                }); 
+                });
             }
         ));
         status_child.append(&terminal_btn);
@@ -584,9 +586,280 @@ impl DistroShelfWindow {
 
         let page = adw::PreferencesPage::new();
 
+        // Terminal Settings Group
         let terminal_group = adw::PreferencesGroup::new();
         terminal_group.set_title("Terminal Settings");
-        terminal_group.add(&TerminalComboRow::new_with_params(self.root_store()));
+        let terminal_combo_row = TerminalComboRow::new_with_params(self.root_store());
+
+        let delete_btn = gtk::Button::with_label("Delete");
+        delete_btn.add_css_class("destructive-action");
+        delete_btn.add_css_class("pill");
+
+        if let Some(selected) = terminal_combo_row.selected_item() {
+            let selected_name = selected
+                .downcast_ref::<gtk::StringObject>()
+                .unwrap()
+                .string();
+            let is_read_only = self
+                .root_store()
+                .terminal_repository()
+                .is_read_only(&selected_name);
+
+            delete_btn.set_sensitive(!is_read_only);
+        }
+
+        delete_btn.connect_clicked(clone!(
+            #[weak]
+            terminal_combo_row,
+            #[weak(rename_to = this)]
+            self,
+            #[weak]
+            delete_btn,
+            move |_| {
+                let selected = terminal_combo_row
+                    .selected_item()
+                    .and_downcast_ref::<gtk::StringObject>()
+                    .unwrap()
+                    .string();
+                let dialog = adw::AlertDialog::builder()
+                    .heading("Delete this terminal?")
+                    .body(format!(
+                        "{} will be removed from the terminal list.\nThis action cannot be undone.",
+                        selected
+                    ))
+                    .close_response("cancel")
+                    .default_response("cancel")
+                    .build();
+                dialog.add_response("cancel", "Cancel");
+                dialog.add_response("delete", "Delete");
+
+                dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+                dialog.connect_response(
+                    Some("delete"),
+                    clone!(
+                        #[weak]
+                        terminal_combo_row,
+                        #[weak]
+                        this,
+                        #[strong]
+                        selected,
+                        move |d, _| {
+                            match this
+                                .root_store()
+                                .terminal_repository()
+                                .delete_terminal(&selected)
+                            {
+                                Ok(_) => {
+                                    glib::MainContext::ref_thread_default().spawn_local(
+                                        async move {
+                                            terminal_combo_row.reload_terminals();
+                                            terminal_combo_row.set_selected_by_name(
+                                                &dbg!(this.root_store()
+                                                    .terminal_repository()
+                                                    .default_terminal()
+                                                    .await
+                                                    .map(|x| x.name)
+                                                    .unwrap_or_default()),
+                                            );
+
+                                            this.add_toast(adw::Toast::new(
+                                                "Terminal removed successfully",
+                                            ));
+                                        },
+                                    );
+                                }
+                                Err(err) => {
+                                    error!(error = %err, "Failed to delete terminal");
+                                    this.add_toast(adw::Toast::new("Failed to delete terminal"));
+                                }
+                            }
+                            d.close();
+                        }
+                    ),
+                );
+
+                dialog.present(Some(&this));
+            }
+        ));
+
+        // Add remove button for non read-only terminals
+        terminal_combo_row.connect_selected_item_notify(clone!(
+            #[weak]
+            terminal_combo_row,
+            #[weak]
+            delete_btn,
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                if let Some(selected) = terminal_combo_row.selected_item() {
+                    let selected_name = selected
+                        .downcast_ref::<gtk::StringObject>()
+                        .unwrap()
+                        .string();
+                    let is_read_only = this
+                        .root_store()
+                        .terminal_repository()
+                        .is_read_only(&selected_name);
+
+                    delete_btn.set_sensitive(!is_read_only);
+                }
+            }
+        ));
+
+        terminal_group.add(&terminal_combo_row);
+
+        // Add Custom Terminal Button
+        let add_terminal_btn = gtk::Button::with_label("Add Custom");
+        add_terminal_btn.add_css_class("pill");
+        add_terminal_btn.set_halign(gtk::Align::Start);
+
+        let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        button_box.set_margin_start(12);
+        button_box.set_margin_end(12);
+        button_box.set_margin_top(12);
+        button_box.set_margin_bottom(12);
+
+        button_box.append(&delete_btn);
+        button_box.append(&add_terminal_btn);
+        terminal_group.add(&button_box);
+
+        // Connect add terminal button click handler
+        add_terminal_btn.connect_clicked(clone!(
+            #[weak]
+            terminal_combo_row,
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                // Create dialog for adding a custom terminal
+                let custom_dialog = adw::Dialog::new();
+                custom_dialog.set_title("Add Custom Terminal");
+                // custom_dialog.set_default_width(400);
+
+                let toolbar_view = adw::ToolbarView::new();
+                toolbar_view.add_top_bar(&adw::HeaderBar::new());
+
+                let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+                content.set_margin_start(12);
+                content.set_margin_end(12);
+                content.set_margin_top(12);
+                content.set_margin_bottom(12);
+
+                let group = adw::PreferencesGroup::new();
+
+                // Name entry
+                let name_entry = adw::EntryRow::builder().title("Terminal Name").build();
+
+                // Program entry
+                let program_entry = adw::EntryRow::builder().title("Program Path").build();
+
+                // Separator argument entry
+                let separator_entry = adw::EntryRow::builder()
+                    .title("Separator Argument")
+                    // .subtitle("The argument used to pass commands (e.g., '-e', '--')")
+                    .build();
+
+                group.add(&name_entry);
+                group.add(&program_entry);
+                group.add(&separator_entry);
+                content.append(&group);
+
+                // Add note about separator
+                let info_label = gtk::Label::new(Some(
+                    "The separator argument is used to pass commands to the terminal.\n\
+                    Examples: '--' for GNOME Terminal, '-e' for xterm",
+                ));
+                info_label.add_css_class("caption");
+                info_label.add_css_class("dim-label");
+                info_label.set_wrap(true);
+                info_label.set_xalign(0.0);
+                info_label.set_margin_start(12);
+                content.append(&info_label);
+
+                // Buttons
+                let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+                button_box.set_margin_top(12);
+                button_box.set_homogeneous(true);
+
+                let cancel_btn = gtk::Button::with_label("Cancel");
+                cancel_btn.add_css_class("pill");
+
+                let save_btn = gtk::Button::with_label("Save");
+                save_btn.add_css_class("suggested-action");
+                save_btn.add_css_class("pill");
+
+                button_box.append(&cancel_btn);
+                button_box.append(&save_btn);
+                content.append(&button_box);
+
+                toolbar_view.set_content(Some(&content));
+                custom_dialog.set_child(Some(&toolbar_view));
+
+                // Connect button handlers
+                cancel_btn.connect_clicked(clone!(
+                    #[weak]
+                    custom_dialog,
+                    move |_| {
+                        custom_dialog.close();
+                    }
+                ));
+
+                save_btn.connect_clicked(clone!(
+                    #[weak]
+                    custom_dialog,
+                    #[weak]
+                    name_entry,
+                    #[weak]
+                    program_entry,
+                    #[weak]
+                    separator_entry,
+                    #[weak]
+                    this,
+                    move |_| {
+                        let name = name_entry.text().to_string();
+                        let program = program_entry.text().to_string();
+                        let separator_arg = separator_entry.text().to_string();
+
+                        // Validate inputs
+                        if name.is_empty() || program.is_empty() || separator_arg.is_empty() {
+                            this.add_toast(adw::Toast::new("All fields are required"));
+                            return;
+                        }
+
+                        // Create and save the terminal
+                        let terminal = supported_terminals::Terminal {
+                            name,
+                            program,
+                            separator_arg,
+                            read_only: false,
+                        };
+
+                        match this
+                            .root_store()
+                            .terminal_repository()
+                            .save_terminal(terminal.clone())
+                        {
+                            Ok(_) => {
+                                // Show success toast
+                                let toast = adw::Toast::new("Custom terminal added successfully");
+
+                                terminal_combo_row.reload_terminals();
+                                terminal_combo_row.set_selected_by_name(&terminal.name);
+
+                                this.add_toast(toast);
+                                custom_dialog.close();
+                            }
+                            Err(err) => {
+                                error!(error = %err, "Failed to save terminal");
+                                this.add_toast(adw::Toast::new("Failed to save terminal"));
+                            }
+                        }
+                    }
+                ));
+
+                custom_dialog.present(Some(&this));
+            }
+        ));
+
         page.add(&terminal_group);
 
         dialog.add(&page);

@@ -38,15 +38,13 @@ impl<T: Clone + std::fmt::Debug> OutputTracker<T> {
 }
 
 pub struct Distrobox {
-    cmd_runner: Box<dyn CommandRunner>,
+    cmd_runner: Rc<dyn CommandRunner>,
     output_tracker: OutputTracker<String>,
-    is_in_flatpak: bool,
 }
 
 impl std::fmt::Debug for Distrobox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Distrobox")
-            .field("is_in_flatpak", &self.is_in_flatpak)
             .field("output_tracker", &self.output_tracker)
             .finish()
     }
@@ -412,25 +410,22 @@ impl DistroboxCommandRunnerResponse {
 }
 
 impl Distrobox {
-    pub fn new() -> Self {
+    pub fn new(cmd_runner:Rc<dyn CommandRunner + 'static> ) -> Self {
         Self {
-            cmd_runner: Box::new(RealCommandRunner {}),
-            is_in_flatpak: Self::get_is_in_flatpak(),
+            cmd_runner,
             output_tracker: Default::default(),
         }
     }
-    pub fn new_null(runner: NullCommandRunner, is_in_flatpak: bool) -> Self {
+    pub fn new_null(runner: NullCommandRunner) -> Self {
         Self {
-            cmd_runner: Box::new(runner),
+            cmd_runner: Rc::new(runner),
             output_tracker: OutputTracker::default(),
-            is_in_flatpak,
         }
     }
 
-    pub fn new_null_with_responses(
+    pub fn null_command_runner(
         responses: &[DistroboxCommandRunnerResponse],
-        is_in_flatpak: bool,
-    ) -> Self {
+    ) -> Rc<dyn CommandRunner> {
         let cmd_runner = {
             let mut builder = NullCommandRunnerBuilder::new();
             for res in responses {
@@ -440,11 +435,7 @@ impl Distrobox {
             }
             builder.build()
         };
-        Self {
-            cmd_runner: Box::new(cmd_runner),
-            output_tracker: OutputTracker::default(),
-            is_in_flatpak,
-        }
+        Rc::new(cmd_runner) as Rc<dyn CommandRunner>
     }
 
     pub fn output_tracker(&self) -> OutputTracker<String> {
@@ -452,21 +443,9 @@ impl Distrobox {
         self.output_tracker.clone()
     }
 
-    fn get_is_in_flatpak() -> bool {
-        let fp_env = std::env::var("FLATPAK_ID").is_ok();
-        if fp_env {
-            return true;
-        }
+    
 
-        Path::new("/.flatpak-info").exists()
-    }
-
-    pub fn cmd_spawn(&self, cmd: Command) -> Result<Box<dyn Child + Send>, Error> {
-        let mut cmd = if self.is_in_flatpak {
-            wrap_flatpak_cmd(cmd)
-        } else {
-            cmd
-        };
+    pub fn cmd_spawn(&self, mut cmd: Command) -> Result<Box<dyn Child + Send>, Error> {
         wrap_capture_cmd(&mut cmd);
 
         let program = cmd.program.to_string_lossy().to_string();
@@ -491,12 +470,7 @@ impl Distrobox {
         Ok(child)
     }
 
-    async fn cmd_output(&self, cmd: Command) -> Result<Output, Error> {
-        let mut cmd = if self.is_in_flatpak {
-            wrap_flatpak_cmd(cmd)
-        } else {
-            cmd
-        };
+    async fn cmd_output(&self, mut cmd: Command) -> Result<Output, Error> {
         wrap_capture_cmd(&mut cmd);
 
         let program = cmd.program.to_string_lossy().to_string();
@@ -838,7 +812,7 @@ impl Distrobox {
 
 impl Default for Distrobox {
     fn default() -> Self {
-        Self::new()
+        Self::new(Rc::new(NullCommandRunner::default()))
     }
 }
 
@@ -856,7 +830,6 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "ls", "--no-color"], output)
                     .build(),
-                false,
             );
             assert_eq!(
                 db.list().await?,
@@ -879,7 +852,6 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "version"], output)
                     .build(),
-                false,
             );
             assert_eq!(db.version().await?, "1.7.2.1".to_string(),);
             Ok(())
@@ -935,7 +907,6 @@ Comment=A brief description of my application
 Categories=Utility;Network;
 ",)
             .build(),
-            false
         );
 
         let apps = block_on(db.list_apps("ubuntu"))?;
@@ -950,7 +921,7 @@ Categories=Utility;Network;
     #[test]
     fn create() -> Result<(), Error> {
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();
-        let db = Distrobox::new_null(NullCommandRunner::default(), false);
+        let db = Distrobox::new_null(NullCommandRunner::default());
         let output_tracker = db.output_tracker();
         debug!("Testing container creation");
         let args = CreateArgs {
@@ -969,7 +940,7 @@ Categories=Utility;Network;
     }
     #[test]
     fn assemble() -> Result<(), Error> {
-        let db = Distrobox::new_null(NullCommandRunner::default(), false);
+        let db = Distrobox::new_null(NullCommandRunner::default());
         let output_tracker = db.output_tracker();
         db.assemble("/path/to/assemble.yml")?;
         assert_eq!(
@@ -981,7 +952,7 @@ Categories=Utility;Network;
 
     #[test]
     fn remove() -> Result<(), Error> {
-        let db = Distrobox::new_null(NullCommandRunner::default(), false);
+        let db = Distrobox::new_null(NullCommandRunner::default());
         let output_tracker = db.output_tracker();
         block_on(db.remove("ubuntu"))?;
         assert_eq!(
