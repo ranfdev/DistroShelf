@@ -394,12 +394,15 @@ impl CreateDistroboxDialog {
             .iter()
             .filter_map(|entry| {
                 if !entry.text().is_empty() {
-                    Some(entry.text().to_string())
+                    match entry.text().parse::<distrobox::Volume>() {
+                        Ok(volume) => Some(Ok(volume)),
+                        Err(e) => Some(Err(e)),
+                    }
                 } else {
                     None
                 }
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, _>>()?;
 
         let name = CreateArgName::new(&imp.name_row.text())?;
 
@@ -429,7 +432,7 @@ impl CreateDistroboxDialog {
     pub fn build_volumes_group(&self) -> adw::PreferencesGroup {
         let volumes_group = adw::PreferencesGroup::new();
         volumes_group.set_title("Volumes");
-        volumes_group.set_description(Some("Specify volumes in the format 'dest_dir:source_dir'"));
+        volumes_group.set_description(Some("Specify volumes in the format 'host_path:container_path'"));
 
         let add_volume_button = adw::ButtonRow::builder().title("Add Volume").build();
         add_volume_button.connect_activated(clone!(

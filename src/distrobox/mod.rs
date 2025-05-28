@@ -183,7 +183,66 @@ pub struct CreateArgs {
     pub home_path: Option<String>,
     pub image: String,
     pub name: CreateArgName,
-    pub volumes: Vec<String>,
+    pub volumes: Vec<Volume>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum VolumeMode {
+    ReadOnly,
+}
+
+impl std::fmt::Display for VolumeMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VolumeMode::ReadOnly => write!(f, "ro"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Volume {
+    pub host_path: String,
+    pub container_path: String,
+    pub mode: Option<VolumeMode>,
+}
+
+impl FromStr for Volume {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split(':').collect();
+        match parts.as_slice() {
+            [host] => Ok(Volume {
+                host_path: host.to_string(),
+                container_path: host.to_string(),
+                mode: None,
+            }),
+            [host, target] => Ok(Volume {
+                host_path: host.to_string(),
+                container_path: target.to_string(),
+                mode: None,
+            }),
+            [host, target, "ro"] => Ok(Volume {
+                host_path: host.to_string(),
+                container_path: target.to_string(),
+                mode: Some(VolumeMode::ReadOnly),
+            }),
+            _ => Err(Error::InvalidField(
+                "volume".into(),
+                format!("Invalid volume descriptor: {}", s),
+            )),
+        }
+    }
+}
+
+impl std::fmt::Display for Volume {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.host_path, self.container_path)?;
+        if let Some(mode) = &self.mode {
+            write!(f, ":{}", mode)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -688,7 +747,7 @@ impl Distrobox {
             cmd.arg("--home").arg(home_path);
         }
         for volume in args.volumes {
-            cmd.arg("--volume").arg(volume);
+            cmd.arg("--volume").arg(volume.to_string());
         }
         self.cmd_spawn(cmd)
     }
@@ -932,12 +991,14 @@ Categories=Utility;Network;
             init: true,
             nvidia: true,
             home_path: Some("/home/me".into()),
-            volumes: vec!["/mnt/sdb1".into(), "/mnt/sdb4".into()],
+            volumes: vec![
+                Volume::from_str("/mnt/sdb1:/mnt/sdb1")?,
+                Volume::from_str("/mnt/sdb4:/mnt/sdb4:ro")?,
+            ],
             ..Default::default()
         };
-
-        block_on(db.create(args))?;
-        let expected = "\"distrobox\" [\"create\", \"--yes\", \"--image\", \"docker.io/library/ubuntu:latest\", \"--init\", \"--nvidia\", \"--home\", \"/home/me\", \"--volume\", \"/mnt/sdb1\", \"--volume\", \"/mnt/sdb4\"]";
+        smol::block_on(db.create(args))?;
+        let expected = "\"distrobox\" [\"create\", \"--yes\", \"--image\", \"docker.io/library/ubuntu:latest\", \"--init\", \"--nvidia\", \"--home\", \"/home/me\", \"--volume\", \"/mnt/sdb1:/mnt/sdb1\", \"--volume\", \"/mnt/sdb4:/mnt/sdb4:ro\"]";
         assert_eq!(output_tracker.items()[0], expected);
         Ok(())
     }
