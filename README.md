@@ -30,8 +30,9 @@ or
 flatpak install com.ranfdev.DistroShelf
 ```
 
-### Arch linux
-You can [build](https://github.com/yochananmarqos/pkgbuilds) `distroshelf` from [AUR](https://aur.archlinux.org/packages/distroshelf)
+### Third party packages
+#### Arch linux
+`distroshelf` is on the [AUR](https://aur.archlinux.org/packages/distroshelf)
 
 ### From Source
 
