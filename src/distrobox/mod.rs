@@ -206,6 +206,9 @@ pub enum Error {
         command: String,
         stderr: String,
     },
+
+    #[error("failed to resolve host path: {0}. getfattr may not be installed on the host")]
+    ResolveHostPath(String),
 }
 
 fn dbcmd() -> Command {

@@ -8,6 +8,7 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::RefCell;
 use std::default;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 use tracing::debug;
@@ -15,7 +16,7 @@ use tracing::error;
 use tracing::info;
 
 use crate::container::Container;
-use crate::distrobox::Command;
+use crate::distrobox::{self, wrap_capture_cmd, Command};
 use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
@@ -70,7 +71,9 @@ mod imp {
             Self {
                 containers: gio::ListStore::new::<crate::container::Container>(),
                 command_runner: OnceCell::new(),
-                terminal_repository: RefCell::new(TerminalRepository::new(Rc::new(NullCommandRunner::default()))),
+                terminal_repository: RefCell::new(TerminalRepository::new(Rc::new(
+                    NullCommandRunner::default(),
+                ))),
                 selected_container: Default::default(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
@@ -299,7 +302,7 @@ impl RootStore {
             .terminal_repository
             .borrow()
             .terminal_by_name(&name_or_program);
-        
+
         if let Some(terminal) = by_name {
             Some(terminal)
         } else if let Some(terminal) = self
@@ -375,6 +378,38 @@ impl RootStore {
                 }
             }
         });
+    }
+
+    pub async fn resolve_host_path(&self, path: &str) -> Result<String, distrobox::Error> {
+        let mut cmd = Command::new_with_args(
+            "getfattr",
+            [
+                "-n",
+                "user.document-portal.host-path",
+                "--only-values",
+                path,
+            ],
+        );
+        wrap_capture_cmd(&mut cmd);
+        let output = self.command_runner()
+            .output(cmd)
+            .await
+            .map_err(|e| distrobox::Error::ResolveHostPath(e.to_string()));
+
+        
+        let is_from_sandbox = path.starts_with("/run/user");
+
+        // If the path is not from a flatpak sandbox, we assume it's a regular path, so we can skip the getfattr command error.
+        // If the command was successful, but for some reason the output is empty, we also return the path as is.
+        let stdout = if (output.is_err() && !is_from_sandbox) || output.as_ref().map_or(false, |o| o.stdout.is_empty()) {
+            return Ok(path.to_string());
+        } else {
+            output?.stdout
+        };
+
+        Ok(String::from_utf8(stdout)
+            .map_err(|e| distrobox::Error::ParseOutput(e.to_string()))?
+            .trim().to_string())
     }
 }
 
