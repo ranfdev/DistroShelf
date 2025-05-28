@@ -34,6 +34,9 @@ flatpak install com.ranfdev.DistroShelf
 #### Arch linux
 `distroshelf` is on the [AUR](https://aur.archlinux.org/packages/distroshelf)
 
+#### NixOS
+`distroshelf` on nixpkgs-unstable
+
 ### From Source
 
 #### Requirements
