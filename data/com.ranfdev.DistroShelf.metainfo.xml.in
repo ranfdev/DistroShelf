@@ -71,6 +71,14 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.8" date="2025-05-28">
+      <description translate="no">
+        <ul>
+          <li>Fixed custom home path resolution</li>
+          <li>Add parsing of volume paths</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.7" date="2025-05-23">
       <description translate="no">
         <ul>
