@@ -17,6 +17,7 @@ DistroShelf is a graphical interface for managing [Distrobox](https://distrobox.
 ![Screenshot](data/screenshots/1.png)
 
 ## Installation
+[![Packaging status](https://repology.org/badge/vertical-allrepos/distroshelf.svg)](https://repology.org/project/distroshelf/versions)
 
 ### Flatpak
 <a href='https://flathub.org/apps/com.ranfdev.DistroShelf'>
@@ -29,7 +30,8 @@ or
 flatpak install com.ranfdev.DistroShelf
 ```
 
-
+### Arch linux
+You can [build](https://github.com/yochananmarqos/pkgbuilds) `distroshelf` from [AUR](https://aur.archlinux.org/packages/distroshelf)
 
 ### From Source
 
