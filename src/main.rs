@@ -29,6 +29,7 @@ mod distrobox_task;
 mod exportable_apps_dialog;
 mod gtk_utils;
 mod known_distros;
+mod preferences_dialog;
 mod remote_resource;
 mod sidebar_row;
 mod store;
