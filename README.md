@@ -37,6 +37,9 @@ flatpak install com.ranfdev.DistroShelf
 #### NixOS
 `distroshelf` on nixpkgs-unstable
 
+#### ALT Linux
+`distroshelf` on [Sisyphus](https://packages.altlinux.org/en/sisyphus/srpms/distroshelf/)
+
 ### From Source
 
 #### Requirements
