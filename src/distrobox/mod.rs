@@ -1,56 +1,45 @@
 use std::{
-    cell::{LazyCell, RefCell}, collections::BTreeMap, io, path::{Path, PathBuf}, process::Output, rc::Rc, str::FromStr
+    cell::LazyCell, collections::BTreeMap, future::Future, io, path::{Path, PathBuf}, pin::Pin, process::Output, rc::Rc, str::FromStr
 };
 use tracing::{debug, error, info, warn};
+use crate::fakers::{CommandRunner, NullCommandRunnerBuilder, Command, Child, InnerCommandRunner, FdMode};
 
-mod command;
-mod command_runner;
 mod desktop_file;
 
-pub use command::*;
-pub use command_runner::*;
 pub use desktop_file::*;
 
-#[derive(Default, Clone, Debug)]
-pub struct OutputTracker<T> {
-    store: Rc<RefCell<Option<Vec<T>>>>,
+
+#[derive(Clone)]
+pub struct FlatpakCommandRunner {
+    pub command_runner: Rc<dyn InnerCommandRunner>,
+}
+impl FlatpakCommandRunner {
+    pub fn new(command_runner: Rc<dyn InnerCommandRunner>) -> Self {
+        FlatpakCommandRunner { command_runner }
+    }
+
+    pub fn wrap_flatpak_cmd(mut prev: Command) -> Command {
+        let mut args = vec!["--host".into(), prev.program];
+        args.extend(prev.args);
+
+        prev.args = args;
+        prev.program = "flatpak-spawn".into();
+        prev
+    }
 }
 
-impl<T> OutputTracker<T> {
-    pub fn new() -> Self {
-        OutputTracker {
-            store: Rc::new(RefCell::new(None)),
-        }
+impl InnerCommandRunner for FlatpakCommandRunner {
+    fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
+        self.command_runner.spawn(Self::wrap_flatpak_cmd(command))
     }
-    pub fn len(&self) -> usize {
-        if let Some(v) = &*self.store.borrow() {
-            v.len()
-        } else {
-            0
-        }
+    fn output(
+        &self,
+        command: Command,
+    ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
+        self.command_runner.output(Self::wrap_flatpak_cmd(command))
     }
 }
 
-impl<T: Clone + std::fmt::Debug> OutputTracker<T> {
-    pub fn enable(&self) {
-        let mut inner = self.store.borrow_mut();
-        if inner.is_none() {
-            *inner = Some(vec![]);
-        }
-    }
-    pub fn push(&self, item: T) {
-        if let Some(v) = &mut *self.store.borrow_mut() {
-            v.push(item);
-        }
-    }
-    pub fn items(&self) -> Vec<T> {
-        if let Some(v) = &*self.store.borrow() {
-            v.clone()
-        } else {
-            vec![]
-        }
-    }
-}
 
 pub struct Distrobox {
     cmd_runner: CommandRunner,
@@ -497,7 +486,8 @@ impl Distrobox {
     }
 
     pub fn cmd_spawn(&self, mut cmd: Command) -> Result<Box<dyn Child + Send>, Error> {
-        wrap_capture_cmd(&mut cmd);
+        cmd.stdout = FdMode::Pipe;
+        cmd.stderr = FdMode::Pipe;
 
         let program = cmd.program.to_string_lossy().to_string();
         let args = cmd
@@ -520,7 +510,8 @@ impl Distrobox {
     }
 
     async fn cmd_output(&self, mut cmd: Command) -> Result<Output, Error> {
-        wrap_capture_cmd(&mut cmd);
+        cmd.stdout = FdMode::Pipe;
+        cmd.stderr = FdMode::Pipe;
 
         let program = cmd.program.to_string_lossy().to_string();
         let args = cmd

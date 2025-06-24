@@ -638,7 +638,7 @@ impl DistroShelfWindow {
         
         for event in command_events {
             match event {
-                crate::distrobox::CommandRunnerEvent::Spawned(id, command) => {
+                crate::fakers::CommandRunnerEvent::Spawned(id, command) => {
                     let row = gtk::ListBoxRow::new();
                     let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
                     row_box.set_margin_start(6);
@@ -687,7 +687,7 @@ impl DistroShelfWindow {
                     
                     list_box.append(&row);
                 }
-                crate::distrobox::CommandRunnerEvent::Started(id, command) => {
+                crate::fakers::CommandRunnerEvent::Started(id, command) => {
                     let row = gtk::ListBoxRow::new();
                     let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
                     row_box.set_margin_start(6);
@@ -736,7 +736,7 @@ impl DistroShelfWindow {
                     
                     list_box.append(&row);
                 }
-                crate::distrobox::CommandRunnerEvent::Output(id, result) => {
+                crate::fakers::CommandRunnerEvent::Output(id, result) => {
                     let row = gtk::ListBoxRow::new();
                     let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
                     row_box.set_margin_start(6);

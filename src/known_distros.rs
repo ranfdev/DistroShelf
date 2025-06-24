@@ -1,4 +1,3 @@
-use crate::distrobox::Command;
 use glib::subclass::prelude::*;
 use gtk::glib;
 use gtk::glib::derived_properties;
@@ -8,6 +7,8 @@ use std::cell::LazyCell;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
+
+use crate::fakers::Command;
 
 
 pub const DISTROS: LazyCell<

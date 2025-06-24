@@ -40,6 +40,7 @@ mod tasks_button;
 mod terminal_combo_row;
 mod welcome_view;
 mod window;
+mod fakers;
 pub use store::root_store;
 
 use self::application::DistroShelfApplication;

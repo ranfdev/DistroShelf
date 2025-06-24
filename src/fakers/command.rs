@@ -107,18 +107,3 @@ impl From<Command> for async_process::Command {
         cmd
     }
 }
-
-pub fn wrap_flatpak_cmd(mut prev: Command) -> Command {
-    let mut args = vec!["--host".into(), prev.program];
-    args.extend(prev.args);
-
-    prev.args = args;
-    prev.program = "flatpak-spawn".into();
-    prev
-}
-
-pub fn wrap_capture_cmd(cmd: &mut Command) -> &mut Command {
-    cmd.stdout = FdMode::Pipe;
-    cmd.stderr = FdMode::Pipe;
-    cmd
-}

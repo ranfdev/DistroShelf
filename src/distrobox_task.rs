@@ -11,7 +11,7 @@ use std::cell::RefCell;
 use std::future::Future;
 use tracing::{debug, error, info, warn};
 
-use crate::distrobox::Child;
+use crate::fakers::Child;
 
 mod imp {
     use super::*;

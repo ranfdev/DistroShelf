@@ -5,14 +5,13 @@ use std::{
     collections::HashMap, future::Future, io::{self}, os::unix::process::ExitStatusExt, pin::Pin, process::ExitStatus, rc::Rc
 };
 
-use crate::distrobox::{Command, OutputTracker};
+use crate::fakers::{OutputTracker, Command};
+
 use async_process::{Command as AsyncCommand, Output};
 use futures::{
     io::{AsyncRead, AsyncWrite, Cursor},
     FutureExt,
 };
-
-use super::wrap_flatpak_cmd;
 
 
 #[derive(Debug, Clone)]
@@ -58,11 +57,6 @@ impl CommandRunner {
     }
     pub fn new_real() -> Self {
         CommandRunner::new(Rc::new(RealCommandRunner {}))
-    }
-    pub fn new_flatpak_real() -> Self {
-        CommandRunner::new(Rc::new(FlatpakCommandRunner::new(
-            Rc::new(RealCommandRunner {}),
-        )))
     }
 
     pub fn output_tracker(&self) -> OutputTracker<CommandRunnerEvent> {
@@ -117,6 +111,11 @@ pub trait InnerCommandRunner {
 
 #[derive(Clone, Debug)]
 pub struct RealCommandRunner {}
+impl RealCommandRunner {
+    pub fn new() -> Self {
+        RealCommandRunner {}
+    }
+}
 
 impl InnerCommandRunner for RealCommandRunner {
     fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
@@ -132,27 +131,6 @@ impl InnerCommandRunner for RealCommandRunner {
     }
 }
 
-#[derive(Clone)]
-pub struct FlatpakCommandRunner {
-    pub command_runner: Rc<dyn InnerCommandRunner>,
-}
-impl FlatpakCommandRunner {
-    pub fn new(command_runner: Rc<dyn InnerCommandRunner>) -> Self {
-        FlatpakCommandRunner { command_runner }
-    }
-}
-
-impl InnerCommandRunner for FlatpakCommandRunner {
-    fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
-        self.command_runner.spawn(wrap_flatpak_cmd(command))
-    }
-    fn output(
-        &self,
-        command: Command,
-    ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
-        self.command_runner.output(wrap_flatpak_cmd(command))
-    }
-}
 
 
 #[derive(Default, Clone)]

@@ -27,9 +27,8 @@ use gettextrs::gettext;
 use gtk::{gio, glib};
 
 use crate::config::VERSION;
-use crate::distrobox::{
-    CommandRunner, Distrobox, DistroboxCommandRunnerResponse 
-};
+use crate::distrobox::{Distrobox, DistroboxCommandRunnerResponse, FlatpakCommandRunner};
+use crate::fakers::{CommandRunner, RealCommandRunner};
 use crate::root_store::RootStore;
 use crate::DistroShelfWindow;
 
@@ -223,7 +222,9 @@ impl DistroShelfApplication {
             }
             _ => {
                 if Self::get_is_in_flatpak() {
-                    CommandRunner::new_flatpak_real()
+                    CommandRunner::new(Rc::new(FlatpakCommandRunner::new(Rc::new(
+                        RealCommandRunner::new(),
+                    ))))
                 } else {
                     CommandRunner::new_real()
                 }

@@ -1,14 +1,12 @@
 use std::{
-    cell::RefCell,
     path::{Path, PathBuf},
-    rc::Rc,
     sync::LazyLock,
 };
 
 use gtk::glib;
 use tracing::{error, info};
 
-use crate::distrobox::{wrap_capture_cmd, Command, CommandRunner};
+use crate::fakers::{CommandRunner, Command, FdMode};
 
 use gtk::subclass::prelude::*;
 
@@ -193,7 +191,9 @@ impl TerminalRepository {
                 "exec",
             ],
         );
-        wrap_capture_cmd(&mut command);
+        command.stdout = FdMode::Pipe;
+        command.stderr = FdMode::Pipe;
+        
         let output = self
             .imp()
             .command_runner

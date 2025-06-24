@@ -7,20 +7,19 @@ use glib::Properties;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::RefCell;
-use std::default;
 use std::path::Path;
-use std::rc::Rc;
 use std::time::Duration;
 use tracing::debug;
 use tracing::error;
 use tracing::info;
+use std::cell::OnceCell;
 
 use crate::container::Container;
-use crate::distrobox::{self, wrap_capture_cmd, Command, CommandRunner};
+use crate::fakers::{Child, Command, CommandRunner, FdMode};
+use crate::distrobox;
 use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
-use crate::distrobox::wrap_flatpak_cmd;
 use crate::distrobox_task::DistroboxTask;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
@@ -28,10 +27,6 @@ use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
 
 mod imp {
-    use std::cell::OnceCell;
-
-    use crate::{distrobox::CommandRunner, remote_resource::RemoteResource};
-
     use super::*;
 
     #[derive(Properties)]
@@ -340,10 +335,8 @@ impl RootStore {
         cmd.arg(terminal.separator_arg)
             .arg("echo")
             .arg("DistroShelf terminal validation");
-        cmd = wrap_flatpak_cmd(cmd);
 
-        let mut async_cmd: async_process::Command = cmd.into();
-        let mut child = match async_cmd.spawn() {
+        let mut child = match self.command_runner().spawn(cmd) {
             Ok(child) => child,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 error!(terminal = %terminal.program, "Terminal program not found");
@@ -355,7 +348,7 @@ impl RootStore {
             Err(e) => return Err(e.into()),
         };
 
-        if !child.status().await?.success() {
+        if !child.wait().await?.success() {
             error!(terminal = %terminal.program, "Terminal validation failed");
             return Err(anyhow::anyhow!(
                 "Terminal validation failed. '{}' did not run successfully.",
@@ -394,7 +387,8 @@ impl RootStore {
                 path,
             ],
         );
-        wrap_capture_cmd(&mut cmd);
+        cmd.stderr = FdMode::Pipe;
+        cmd.stdout = FdMode::Pipe;
         let output = self.command_runner()
             .output(cmd)
             .await
