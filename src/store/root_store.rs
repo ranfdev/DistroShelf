@@ -8,7 +8,7 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::RefCell;
 use std::default;
-use std::path::PathBuf;
+use std::path::Path;
 use std::rc::Rc;
 use std::time::Duration;
 use tracing::debug;
@@ -245,11 +245,17 @@ impl RootStore {
     }
     pub fn assemble_container(&self, file_path: &str) {
         let this = self.clone();
-        let file_path = file_path.to_string();
-        self.create_task("assemble", "assemble", move |task| async move {
-            let child = this.distrobox().assemble(&file_path)?;
+        let file_path_clone = file_path.to_string();
+        let file_name = Path::new(file_path)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or(file_path);
+
+        let task = self.create_task(&file_name, "assemble", move |task| async move {
+            let child = this.distrobox().assemble(&file_path_clone)?;
             task.handle_child_output(child).await
         });
+        self.view_task(&task);
     }
     pub fn upgrade_all(&self) {
         for container in self.containers().snapshot() {

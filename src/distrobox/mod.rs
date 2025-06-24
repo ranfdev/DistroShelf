@@ -717,14 +717,26 @@ impl Distrobox {
 
     // assemble
     pub fn assemble(&self, file_path: &str) -> Result<Box<dyn Child + Send>, Error> {
+        if file_path.is_empty() {
+            return Err(Error::InvalidField(
+                "file_path".into(),
+                "File path cannot be empty".into(),
+            ));
+        }
         let mut cmd = dbcmd();
-        cmd.arg("assemble").arg("--file").arg(file_path);
+        cmd.arg("assemble").arg("create").arg("--file").arg(file_path);
         self.cmd_spawn(cmd)
     }
 
     pub fn assemble_from_url(&self, url: &str) -> Result<Box<dyn Child + Send>, Error> {
+        if url.is_empty() {
+            return Err(Error::InvalidField(
+                "url".into(),
+                "URL cannot be empty".into(),
+            ));
+        }
         let mut cmd = dbcmd();
-        cmd.arg("assemble").arg("--file").arg(url);
+        cmd.arg("assemble").arg("create").arg("--file").arg(url);
         self.cmd_spawn(cmd)
     }
     // create
@@ -1009,7 +1021,7 @@ Categories=Utility;Network;
         db.assemble("/path/to/assemble.yml")?;
         assert_eq!(
             output_tracker.items()[0],
-            "\"distrobox\" [\"assemble\", \"--file\", \"/path/to/assemble.yml\"]"
+            "\"distrobox\" [\"assemble\", \"create\", \"--file\", \"/path/to/assemble.yml\"]"
         );
         Ok(())
     }
