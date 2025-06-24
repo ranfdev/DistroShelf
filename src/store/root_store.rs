@@ -16,11 +16,11 @@ use tracing::error;
 use tracing::info;
 
 use crate::container::Container;
-use crate::distrobox::{self, wrap_capture_cmd, Command};
+use crate::distrobox::{self, wrap_capture_cmd, Command, CommandRunner};
 use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
-use crate::distrobox::{wrap_flatpak_cmd, CommandRunner};
+use crate::distrobox::wrap_flatpak_cmd;
 use crate::distrobox_task::DistroboxTask;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
@@ -28,9 +28,9 @@ use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
 
 mod imp {
-    use std::{cell::OnceCell, rc::Rc};
+    use std::cell::OnceCell;
 
-    use crate::{distrobox::NullCommandRunner, remote_resource::RemoteResource};
+    use crate::{distrobox::CommandRunner, remote_resource::RemoteResource};
 
     use super::*;
 
@@ -39,7 +39,7 @@ mod imp {
     pub struct RootStore {
         pub distrobox: OnceCell<crate::distrobox::Distrobox>,
         pub terminal_repository: RefCell<TerminalRepository>,
-        pub command_runner: OnceCell<Rc<dyn crate::distrobox::CommandRunner>>,
+        pub command_runner: OnceCell<CommandRunner>,
 
         #[property(get, set)]
         pub distrobox_version: RefCell<RemoteResource>,
@@ -71,9 +71,7 @@ mod imp {
             Self {
                 containers: gio::ListStore::new::<crate::container::Container>(),
                 command_runner: OnceCell::new(),
-                terminal_repository: RefCell::new(TerminalRepository::new(Rc::new(
-                    NullCommandRunner::default(),
-                ))),
+                terminal_repository: RefCell::new(TerminalRepository::new(CommandRunner::new_null())),
                 selected_container: Default::default(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
@@ -101,7 +99,7 @@ glib::wrapper! {
     pub struct RootStore(ObjectSubclass<imp::RootStore>);
 }
 impl RootStore {
-    pub fn new(command_runner: Rc<dyn CommandRunner>) -> Self {
+    pub fn new(command_runner: CommandRunner) -> Self {
         let this: Self = glib::Object::builder().build();
 
         this.imp()
@@ -167,7 +165,7 @@ impl RootStore {
         self.imp().distrobox.get().unwrap()
     }
 
-    pub fn command_runner(&self) -> Rc<dyn crate::distrobox::CommandRunner> {
+    pub fn command_runner(&self) -> CommandRunner {
         self.imp().command_runner.get().unwrap().clone()
     }
 

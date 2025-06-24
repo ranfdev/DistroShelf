@@ -26,19 +26,16 @@ use crate::known_distros::PackageManager;
 use crate::preferences_dialog::PreferencesDialog;
 use crate::root_store::RootStore;
 use crate::sidebar_row::SidebarRow;
-use crate::supported_terminals;
 use crate::tagged_object::TaggedObject;
 use crate::task_manager_dialog::TaskManagerDialog;
 use crate::tasks_button::TasksButton;
-use crate::terminal_combo_row::TerminalComboRow;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{derived_properties, Properties};
 use gtk::glib::clone;
-use gtk::{gdk, DeleteType};
-use gtk::{gio, glib, pango};
+use gtk::{gdk, gio, glib, pango};
 use std::cell::RefCell;
-use tracing::{error, info};
+use tracing::info;
 
 mod imp {
     use super::*;
@@ -112,6 +109,11 @@ mod imp {
                 win.root_store()
                     .set_current_dialog(TaggedObject::new("create-distrobox"));
             });
+
+            klass.install_action("win.command-log", None, |win, _action, _target| {
+                win.root_store()
+                    .set_current_dialog(TaggedObject::new("command-log"));
+            });
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
@@ -173,6 +175,7 @@ impl DistroShelfWindow {
                     }
                     "task-manager" => TaskManagerDialog::new(root_store).upcast(),
                     "preferences" => this_clone.build_preferences_dialog(),
+                    "command-log" => this_clone.build_command_log_dialog(),
                     _ => return,
                 };
                 this_clone.set_current_dialog(Some(&dialog));
@@ -583,6 +586,203 @@ impl DistroShelfWindow {
 
     fn build_preferences_dialog(&self) -> adw::Dialog {
         PreferencesDialog::new(self.root_store()).upcast()
+    }
+
+    fn build_command_log_dialog(&self) -> adw::Dialog {
+        let dialog = adw::Dialog::new();
+        dialog.set_title("Command Log");
+        dialog.set_content_width(800);
+        dialog.set_content_height(600);
+
+        // Create toolbar view
+        let toolbar_view = adw::ToolbarView::new();
+        
+        // Create header bar
+        let header_bar = adw::HeaderBar::new();
+        header_bar.set_title_widget(Some(&adw::WindowTitle::new("Command Log", "")));
+        
+        toolbar_view.add_top_bar(&header_bar);
+
+        // Create main content
+        let main_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
+
+
+        // Create scrolled window for command list
+        let scrolled_window = gtk::ScrolledWindow::new();
+        scrolled_window.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
+        scrolled_window.set_vexpand(true);
+
+        let content_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        content_box.set_margin_start(12);
+        content_box.set_margin_end(12);
+        content_box.set_margin_top(12);
+        content_box.set_margin_bottom(12);
+
+        let description = gtk::Label::new(Some(
+            "Executing a single task (eg: listing applications) may require multiple chains of commands. \
+            This log shows all commands executed by the application.",
+        ));
+
+        description.set_wrap(true);
+        description.set_xalign(0.0);
+        description.add_css_class("dim-label");
+
+        content_box.append(&description);
+
+        // Create list box to show all commands
+        let list_box = gtk::ListBox::new();
+        list_box.set_selection_mode(gtk::SelectionMode::None);
+
+        // Get command events from output tracker
+        let command_events = self.root_store().command_runner().output_tracker().items();
+        
+        for event in command_events {
+            match event {
+                crate::distrobox::CommandRunnerEvent::Spawned(id, command) => {
+                    let row = gtk::ListBoxRow::new();
+                    let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+                    row_box.set_margin_start(6);
+                    row_box.set_margin_end(6);
+                    row_box.set_margin_top(3);
+                    row_box.set_margin_bottom(3);
+                    
+                    let status_icon = gtk::Image::from_icon_name("media-playback-start-symbolic");
+                    status_icon.add_css_class("spawned");
+                    status_icon.set_pixel_size(12);
+                    
+                    let label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                    let title_label = gtk::Label::new(Some(&format!("Spawned [{}]", id)));
+                    title_label.set_xalign(0.0);
+                    title_label.add_css_class("caption");
+                    
+                    let subtitle_label = gtk::Label::new(Some(&command.to_string()));
+                    subtitle_label.set_xalign(0.0);
+                    subtitle_label.add_css_class("caption");
+                    subtitle_label.add_css_class("dim-label");
+                    subtitle_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                    
+                    label_box.append(&title_label);
+                    label_box.append(&subtitle_label);
+                    
+                    row_box.append(&status_icon);
+                    row_box.append(&label_box);
+                    row.set_child(Some(&row_box));
+                    
+                    // Add click handler to copy command to clipboard
+                    let command_str = command.to_string();
+                    let this = self.clone();
+                    let gesture = gtk::GestureClick::new();
+                    gesture.connect_pressed(clone!(
+                        #[weak]
+                        this,
+                        move |_, _, _, _| {
+                            if let Some(display) = gdk::Display::default() {
+                                let clipboard = display.clipboard();
+                                clipboard.set_text(&command_str);
+                                this.add_toast(adw::Toast::new("Command copied to clipboard"));
+                            }
+                        }
+                    ));
+                    row.add_controller(gesture);
+                    
+                    list_box.append(&row);
+                }
+                crate::distrobox::CommandRunnerEvent::Started(id, command) => {
+                    let row = gtk::ListBoxRow::new();
+                    let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+                    row_box.set_margin_start(6);
+                    row_box.set_margin_end(6);
+                    row_box.set_margin_top(3);
+                    row_box.set_margin_bottom(3);
+                    
+                    let status_icon = gtk::Image::from_icon_name("system-run-symbolic");
+                    status_icon.add_css_class("started");
+                    status_icon.set_pixel_size(12);
+                    
+                    let label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                    let title_label = gtk::Label::new(Some(&format!("Started [{}]", id)));
+                    title_label.set_xalign(0.0);
+                    title_label.add_css_class("caption");
+                    
+                    let subtitle_label = gtk::Label::new(Some(&command.to_string()));
+                    subtitle_label.set_xalign(0.0);
+                    subtitle_label.add_css_class("caption");
+                    subtitle_label.add_css_class("dim-label");
+                    subtitle_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                    
+                    label_box.append(&title_label);
+                    label_box.append(&subtitle_label);
+                    
+                    row_box.append(&status_icon);
+                    row_box.append(&label_box);
+                    row.set_child(Some(&row_box));
+                    
+                    // Add click handler to copy command to clipboard
+                    let command_str = command.to_string();
+                    let this = self.clone();
+                    let gesture = gtk::GestureClick::new();
+                    gesture.connect_pressed(clone!(
+                        #[weak]
+                        this,
+                        move |_, _, _, _| {
+                            if let Some(display) = gdk::Display::default() {
+                                let clipboard = display.clipboard();
+                                clipboard.set_text(&command_str);
+                                this.add_toast(adw::Toast::new("Command copied to clipboard"));
+                            }
+                        }
+                    ));
+                    row.add_controller(gesture);
+                    
+                    list_box.append(&row);
+                }
+                crate::distrobox::CommandRunnerEvent::Output(id, result) => {
+                    let row = gtk::ListBoxRow::new();
+                    let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+                    row_box.set_margin_start(6);
+                    row_box.set_margin_end(6);
+                    row_box.set_margin_top(3);
+                    row_box.set_margin_bottom(3);
+                    
+                    let (title, icon, css_class) = match result {
+                        Ok(_) => (
+                            format!("Completed [{}]", id),
+                            "object-select-symbolic",
+                            "success"
+                        ),
+                        Err(_) => (
+                            format!("Failed [{}]", id),
+                            "dialog-error-symbolic", 
+                            "error"
+                        ),
+                    };
+                    
+                    let status_icon = gtk::Image::from_icon_name(icon);
+                    status_icon.add_css_class(css_class);
+                    status_icon.set_pixel_size(12);
+                    
+                    let title_label = gtk::Label::new(Some(&title));
+                    title_label.set_xalign(0.0);
+                    title_label.add_css_class("caption");
+                    
+                    row_box.append(&status_icon);
+                    row_box.append(&title_label);
+                    row.set_child(Some(&row_box));
+                    
+                    list_box.append(&row);
+                }
+            }
+        }
+
+        content_box.append(&list_box);
+        scrolled_window.set_child(Some(&content_box));
+        main_box.append(&scrolled_window);
+
+
+        toolbar_view.set_content(Some(&main_box));
+        dialog.set_child(Some(&toolbar_view));
+
+        dialog.upcast()
     }
 
     fn create_button_row(title: &str, icon_name: &str, subtitle: &str) -> adw::ActionRow {

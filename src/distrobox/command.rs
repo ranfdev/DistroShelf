@@ -1,6 +1,5 @@
 use std::{
-    ffi::{OsStr, OsString},
-    process::Stdio,
+    ffi::{OsStr, OsString}, fmt::Display, process::Stdio
 };
 
 #[derive(Debug, Clone)]
@@ -85,6 +84,16 @@ impl Command {
     {
         self.args.push(arg.as_ref().to_owned());
         self
+    }
+}
+
+impl Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.program.to_string_lossy())?;
+        for arg in &self.args {
+            write!(f, " {}", arg.to_string_lossy())?;
+        }
+        Ok(())
     }
 }
 
