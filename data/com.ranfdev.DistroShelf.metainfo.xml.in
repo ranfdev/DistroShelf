@@ -71,6 +71,13 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.10" date="2025-06-24">
+      <description translate="no">
+        <ul>
+          <li>Added command log dialog</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.9" date="2025-06-24">
       <description translate="no">
         <ul>
