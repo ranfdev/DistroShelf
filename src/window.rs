@@ -620,7 +620,7 @@ impl DistroShelfWindow {
 
         let description = gtk::Label::new(Some(
             "Executing a single task (eg: listing applications) may require multiple chains of commands. \
-            This log shows all commands executed by the application.",
+            For debugging purposes, this log shows all commands executed by the application.",
         ));
 
         description.set_wrap(true);
