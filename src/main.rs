@@ -29,6 +29,7 @@ mod distrobox_task;
 mod exportable_apps_dialog;
 mod gtk_utils;
 mod known_distros;
+mod preferences_dialog;
 mod remote_resource;
 mod sidebar_row;
 mod store;
@@ -39,6 +40,7 @@ mod tasks_button;
 mod terminal_combo_row;
 mod welcome_view;
 mod window;
+mod fakers;
 pub use store::root_store;
 
 use self::application::DistroShelfApplication;

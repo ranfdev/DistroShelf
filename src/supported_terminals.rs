@@ -1,14 +1,12 @@
 use std::{
-    cell::RefCell,
     path::{Path, PathBuf},
-    rc::Rc,
     sync::LazyLock,
 };
 
 use gtk::glib;
 use tracing::{error, info};
 
-use crate::distrobox::{wrap_capture_cmd, Command, CommandRunner, NullCommandRunner};
+use crate::fakers::{CommandRunner, Command, FdMode};
 
 use gtk::subclass::prelude::*;
 
@@ -52,13 +50,12 @@ mod imp {
     use super::*;
     use std::{
         cell::{OnceCell, RefCell},
-        rc::Rc,
     };
 
     pub struct TerminalRepository {
         pub list: RefCell<Vec<Terminal>>,
         pub custom_list_path: PathBuf,
-        pub command_runner: OnceCell<Rc<dyn CommandRunner>>,
+        pub command_runner: OnceCell<CommandRunner>,
     }
 
     impl Default for TerminalRepository {
@@ -85,7 +82,7 @@ glib::wrapper! {
 }
 
 impl TerminalRepository {
-    pub fn new(command_runner: Rc<dyn CommandRunner>) -> Self {
+    pub fn new(command_runner: CommandRunner) -> Self {
         let this: Self = glib::Object::builder().build();
         this.imp()
             .command_runner
@@ -194,7 +191,9 @@ impl TerminalRepository {
                 "exec",
             ],
         );
-        wrap_capture_cmd(&mut command);
+        command.stdout = FdMode::Pipe;
+        command.stderr = FdMode::Pipe;
+        
         let output = self
             .imp()
             .command_runner
@@ -223,6 +222,6 @@ impl TerminalRepository {
 
 impl Default for TerminalRepository {
     fn default() -> Self {
-        Self::new(Rc::new(NullCommandRunner::default()))
+        Self::new(CommandRunner::default())
     }
 }

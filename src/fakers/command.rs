@@ -1,6 +1,5 @@
 use std::{
-    ffi::{OsStr, OsString},
-    process::Stdio,
+    ffi::{OsStr, OsString}, fmt::Display, process::Stdio
 };
 
 #[derive(Debug, Clone)]
@@ -88,6 +87,16 @@ impl Command {
     }
 }
 
+impl Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.program.to_string_lossy())?;
+        for arg in &self.args {
+            write!(f, " {}", arg.to_string_lossy())?;
+        }
+        Ok(())
+    }
+}
+
 impl From<Command> for async_process::Command {
     fn from(val: Command) -> Self {
         let mut cmd = async_process::Command::new(val.program);
@@ -97,19 +106,4 @@ impl From<Command> for async_process::Command {
             .stderr::<Stdio>(val.stderr.into());
         cmd
     }
-}
-
-pub fn wrap_flatpak_cmd(mut prev: Command) -> Command {
-    let mut args = vec!["--host".into(), prev.program];
-    args.extend(prev.args);
-
-    prev.args = args;
-    prev.program = "flatpak-spawn".into();
-    prev
-}
-
-pub fn wrap_capture_cmd(cmd: &mut Command) -> &mut Command {
-    cmd.stdout = FdMode::Pipe;
-    cmd.stderr = FdMode::Pipe;
-    cmd
 }

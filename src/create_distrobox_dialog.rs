@@ -349,13 +349,35 @@ impl CreateDistroboxDialog {
 
         let title = title.to_owned();
         let dialog_cb = clone!(
+            #[weak(rename_to=this)]
+            self,
+            #[strong]
+            title,
             #[weak]
             row,
             move |res: Result<File, _>| {
                 if let Ok(file) = res {
                     if let Some(path) = file.path() {
-                        row.set_subtitle(&path.display().to_string());
-                        cb(path);
+
+                    glib::MainContext::ref_thread_default().spawn_local(async move {
+                        match this
+                            .root_store()
+                            .resolve_host_path(&path.display().to_string())
+                            .await
+                        {
+                            Ok(resolved_path) => {
+                                row.set_subtitle(&resolved_path);
+                                cb(PathBuf::from(resolved_path));
+                            }
+
+                            Err(e) => {
+                                this.update_errors::<()>(&Err(Error::InvalidField(
+                                    title.to_lowercase(),
+                                    e.to_string(),
+                                )));
+                            }
+                        }
+                    });
                     }
                 }
             }
@@ -432,7 +454,9 @@ impl CreateDistroboxDialog {
     pub fn build_volumes_group(&self) -> adw::PreferencesGroup {
         let volumes_group = adw::PreferencesGroup::new();
         volumes_group.set_title("Volumes");
-        volumes_group.set_description(Some("Specify volumes in the format 'host_path:container_path'"));
+        volumes_group.set_description(Some(
+            "Specify volumes in the format 'host_path:container_path'",
+        ));
 
         let add_volume_button = adw::ButtonRow::builder().title("Add Volume").build();
         add_volume_button.connect_activated(clone!(

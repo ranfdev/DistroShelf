@@ -2,25 +2,106 @@
 // returning predefined outputs, to ease code testing.
 
 use std::{
-    collections::HashMap,
-    future::Future,
-    io::{self},
-    os::unix::process::ExitStatusExt,
-    pin::Pin,
-    process::ExitStatus,
-    rc::Rc,
+    collections::HashMap, future::Future, io::{self}, os::unix::process::ExitStatusExt, pin::Pin, process::ExitStatus, rc::Rc
 };
 
-use crate::distrobox::Command;
+use crate::fakers::{OutputTracker, Command};
+
 use async_process::{Command as AsyncCommand, Output};
 use futures::{
     io::{AsyncRead, AsyncWrite, Cursor},
     FutureExt,
 };
 
-use super::wrap_flatpak_cmd;
 
-pub trait CommandRunner {
+#[derive(Debug, Clone)]
+pub enum CommandRunnerEvent {
+    Spawned(usize, Command),
+    /// Started command that will return the output
+    Started(usize, Command),
+    Output(usize, Result<(), ()>),
+}
+
+impl CommandRunnerEvent {
+    pub fn event_id(&self) -> usize {
+        match self {
+            CommandRunnerEvent::Spawned(id, _) => *id,
+            CommandRunnerEvent::Started(id, _) => *id,
+            CommandRunnerEvent::Output(id, _) => *id,
+        }
+    }
+    pub fn command(&self) -> Option<&Command> {
+        match self {
+            CommandRunnerEvent::Spawned(_, cmd) => Some(cmd),
+            CommandRunnerEvent::Started(_, cmd) => Some(cmd),
+            CommandRunnerEvent::Output(_, _) => None,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct CommandRunner {
+    pub inner: Rc<dyn InnerCommandRunner>,
+    pub output_tracker: OutputTracker<CommandRunnerEvent>,
+}
+
+impl CommandRunner {
+    pub fn new(inner: Rc<dyn InnerCommandRunner>) -> Self {
+        CommandRunner {
+            inner,
+            output_tracker: OutputTracker::new(),
+        }
+    }
+    pub fn new_null() -> Self {
+        CommandRunner::new(Rc::new(NullCommandRunner::default()))
+    }
+    pub fn new_real() -> Self {
+        CommandRunner::new(Rc::new(RealCommandRunner {}))
+    }
+
+    pub fn output_tracker(&self) -> OutputTracker<CommandRunnerEvent> {
+        self.output_tracker.enable();
+        self.output_tracker.clone()
+    }
+
+    fn event_id(&self) -> usize {
+        self.output_tracker.len()
+    }
+
+    pub fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
+        self.output_tracker.push(CommandRunnerEvent::Spawned(self.event_id(), command.clone()));
+        self.inner.spawn(command)
+    }
+
+    pub fn output(
+        &self,
+        command: Command,
+    ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
+        let event_id = self.event_id();
+        self.output_tracker.push(CommandRunnerEvent::Started(event_id, command.clone()));
+        let fut = self.inner.output(command);
+        let this = self.clone();
+        fut.map(move |result| {
+            let res_summary = match &result {
+                Ok(_output) => {
+                    Ok(())
+                }
+                Err(_e) => Err(()),
+            };
+            this.output_tracker.push(CommandRunnerEvent::Output(event_id, res_summary));
+            result
+        })
+        .boxed_local()
+    }
+}
+
+impl Default for CommandRunner {
+    fn default() -> Self {
+        CommandRunner::new_null()
+    }
+}
+
+pub trait InnerCommandRunner {
     fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>>;
     fn output(
         &self,
@@ -30,8 +111,13 @@ pub trait CommandRunner {
 
 #[derive(Clone, Debug)]
 pub struct RealCommandRunner {}
+impl RealCommandRunner {
+    pub fn new() -> Self {
+        RealCommandRunner {}
+    }
+}
 
-impl CommandRunner for RealCommandRunner {
+impl InnerCommandRunner for RealCommandRunner {
     fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
         let mut command: AsyncCommand = command.into();
         Ok(Box::new(command.spawn()?))
@@ -45,27 +131,6 @@ impl CommandRunner for RealCommandRunner {
     }
 }
 
-#[derive(Clone)]
-pub struct FlatpakCommandRunner {
-    pub command_runner: Rc<dyn CommandRunner>,
-}
-impl FlatpakCommandRunner {
-    pub fn new(command_runner: Rc<dyn CommandRunner>) -> Self {
-        FlatpakCommandRunner { command_runner }
-    }
-}
-
-impl CommandRunner for FlatpakCommandRunner {
-    fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
-        self.command_runner.spawn(wrap_flatpak_cmd(command))
-    }
-    fn output(
-        &self,
-        command: Command,
-    ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
-        self.command_runner.output(wrap_flatpak_cmd(command))
-    }
-}
 
 
 #[derive(Default, Clone)]
@@ -98,11 +163,12 @@ impl NullCommandRunnerBuilder {
         self.fallback_exit_status = status;
         self
     }
-    pub fn build(&self) -> NullCommandRunner {
-        NullCommandRunner {
+    pub fn build(&self) -> CommandRunner {
+        let inner = Rc::new(NullCommandRunner {
             responses: self.responses.clone(),
             fallback_exit_status: self.fallback_exit_status,
-        }
+        });
+        CommandRunner::new(inner)
     }
 }
 
@@ -124,7 +190,7 @@ impl NullCommandRunner {
     }
 }
 
-impl CommandRunner for NullCommandRunner {
+impl InnerCommandRunner for NullCommandRunner {
     fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
         let key = Self::key_for_cmd(&command);
         let response = self

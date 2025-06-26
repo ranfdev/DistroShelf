@@ -1,53 +1,48 @@
 use std::{
-    cell::{LazyCell, RefCell}, collections::BTreeMap, io, path::{Path, PathBuf}, process::Output, rc::Rc, str::FromStr
+    cell::LazyCell, collections::BTreeMap, future::Future, io, path::{Path, PathBuf}, pin::Pin, process::Output, rc::Rc, str::FromStr
 };
 use tracing::{debug, error, info, warn};
+use crate::fakers::{CommandRunner, NullCommandRunnerBuilder, Command, Child, InnerCommandRunner, FdMode};
 
-mod command;
-mod command_runner;
 mod desktop_file;
 
-pub use command::*;
-pub use command_runner::*;
 pub use desktop_file::*;
 
-#[derive(Default, Clone, Debug)]
-pub struct OutputTracker<T> {
-    store: Rc<RefCell<Option<Vec<T>>>>,
+
+#[derive(Clone)]
+pub struct FlatpakCommandRunner {
+    pub command_runner: Rc<dyn InnerCommandRunner>,
+}
+impl FlatpakCommandRunner {
+    pub fn new(command_runner: Rc<dyn InnerCommandRunner>) -> Self {
+        FlatpakCommandRunner { command_runner }
+    }
+
+    pub fn wrap_flatpak_cmd(mut prev: Command) -> Command {
+        let mut args = vec!["--host".into(), prev.program];
+        args.extend(prev.args);
+
+        prev.args = args;
+        prev.program = "flatpak-spawn".into();
+        prev
+    }
 }
 
-impl<T: Clone + std::fmt::Debug> OutputTracker<T> {
-    pub fn enable(&self) {
-        let mut inner = self.store.borrow_mut();
-        if inner.is_none() {
-            *inner = Some(vec![]);
-        }
+impl InnerCommandRunner for FlatpakCommandRunner {
+    fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
+        self.command_runner.spawn(Self::wrap_flatpak_cmd(command))
     }
-    pub fn push(&self, item: T) {
-        if let Some(v) = &mut *self.store.borrow_mut() {
-            v.push(item);
-        }
-    }
-    pub fn items(&self) -> Vec<T> {
-        if let Some(v) = &*self.store.borrow() {
-            v.clone()
-        } else {
-            vec![]
-        }
+    fn output(
+        &self,
+        command: Command,
+    ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
+        self.command_runner.output(Self::wrap_flatpak_cmd(command))
     }
 }
+
 
 pub struct Distrobox {
-    cmd_runner: Rc<dyn CommandRunner>,
-    output_tracker: OutputTracker<String>,
-}
-
-impl std::fmt::Debug for Distrobox {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Distrobox")
-            .field("output_tracker", &self.output_tracker)
-            .finish()
-    }
+    cmd_runner: CommandRunner,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash)]
@@ -472,43 +467,27 @@ impl DistroboxCommandRunnerResponse {
 }
 
 impl Distrobox {
-    pub fn new(cmd_runner:Rc<dyn CommandRunner + 'static> ) -> Self {
+    pub fn new(cmd_runner: CommandRunner) -> Self {
         Self {
             cmd_runner,
-            output_tracker: Default::default(),
-        }
-    }
-    pub fn new_null(runner: NullCommandRunner) -> Self {
-        Self {
-            cmd_runner: Rc::new(runner),
-            output_tracker: OutputTracker::default(),
         }
     }
 
     pub fn null_command_runner(
         responses: &[DistroboxCommandRunnerResponse],
-    ) -> Rc<dyn CommandRunner> {
-        let cmd_runner = {
-            let mut builder = NullCommandRunnerBuilder::new();
-            for res in responses {
-                for (cmd, out) in res.clone().to_commands() {
-                    builder.cmd_full(cmd, out.clone());
-                }
+    ) -> CommandRunner {
+        let mut builder = NullCommandRunnerBuilder::new();
+        for res in responses {
+            for (cmd, out) in res.clone().to_commands() {
+                builder.cmd_full(cmd, out.clone());
             }
-            builder.build()
-        };
-        Rc::new(cmd_runner) as Rc<dyn CommandRunner>
+        }
+        builder.build()
     }
-
-    pub fn output_tracker(&self) -> OutputTracker<String> {
-        self.output_tracker.enable();
-        self.output_tracker.clone()
-    }
-
-    
 
     pub fn cmd_spawn(&self, mut cmd: Command) -> Result<Box<dyn Child + Send>, Error> {
-        wrap_capture_cmd(&mut cmd);
+        cmd.stdout = FdMode::Pipe;
+        cmd.stderr = FdMode::Pipe;
 
         let program = cmd.program.to_string_lossy().to_string();
         let args = cmd
@@ -527,13 +506,12 @@ impl Distrobox {
             }
         })?;
 
-        self.output_tracker
-            .push(format!("{:?} {:?}", program, args));
         Ok(child)
     }
 
     async fn cmd_output(&self, mut cmd: Command) -> Result<Output, Error> {
-        wrap_capture_cmd(&mut cmd);
+        cmd.stdout = FdMode::Pipe;
+        cmd.stderr = FdMode::Pipe;
 
         let program = cmd.program.to_string_lossy().to_string();
         let args = cmd
@@ -552,8 +530,6 @@ impl Distrobox {
                 command: command_str.clone(),
             }
         })?;
-
-        self.output_tracker.push(command_str.clone());
 
         let exit_code = output.status.code();
         debug!(
@@ -717,14 +693,26 @@ impl Distrobox {
 
     // assemble
     pub fn assemble(&self, file_path: &str) -> Result<Box<dyn Child + Send>, Error> {
+        if file_path.is_empty() {
+            return Err(Error::InvalidField(
+                "file_path".into(),
+                "File path cannot be empty".into(),
+            ));
+        }
         let mut cmd = dbcmd();
-        cmd.arg("assemble").arg("--file").arg(file_path);
+        cmd.arg("assemble").arg("create").arg("--file").arg(file_path);
         self.cmd_spawn(cmd)
     }
 
     pub fn assemble_from_url(&self, url: &str) -> Result<Box<dyn Child + Send>, Error> {
+        if url.is_empty() {
+            return Err(Error::InvalidField(
+                "url".into(),
+                "URL cannot be empty".into(),
+            ));
+        }
         let mut cmd = dbcmd();
-        cmd.arg("assemble").arg("--file").arg(url);
+        cmd.arg("assemble").arg("create").arg("--file").arg(url);
         self.cmd_spawn(cmd)
     }
     // create
@@ -874,7 +862,7 @@ impl Distrobox {
 
 impl Default for Distrobox {
     fn default() -> Self {
-        Self::new(Rc::new(NullCommandRunner::default()))
+        Self::new(CommandRunner::new_null())
     }
 }
 
@@ -888,7 +876,7 @@ mod tests {
         block_on(async {
             let output = "ID           | NAME                 | STATUS             | IMAGE                         
 d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubuntu-toolbox:latest";
-            let db = Distrobox::new_null(
+            let db = Distrobox::new(
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "ls", "--no-color"], output)
                     .build(),
@@ -910,7 +898,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
     fn version() -> Result<(), Error> {
         block_on(async {
             let output = "distrobox: 1.7.2.1";
-            let db = Distrobox::new_null(
+            let db = Distrobox::new(
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "version"], output)
                     .build(),
@@ -922,7 +910,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
 
     #[test]
     fn list_apps() -> Result<(), Error> {
-        let db = Distrobox::new_null(NullCommandRunnerBuilder::new()
+        let db = Distrobox::new(NullCommandRunnerBuilder::new()
             .cmd(
                 &[
                     "sh", "-c", "echo $XDG_DATA_HOME"
@@ -983,8 +971,8 @@ Categories=Utility;Network;
     #[test]
     fn create() -> Result<(), Error> {
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();
-        let db = Distrobox::new_null(NullCommandRunner::default());
-        let output_tracker = db.output_tracker();
+        let db = Distrobox::new(CommandRunner::new_null());
+        let output_tracker = db.cmd_runner.output_tracker();
         debug!("Testing container creation");
         let args = CreateArgs {
             image: "docker.io/library/ubuntu:latest".into(),
@@ -998,30 +986,30 @@ Categories=Utility;Network;
             ..Default::default()
         };
         smol::block_on(db.create(args))?;
-        let expected = "\"distrobox\" [\"create\", \"--yes\", \"--image\", \"docker.io/library/ubuntu:latest\", \"--init\", \"--nvidia\", \"--home\", \"/home/me\", \"--volume\", \"/mnt/sdb1:/mnt/sdb1\", \"--volume\", \"/mnt/sdb4:/mnt/sdb4:ro\"]";
-        assert_eq!(output_tracker.items()[0], expected);
+        let expected = "distrobox create --yes --image docker.io/library/ubuntu:latest --init --nvidia --home /home/me --volume /mnt/sdb1:/mnt/sdb1 --volume /mnt/sdb4:/mnt/sdb4:ro";
+        assert_eq!(output_tracker.items()[0].command().unwrap().to_string(), expected);
         Ok(())
     }
     #[test]
     fn assemble() -> Result<(), Error> {
-        let db = Distrobox::new_null(NullCommandRunner::default());
-        let output_tracker = db.output_tracker();
+        let db = Distrobox::new(CommandRunner::new_null());
+        let output_tracker = db.cmd_runner.output_tracker();
         db.assemble("/path/to/assemble.yml")?;
         assert_eq!(
-            output_tracker.items()[0],
-            "\"distrobox\" [\"assemble\", \"--file\", \"/path/to/assemble.yml\"]"
+            output_tracker.items()[0].command().unwrap().to_string(),
+            "distrobox assemble create --file /path/to/assemble.yml"
         );
         Ok(())
     }
 
     #[test]
     fn remove() -> Result<(), Error> {
-        let db = Distrobox::new_null(NullCommandRunner::default());
-        let output_tracker = db.output_tracker();
+        let db = Distrobox::new(CommandRunner::new_null());
+        let output_tracker = db.cmd_runner.output_tracker();
         block_on(db.remove("ubuntu"))?;
         assert_eq!(
-            output_tracker.items()[0],
-            "\"distrobox\" [\"rm\", \"--force\", \"ubuntu\"]"
+            output_tracker.items()[0].command().unwrap().to_string(),
+            "distrobox rm --force ubuntu"
         );
         Ok(())
     }

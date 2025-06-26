@@ -7,20 +7,19 @@ use glib::Properties;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::RefCell;
-use std::default;
-use std::path::PathBuf;
-use std::rc::Rc;
+use std::path::Path;
 use std::time::Duration;
 use tracing::debug;
 use tracing::error;
 use tracing::info;
+use std::cell::OnceCell;
 
 use crate::container::Container;
-use crate::distrobox::{self, wrap_capture_cmd, Command};
+use crate::fakers::{Child, Command, CommandRunner, FdMode};
+use crate::distrobox;
 use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
-use crate::distrobox::{wrap_flatpak_cmd, CommandRunner};
 use crate::distrobox_task::DistroboxTask;
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
@@ -28,10 +27,6 @@ use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
 
 mod imp {
-    use std::{cell::OnceCell, rc::Rc};
-
-    use crate::{distrobox::NullCommandRunner, remote_resource::RemoteResource};
-
     use super::*;
 
     #[derive(Properties)]
@@ -39,7 +34,7 @@ mod imp {
     pub struct RootStore {
         pub distrobox: OnceCell<crate::distrobox::Distrobox>,
         pub terminal_repository: RefCell<TerminalRepository>,
-        pub command_runner: OnceCell<Rc<dyn crate::distrobox::CommandRunner>>,
+        pub command_runner: OnceCell<CommandRunner>,
 
         #[property(get, set)]
         pub distrobox_version: RefCell<RemoteResource>,
@@ -71,9 +66,7 @@ mod imp {
             Self {
                 containers: gio::ListStore::new::<crate::container::Container>(),
                 command_runner: OnceCell::new(),
-                terminal_repository: RefCell::new(TerminalRepository::new(Rc::new(
-                    NullCommandRunner::default(),
-                ))),
+                terminal_repository: RefCell::new(TerminalRepository::new(CommandRunner::new_null())),
                 selected_container: Default::default(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
@@ -101,7 +94,7 @@ glib::wrapper! {
     pub struct RootStore(ObjectSubclass<imp::RootStore>);
 }
 impl RootStore {
-    pub fn new(command_runner: Rc<dyn CommandRunner>) -> Self {
+    pub fn new(command_runner: CommandRunner) -> Self {
         let this: Self = glib::Object::builder().build();
 
         this.imp()
@@ -167,7 +160,7 @@ impl RootStore {
         self.imp().distrobox.get().unwrap()
     }
 
-    pub fn command_runner(&self) -> Rc<dyn crate::distrobox::CommandRunner> {
+    pub fn command_runner(&self) -> CommandRunner {
         self.imp().command_runner.get().unwrap().clone()
     }
 
@@ -245,11 +238,17 @@ impl RootStore {
     }
     pub fn assemble_container(&self, file_path: &str) {
         let this = self.clone();
-        let file_path = file_path.to_string();
-        self.create_task("assemble", "assemble", move |task| async move {
-            let child = this.distrobox().assemble(&file_path)?;
+        let file_path_clone = file_path.to_string();
+        let file_name = Path::new(file_path)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or(file_path);
+
+        let task = self.create_task(&file_name, "assemble", move |task| async move {
+            let child = this.distrobox().assemble(&file_path_clone)?;
             task.handle_child_output(child).await
         });
+        self.view_task(&task);
     }
     pub fn upgrade_all(&self) {
         for container in self.containers().snapshot() {
@@ -336,10 +335,8 @@ impl RootStore {
         cmd.arg(terminal.separator_arg)
             .arg("echo")
             .arg("DistroShelf terminal validation");
-        cmd = wrap_flatpak_cmd(cmd);
 
-        let mut async_cmd: async_process::Command = cmd.into();
-        let mut child = match async_cmd.spawn() {
+        let mut child = match self.command_runner().spawn(cmd) {
             Ok(child) => child,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 error!(terminal = %terminal.program, "Terminal program not found");
@@ -351,7 +348,7 @@ impl RootStore {
             Err(e) => return Err(e.into()),
         };
 
-        if !child.status().await?.success() {
+        if !child.wait().await?.success() {
             error!(terminal = %terminal.program, "Terminal validation failed");
             return Err(anyhow::anyhow!(
                 "Terminal validation failed. '{}' did not run successfully.",
@@ -390,7 +387,8 @@ impl RootStore {
                 path,
             ],
         );
-        wrap_capture_cmd(&mut cmd);
+        cmd.stderr = FdMode::Pipe;
+        cmd.stdout = FdMode::Pipe;
         let output = self.command_runner()
             .output(cmd)
             .await

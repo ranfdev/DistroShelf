@@ -1,9 +1,10 @@
 use crate::{
-    distrobox::{Command, ContainerInfo, ExportableApp, Status},
+    distrobox::{ContainerInfo, ExportableApp, Status},
     distrobox_task::DistroboxTask,
     known_distros::{known_distro_by_image, KnownDistro},
     remote_resource::RemoteResource,
     root_store::RootStore,
+    fakers::Command
 };
 
 use gtk::{
