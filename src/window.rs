@@ -369,43 +369,48 @@ impl DistroShelfWindow {
         let actions_group = adw::PreferencesGroup::new();
         actions_group.set_title("Quick Actions");
 
-        let upgrade_row = Self::create_button_row(
+        let upgrade_row = self.create_button_row(
             "Upgrade Container",
             "software-update-available-symbolic",
             "Update all packages",
+            |win| {
+                let task = win.root_store().selected_container().unwrap().upgrade();
+                win.root_store().view_task(&task);
+            },
         );
         actions_group.add(&upgrade_row);
 
-        let apps_row = Self::create_button_row(
+        let apps_row = self.create_button_row(
             "Applications",
             "view-list-bullet-symbolic",
             "Manage exportable applications",
+            |win| {
+                win.root_store().view_exportable_apps();
+            },
         );
         actions_group.add(&apps_row);
 
         if let Some(distro) = container.distro() {
-            let pm = distro.package_manager();
-            if pm != PackageManager::Unknown {
-                let install_package_row = Self::create_button_row(
-                    &format!("Install {} Package", pm.installable_file().unwrap()),
+            if let Some(installable_file) = distro.package_manager().installable_file() {
+                let install_package_row = self.create_button_row(
+                    &format!("Install {} Package", installable_file),
                     "package-symbolic",
                     "Install packages into container",
+                    |win| {
+                        win.build_install_package_dialog();
+                    },
                 );
                 actions_group.add(&install_package_row);
-                install_package_row.connect_activated(clone!(
-                    #[weak(rename_to = this)]
-                    self,
-                    move |_| {
-                        this.build_install_package_dialog();
-                    }
-                ));
             }
         }
 
-        let clone_row = Self::create_button_row(
+        let clone_row = self.create_button_row(
             "Clone Container",
             "edit-copy-symbolic",
             "Create a copy of this container",
+            |win| {
+                win.build_clone_dialog();
+            },
         );
         actions_group.add(&clone_row);
 
@@ -414,10 +419,13 @@ impl DistroShelfWindow {
         danger_group.set_title("Danger Zone");
         danger_group.add_css_class("danger-group");
 
-        let delete_row = Self::create_button_row(
+        let delete_row = self.create_button_row(
             "Delete Container",
             "user-trash-symbolic",
             "Permanently remove this container and all its data",
+            |win| {
+                win.build_delete_dialog();
+            },
         );
         delete_row.add_css_class("error");
 
@@ -429,134 +437,108 @@ impl DistroShelfWindow {
         main_box.append(&actions_group);
         main_box.append(&danger_group);
 
-        upgrade_row.connect_activated(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                let task = this.root_store().selected_container().unwrap().upgrade();
-                this.root_store().view_task(&task);
-            }
-        ));
-
-        apps_row.connect_activated(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                this.root_store().view_exportable_apps();
-            }
-        ));
-
-        clone_row.connect_activated(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                let dialog = adw::Dialog::new();
-                dialog.set_title("Clone Container");
-
-                let toolbar_view = adw::ToolbarView::new();
-                toolbar_view.add_top_bar(&adw::HeaderBar::new());
-
-                let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
-                content.set_margin_start(12);
-                content.set_margin_end(12);
-                content.set_margin_top(12);
-                content.set_margin_bottom(12);
-
-                let info_label =
-                    gtk::Label::new(Some("Cloning a container may take several minutes."));
-                info_label.add_css_class("dim-label");
-                info_label.set_wrap(true);
-                content.append(&info_label);
-
-                let group = adw::PreferencesGroup::new();
-                let entry = adw::EntryRow::builder().title("New container name").build();
-                group.add(&entry);
-
-                content.append(&group);
-
-                let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-                button_box.set_homogeneous(true);
-
-                let cancel_btn = gtk::Button::with_label("Cancel");
-                cancel_btn.add_css_class("pill");
-                let clone_btn = gtk::Button::with_label("Clone");
-                clone_btn.add_css_class("suggested-action");
-                clone_btn.add_css_class("pill");
-
-                button_box.append(&cancel_btn);
-                button_box.append(&clone_btn);
-                content.append(&button_box);
-
-                toolbar_view.set_content(Some(&content));
-                dialog.set_child(Some(&toolbar_view));
-
-                cancel_btn.connect_clicked(clone!(
-                    #[weak]
-                    dialog,
-                    move |_| {
-                        dialog.close();
-                    }
-                ));
-
-                clone_btn.connect_clicked(clone!(
-                    #[weak(rename_to = this)]
-                    this,
-                    #[weak]
-                    entry,
-                    move |_| {
-                        this.root_store()
-                            .selected_container()
-                            .unwrap()
-                            .clone_to(&entry.text());
-                    }
-                ));
-
-                dialog.present(Some(&this));
-            }
-        ));
-
-        delete_row.connect_activated(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                let dialog = adw::AlertDialog::builder()
-                    .heading("Delete this container?")
-                    .body(format!(
-                        "{} will be deleted.\nThis action cannot be undone.",
-                        this.root_store()
-                            .selected_container_name()
-                            .unwrap_or_default()
-                    ))
-                    .close_response("cancel")
-                    .default_response("cancel")
-                    .build();
-                dialog.add_response("cancel", "Cancel");
-                dialog.add_response("delete", "Delete");
-
-                dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
-                dialog.connect_response(
-                    Some("delete"),
-                    clone!(
-                        #[weak(rename_to = this)]
-                        this,
-                        move |dialog, _| {
-                            this.root_store().selected_container().unwrap().delete();
-                            this.root_store().set_selected_container(None::<Container>);
-                            dialog.close();
-                        }
-                    ),
-                );
-
-                dialog.present(Some(&this));
-            }
-        ));
-
         // Finish layout
         scrolled_window.set_child(Some(&main_box));
         clamp.set_child(Some(&scrolled_window));
         widget.append(&clamp);
 
         self.imp().main_slot.set_child(Some(&widget));
+    }
+
+    fn build_delete_dialog(&self) {
+        let dialog = adw::AlertDialog::builder()
+            .heading("Delete this container?")
+            .body(format!(
+                "{} will be deleted.\nThis action cannot be undone.",
+                self.root_store()
+                    .selected_container_name()
+                    .unwrap_or_default()
+            ))
+            .close_response("cancel")
+            .default_response("cancel")
+            .build();
+        dialog.add_response("cancel", "Cancel");
+        dialog.add_response("delete", "Delete");
+
+        dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+        dialog.connect_response(
+            Some("delete"),
+            clone!(
+                #[weak(rename_to = this)]
+                self,
+                move |dialog, _| {
+                    this.root_store().selected_container().unwrap().delete();
+                    this.root_store().set_selected_container(None::<Container>);
+                    dialog.close();
+                }
+            ),
+        );
+
+        dialog.present(Some(self));
+    }
+
+    fn build_clone_dialog(&self) {
+        let dialog = adw::Dialog::new();
+        dialog.set_title("Clone Container");
+
+        let toolbar_view = adw::ToolbarView::new();
+        toolbar_view.add_top_bar(&adw::HeaderBar::new());
+
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        content.set_margin_start(12);
+        content.set_margin_end(12);
+        content.set_margin_top(12);
+        content.set_margin_bottom(12);
+
+        let info_label = gtk::Label::new(Some("Cloning a container may take several minutes."));
+        info_label.add_css_class("dim-label");
+        info_label.set_wrap(true);
+        content.append(&info_label);
+
+        let group = adw::PreferencesGroup::new();
+        let entry = adw::EntryRow::builder().title("New container name").build();
+        group.add(&entry);
+
+        content.append(&group);
+
+        let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        button_box.set_homogeneous(true);
+
+        let cancel_btn = gtk::Button::with_label("Cancel");
+        cancel_btn.add_css_class("pill");
+        let clone_btn = gtk::Button::with_label("Clone");
+        clone_btn.add_css_class("suggested-action");
+        clone_btn.add_css_class("pill");
+
+        button_box.append(&cancel_btn);
+        button_box.append(&clone_btn);
+        content.append(&button_box);
+
+        toolbar_view.set_content(Some(&content));
+        dialog.set_child(Some(&toolbar_view));
+
+        cancel_btn.connect_clicked(clone!(
+            #[weak]
+            dialog,
+            move |_| {
+                dialog.close();
+            }
+        ));
+
+        clone_btn.connect_clicked(clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[weak]
+            entry,
+            move |_| {
+                this.root_store()
+                    .selected_container()
+                    .unwrap()
+                    .clone_to(&entry.text());
+            }
+        ));
+
+        dialog.present(Some(self));
     }
 
     fn build_install_package_dialog(&self) {
@@ -596,16 +578,15 @@ impl DistroShelfWindow {
 
         // Create toolbar view
         let toolbar_view = adw::ToolbarView::new();
-        
+
         // Create header bar
         let header_bar = adw::HeaderBar::new();
         header_bar.set_title_widget(Some(&adw::WindowTitle::new("Command Log", "")));
-        
+
         toolbar_view.add_top_bar(&header_bar);
 
         // Create main content
         let main_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
-
 
         // Create scrolled window for command list
         let scrolled_window = gtk::ScrolledWindow::new();
@@ -635,7 +616,7 @@ impl DistroShelfWindow {
 
         // Get command events from output tracker
         let command_events = self.root_store().command_runner().output_tracker().items();
-        
+
         for event in command_events {
             match event {
                 crate::fakers::CommandRunnerEvent::Spawned(id, command) => {
@@ -645,29 +626,29 @@ impl DistroShelfWindow {
                     row_box.set_margin_end(6);
                     row_box.set_margin_top(3);
                     row_box.set_margin_bottom(3);
-                    
+
                     let status_icon = gtk::Image::from_icon_name("media-playback-start-symbolic");
                     status_icon.add_css_class("spawned");
                     status_icon.set_pixel_size(12);
-                    
+
                     let label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
                     let title_label = gtk::Label::new(Some(&format!("Spawned [{}]", id)));
                     title_label.set_xalign(0.0);
                     title_label.add_css_class("caption");
-                    
+
                     let subtitle_label = gtk::Label::new(Some(&command.to_string()));
                     subtitle_label.set_xalign(0.0);
                     subtitle_label.add_css_class("caption");
                     subtitle_label.add_css_class("dim-label");
                     subtitle_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-                    
+
                     label_box.append(&title_label);
                     label_box.append(&subtitle_label);
-                    
+
                     row_box.append(&status_icon);
                     row_box.append(&label_box);
                     row.set_child(Some(&row_box));
-                    
+
                     // Add click handler to copy command to clipboard
                     let command_str = command.to_string();
                     let this = self.clone();
@@ -684,7 +665,7 @@ impl DistroShelfWindow {
                         }
                     ));
                     row.add_controller(gesture);
-                    
+
                     list_box.append(&row);
                 }
                 crate::fakers::CommandRunnerEvent::Started(id, command) => {
@@ -694,29 +675,29 @@ impl DistroShelfWindow {
                     row_box.set_margin_end(6);
                     row_box.set_margin_top(3);
                     row_box.set_margin_bottom(3);
-                    
+
                     let status_icon = gtk::Image::from_icon_name("system-run-symbolic");
                     status_icon.add_css_class("started");
                     status_icon.set_pixel_size(12);
-                    
+
                     let label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
                     let title_label = gtk::Label::new(Some(&format!("Started [{}]", id)));
                     title_label.set_xalign(0.0);
                     title_label.add_css_class("caption");
-                    
+
                     let subtitle_label = gtk::Label::new(Some(&command.to_string()));
                     subtitle_label.set_xalign(0.0);
                     subtitle_label.add_css_class("caption");
                     subtitle_label.add_css_class("dim-label");
                     subtitle_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-                    
+
                     label_box.append(&title_label);
                     label_box.append(&subtitle_label);
-                    
+
                     row_box.append(&status_icon);
                     row_box.append(&label_box);
                     row.set_child(Some(&row_box));
-                    
+
                     // Add click handler to copy command to clipboard
                     let command_str = command.to_string();
                     let this = self.clone();
@@ -733,7 +714,7 @@ impl DistroShelfWindow {
                         }
                     ));
                     row.add_controller(gesture);
-                    
+
                     list_box.append(&row);
                 }
                 crate::fakers::CommandRunnerEvent::Output(id, result) => {
@@ -743,32 +724,28 @@ impl DistroShelfWindow {
                     row_box.set_margin_end(6);
                     row_box.set_margin_top(3);
                     row_box.set_margin_bottom(3);
-                    
+
                     let (title, icon, css_class) = match result {
                         Ok(_) => (
                             format!("Completed [{}]", id),
                             "object-select-symbolic",
-                            "success"
+                            "success",
                         ),
-                        Err(_) => (
-                            format!("Failed [{}]", id),
-                            "dialog-error-symbolic", 
-                            "error"
-                        ),
+                        Err(_) => (format!("Failed [{}]", id), "dialog-error-symbolic", "error"),
                     };
-                    
+
                     let status_icon = gtk::Image::from_icon_name(icon);
                     status_icon.add_css_class(css_class);
                     status_icon.set_pixel_size(12);
-                    
+
                     let title_label = gtk::Label::new(Some(&title));
                     title_label.set_xalign(0.0);
                     title_label.add_css_class("caption");
-                    
+
                     row_box.append(&status_icon);
                     row_box.append(&title_label);
                     row.set_child(Some(&row_box));
-                    
+
                     list_box.append(&row);
                 }
             }
@@ -778,14 +755,19 @@ impl DistroShelfWindow {
         scrolled_window.set_child(Some(&content_box));
         main_box.append(&scrolled_window);
 
-
         toolbar_view.set_content(Some(&main_box));
         dialog.set_child(Some(&toolbar_view));
 
         dialog.upcast()
     }
 
-    fn create_button_row(title: &str, icon_name: &str, subtitle: &str) -> adw::ActionRow {
+    fn create_button_row(
+        &self,
+        title: &str,
+        icon_name: &str,
+        subtitle: &str,
+        action_fn: impl Fn(&Self) + 'static,
+    ) -> adw::ActionRow {
         let row = adw::ActionRow::new();
         row.set_title(title);
         row.set_subtitle(subtitle);
@@ -794,6 +776,14 @@ impl DistroShelfWindow {
         row.add_prefix(&icon);
 
         row.set_activatable(true);
+
+        row.connect_activated(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                action_fn(&this);
+            }
+        ));
 
         row
     }
