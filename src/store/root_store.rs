@@ -6,21 +6,21 @@ use glib::subclass::prelude::*;
 use glib::Properties;
 use gtk::prelude::*;
 use gtk::{gio, glib};
+use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::path::Path;
 use std::time::Duration;
 use tracing::debug;
 use tracing::error;
 use tracing::info;
-use std::cell::OnceCell;
 
 use crate::container::Container;
-use crate::fakers::{Child, Command, CommandRunner, FdMode};
 use crate::distrobox;
 use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
 use crate::distrobox_task::DistroboxTask;
+use crate::fakers::{Child, Command, CommandRunner, FdMode};
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
 use crate::supported_terminals::{Terminal, TerminalRepository};
@@ -66,7 +66,9 @@ mod imp {
             Self {
                 containers: gio::ListStore::new::<crate::container::Container>(),
                 command_runner: OnceCell::new(),
-                terminal_repository: RefCell::new(TerminalRepository::new(CommandRunner::new_null())),
+                terminal_repository: RefCell::new(TerminalRepository::new(
+                    CommandRunner::new_null(),
+                )),
                 selected_container: Default::default(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
@@ -173,6 +175,7 @@ impl RootStore {
         glib::MainContext::ref_thread_default().spawn_local_with_priority(
             glib::Priority::LOW,
             async move {
+                let previous_selected = this.selected_container().clone();
                 let Ok(containers) = this.distrobox().list().await else {
                     return;
                 };
@@ -186,6 +189,12 @@ impl RootStore {
                     |item| item.name(),
                     &["name", "status-tag", "status-detail", "distro", "image"],
                 );
+                if previous_selected.is_none() {
+                    if let Some(first) = containers.first() {
+                        let container: &Container = first.downcast_ref().unwrap();
+                        this.set_selected_container(Some(container.clone()));
+                    }
+                }
             },
         );
     }
@@ -389,17 +398,19 @@ impl RootStore {
         );
         cmd.stderr = FdMode::Pipe;
         cmd.stdout = FdMode::Pipe;
-        let output = self.command_runner()
+        let output = self
+            .command_runner()
             .output(cmd)
             .await
             .map_err(|e| distrobox::Error::ResolveHostPath(e.to_string()));
 
-        
         let is_from_sandbox = path.starts_with("/run/user");
 
         // If the path is not from a flatpak sandbox, we assume it's a regular path, so we can skip the getfattr command error.
         // If the command was successful, but for some reason the output is empty, we also return the path as is.
-        let stdout = if (output.is_err() && !is_from_sandbox) || output.as_ref().map_or(false, |o| o.stdout.is_empty()) {
+        let stdout = if (output.is_err() && !is_from_sandbox)
+            || output.as_ref().map_or(false, |o| o.stdout.is_empty())
+        {
             return Ok(path.to_string());
         } else {
             output?.stdout
@@ -407,7 +418,8 @@ impl RootStore {
 
         Ok(String::from_utf8(stdout)
             .map_err(|e| distrobox::Error::ParseOutput(e.to_string()))?
-            .trim().to_string())
+            .trim()
+            .to_string())
     }
 }
 
