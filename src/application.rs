@@ -259,7 +259,8 @@ impl DistroShelfApplication {
             .developers(vec!["Lorenzo Miglietta"])
             // Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
             .translator_credits(gettext("translator-credits"))
-            .copyright("© 2024 Lorenzo Miglietta")
+            .copyright("© 2024 Lorenzo Miglietta.\nAll brand icons are trademarks of their respective owners")
+            .comments(gettext("A distrobox management application."))
             .build();
 
         about.present(Some(&window));
