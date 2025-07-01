@@ -42,7 +42,7 @@ mod imp {
 
     #[derive(Default, gtk::CompositeTemplate, Properties)]
     #[properties(wrapper_type = super::DistroShelfWindow)]
-    #[template(resource = "/com/ranfdev/DistroShelf/window.ui")]
+    #[template(resource = "/com/ranfdev/DistroShelf/gtk/window.ui")]
     pub struct DistroShelfWindow {
         #[property(get, set, construct)]
         pub root_store: RefCell<RootStore>,

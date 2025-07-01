@@ -1,5 +1,5 @@
 project('distroshelf', 'rust',
-          version: '1.0.11',
+          version: '1.0.12',
     meson_version: '>= 1.0.0',
   default_options: [ 'warning_level=2', 'werror=false', ],
 )
@@ -14,6 +14,8 @@ meson.add_dist_script(
   join_paths(meson.project_build_root(), 'meson-dist', meson.project_name() + '-' + version),
   meson.project_source_root()
 )
+
+pkgdatadir = get_option('prefix') / get_option('datadir') / meson.project_name()
 
 subdir('data')
 subdir('src')

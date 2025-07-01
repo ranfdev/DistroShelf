@@ -1,3 +1,5 @@
+gnome = import('gnome')
+
 desktop_file = i18n.merge_file(
         input: 'com.ranfdev.DistroShelf.desktop.in',
        output: 'com.ranfdev.DistroShelf.desktop',
@@ -18,6 +20,15 @@ appstream_file = i18n.merge_file(
        po_dir: '../po',
       install: true,
   install_dir: get_option('datadir') / 'metainfo'
+)
+
+gnome.compile_resources('distroshelf',
+  'distroshelf.gresource.xml',
+  source_dir: join_paths(meson.project_build_root(), 'data'),
+  gresource_bundle: true,
+  install: true,
+  install_dir: pkgdatadir,
+  dependencies: appstream_file
 )
 
 appstreamcli = find_program('appstreamcli', required: false, disabler: true)

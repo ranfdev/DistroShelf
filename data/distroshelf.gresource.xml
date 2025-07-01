@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/com/ranfdev/DistroShelf">
+    <file preprocess="xml-stripblanks">gtk/window.ui</file>
+    <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks" alias="metainfo.xml">com.ranfdev.DistroShelf.metainfo.xml</file>
+  </gresource>
+  <gresource prefix="/com/ranfdev/DistroShelf/icons/scalable/actions/">
+    <file preprocess="xml-stripblanks" alias="terminal-symbolic.svg">icons/terminal-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="package-symbolic.svg">icons/package-symbolic.svg</file>
+    
+    <file preprocess="xml-stripblanks" alias="alma-symbolic.svg">icons/alma.svg</file>
+    <file preprocess="xml-stripblanks" alias="arch-symbolic.svg">icons/arch.svg</file>
+    <file preprocess="xml-stripblanks" alias="coreos-symbolic.svg">icons/coreos.svg</file>
+    <file preprocess="xml-stripblanks" alias="crystal-symbolic.svg">icons/crystal.svg</file>
+    <file preprocess="xml-stripblanks" alias="gentoo-symbolic.svg">icons/gentoo.svg</file>
+    <file preprocess="xml-stripblanks" alias="fedora-symbolic.svg">icons/fedora.svg</file>
+    <file preprocess="xml-stripblanks" alias="ubuntu-symbolic.svg">icons/ubuntu.svg</file>
+    <file preprocess="xml-stripblanks" alias="alpine-symbolic.svg">icons/alpine.svg</file>
+    <file preprocess="xml-stripblanks" alias="mint-symbolic.svg">icons/mint.svg</file>
+    <file preprocess="xml-stripblanks" alias="nixos-symbolic.svg">icons/nixos.svg</file>
+    <file preprocess="xml-stripblanks" alias="debian-symbolic.svg">icons/debian.svg</file>
+    <file preprocess="xml-stripblanks" alias="centos-symbolic.svg">icons/centos.svg</file>
+    <file preprocess="xml-stripblanks" alias="kali-symbolic.svg">icons/kali.svg</file>
+    <file preprocess="xml-stripblanks" alias="opensuse-symbolic.svg">icons/opensuse.svg</file>
+    <file preprocess="xml-stripblanks" alias="neon-symbolic.svg">icons/neon.svg</file>
+    <file preprocess="xml-stripblanks" alias="slackware-symbolic.svg">icons/slackware.svg</file>
+    <file preprocess="xml-stripblanks" alias="rocky-symbolic.svg">icons/rocky.svg</file>
+    <file preprocess="xml-stripblanks" alias="deepin-symbolic.svg">icons/deepin.svg</file>
+    <file preprocess="xml-stripblanks" alias="vanilla-symbolic.svg">icons/vanilla.svg</file>
+    <file preprocess="xml-stripblanks" alias="void-symbolic.svg">icons/void.svg</file>
+    <file preprocess="xml-stripblanks" alias="tux-symbolic.svg">icons/tux.svg</file>
+  </gresource>
+</gresources>

@@ -4,3 +4,4 @@ target/*
 _build/
 .aider*
 .env
+src/config.rs
