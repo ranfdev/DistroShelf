@@ -26,7 +26,7 @@ use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib};
 
-use crate::config::VERSION;
+use crate::config::{self, VERSION};
 use crate::distrobox::{Distrobox, DistroboxCommandRunnerResponse, FlatpakCommandRunner};
 use crate::fakers::{CommandRunner, RealCommandRunner};
 use crate::root_store::RootStore;
@@ -251,18 +251,13 @@ impl DistroShelfApplication {
 
     fn show_about(&self) {
         let window = self.active_window().unwrap();
-        let about = adw::AboutDialog::builder()
-            .application_name("distroshelf")
-            .application_icon("com.ranfdev.DistroShelf")
-            .developer_name("Lorenzo Miglietta")
-            .version(VERSION)
-            .developers(vec!["Lorenzo Miglietta"])
-            // Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
-            .translator_credits(gettext("translator-credits"))
-            .copyright("© 2024 Lorenzo Miglietta.\nAll brand icons are trademarks of their respective owners")
-            .comments(gettext("A distrobox management application."))
-            .build();
-
+        let about =
+            adw::AboutDialog::from_appdata(&format!("{}/metainfo.xml", config::PATH_ID), None);
+        about.set_developers(&["Lorenzo Miglietta"]);
+        about.set_copyright(
+            "© 2024 Lorenzo Miglietta.\nAll brand icons are trademarks of their respective owners",
+        );
+        about.add_link("Donate", "https://github.com/sponsors/ranfdev");
         about.present(Some(&window));
     }
 }

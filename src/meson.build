@@ -1,15 +1,6 @@
-pkgdatadir = get_option('prefix') / get_option('datadir') / meson.project_name()
-gnome = import('gnome')
-
-gnome.compile_resources('distroshelf',
-  'distroshelf.gresource.xml',
-  gresource_bundle: true,
-  install: true,
-  install_dir: pkgdatadir,
-)
-
 conf = configuration_data()
 conf.set_quoted('VERSION', meson.project_version())
+conf.set_quoted('PATH_ID', '/com/ranfdev/DistroShelf')
 conf.set_quoted('GETTEXT_PACKAGE', 'distroshelf')
 conf.set_quoted('LOCALEDIR', get_option('prefix') / get_option('localedir'))
 conf.set_quoted('PKGDATADIR', pkgdatadir)
