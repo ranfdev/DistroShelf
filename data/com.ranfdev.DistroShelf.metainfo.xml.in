@@ -71,6 +71,17 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.11" date="2025-07-01">
+      <description translate="no">
+        <ul>
+          <li>Fix switch rows not working in creation dialog</li>
+          <li>Auto select nvidia support if nvidia driver is installed</li>
+          <li>Add tooltips on headerbar buttons to improve accessibility</li>
+          <li>Install additional systemd package when init option is selected</li>
+          <li>Refactor path resolution and command runner abstraction</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.10" date="2025-06-24">
       <description translate="no">
         <ul>
