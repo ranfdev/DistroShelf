@@ -122,17 +122,15 @@ mod imp {
                     }
                 ));
 
-            let nvidia_row = adw::SwitchRow::new();
-            nvidia_row.set_title("NVIDIA Support");
+            self.nvidia_row.set_title("NVIDIA Support");
 
-            let init_row = adw::SwitchRow::new();
-            init_row.set_title("Init process");
+            self.init_row.set_title("Init process");
 
             preferences_group.add(&self.name_row);
             preferences_group.add(&self.image_row);
             preferences_group.add(&self.home_row_expander);
-            preferences_group.add(&nvidia_row);
-            preferences_group.add(&init_row);
+            preferences_group.add(&self.nvidia_row);
+            preferences_group.add(&self.init_row);
 
             let volumes_group = self.obj().build_volumes_group();
             gui_page.append(&preferences_group);
@@ -330,6 +328,20 @@ impl CreateDistroboxDialog {
         ));
         this.root_store().images().reload();
 
+        glib::MainContext::ref_thread_default().spawn_local(clone!(
+            #[weak]
+            this,
+            async move {
+                this.root_store()
+                    .is_nvidia_host()
+                    .await
+                    .ok()
+                    .map(|is_nvidia| {
+                        this.imp().nvidia_row.set_active(is_nvidia);
+                    });
+            }
+        ));
+
         this
     }
 
@@ -358,26 +370,25 @@ impl CreateDistroboxDialog {
             move |res: Result<File, _>| {
                 if let Ok(file) = res {
                     if let Some(path) = file.path() {
+                        glib::MainContext::ref_thread_default().spawn_local(async move {
+                            match this
+                                .root_store()
+                                .resolve_host_path(&path.display().to_string())
+                                .await
+                            {
+                                Ok(resolved_path) => {
+                                    row.set_subtitle(&resolved_path);
+                                    cb(PathBuf::from(resolved_path));
+                                }
 
-                    glib::MainContext::ref_thread_default().spawn_local(async move {
-                        match this
-                            .root_store()
-                            .resolve_host_path(&path.display().to_string())
-                            .await
-                        {
-                            Ok(resolved_path) => {
-                                row.set_subtitle(&resolved_path);
-                                cb(PathBuf::from(resolved_path));
+                                Err(e) => {
+                                    this.update_errors::<()>(&Err(Error::InvalidField(
+                                        title.to_lowercase(),
+                                        e.to_string(),
+                                    )));
+                                }
                             }
-
-                            Err(e) => {
-                                this.update_errors::<()>(&Err(Error::InvalidField(
-                                    title.to_lowercase(),
-                                    e.to_string(),
-                                )));
-                            }
-                        }
-                    });
+                        });
                     }
                 }
             }
@@ -428,21 +439,11 @@ impl CreateDistroboxDialog {
 
         let name = CreateArgName::new(&imp.name_row.text())?;
 
-        dbg!(&self.home_folder());
         let create_args = CreateArgs {
             name,
             image: image.to_string(),
             nvidia: imp.nvidia_row.is_active(),
-            home_path: if let Some(home) = self.home_folder() {
-                Some(
-                    self.root_store()
-                        .resolve_host_path(&home)
-                        .await
-                        .map_err(|e| Error::InvalidField("home".to_string(), e.to_string()))?,
-                )
-            } else {
-                None
-            },
+            home_path: self.home_folder(),
             init: imp.init_row.is_active(),
             volumes,
         };

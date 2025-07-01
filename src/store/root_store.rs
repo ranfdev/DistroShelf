@@ -6,21 +6,21 @@ use glib::subclass::prelude::*;
 use glib::Properties;
 use gtk::prelude::*;
 use gtk::{gio, glib};
+use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::path::Path;
 use std::time::Duration;
-use tracing::debug;
 use tracing::error;
 use tracing::info;
-use std::cell::OnceCell;
+use tracing::{debug, warn};
 
 use crate::container::Container;
-use crate::fakers::{Child, Command, CommandRunner, FdMode};
 use crate::distrobox;
 use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
 use crate::distrobox_task::DistroboxTask;
+use crate::fakers::{Child, Command, CommandRunner, FdMode};
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
 use crate::supported_terminals::{Terminal, TerminalRepository};
@@ -66,7 +66,9 @@ mod imp {
             Self {
                 containers: gio::ListStore::new::<crate::container::Container>(),
                 command_runner: OnceCell::new(),
-                terminal_repository: RefCell::new(TerminalRepository::new(CommandRunner::new_null())),
+                terminal_repository: RefCell::new(TerminalRepository::new(
+                    CommandRunner::new_null(),
+                )),
                 selected_container: Default::default(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
@@ -173,6 +175,7 @@ impl RootStore {
         glib::MainContext::ref_thread_default().spawn_local_with_priority(
             glib::Priority::LOW,
             async move {
+                let previous_selected = this.selected_container().clone();
                 let Ok(containers) = this.distrobox().list().await else {
                     return;
                 };
@@ -186,6 +189,12 @@ impl RootStore {
                     |item| item.name(),
                     &["name", "status-tag", "status-detail", "distro", "image"],
                 );
+                if previous_selected.is_none() {
+                    if let Some(first) = containers.first() {
+                        let container: &Container = first.downcast_ref().unwrap();
+                        this.set_selected_container(Some(container.clone()));
+                    }
+                }
             },
         );
     }
@@ -377,8 +386,46 @@ impl RootStore {
         });
     }
 
+    pub async fn run_to_string(&self, mut cmd: Command) -> Result<String, anyhow::Error> {
+        cmd.stderr = FdMode::Pipe;
+        cmd.stdout = FdMode::Pipe;
+        let output = self.command_runner().output(cmd.clone()).await?;
+        Ok(String::from_utf8(output.stdout).map_err(|e| {
+            error!(cmd = %cmd, "Failed to parse command output");
+            distrobox::Error::ParseOutput(e.to_string())
+        })?)
+    }
+
+    pub async fn is_nvidia_host(&self) -> Result<bool, distrobox::Error> {
+        // uses lspci to check if the host has an NVIDIA GPU
+        debug!("Checking if host is NVIDIA");
+        let cmd = Command::new("lspci");
+        let output = self.run_to_string(cmd).await;
+        match output {
+            Ok(output) => {
+                let is_nvidia = output.contains("NVIDIA") || output.contains("nVidia");
+                debug!(is_nvidia, "Checked if host is NVIDIA");
+                Ok(is_nvidia)
+            }
+            Err(e) => {
+                debug!(?e, "Failed to check if host is NVIDIA");
+                Ok(false) // If we can't run lspci, we assume it's not NVIDIA
+            }
+        }
+    }
+
     pub async fn resolve_host_path(&self, path: &str) -> Result<String, distrobox::Error> {
-        let mut cmd = Command::new_with_args(
+        // The path could be a:
+        // 1. Host path, already resolved to a real location, e.g., "/home/user/Documents/custom-home-folder".
+        // 2. Path from a flatpak sandbox, e.g., "/run/user/1000/doc/abc123".
+        // The user may not have the `getfattr`, but we still want to try using it,
+        // because we don't have an exact way to know if the path is from a flatpak sandbox or not.
+        // If the path is already a real host path, `getfattr` may return an empty output,
+        // because it doesn't have the `user.document-portal.host-path` attribute set by the flatpak portal.
+
+        debug!(?path, "Resolving host path");
+
+        let cmd = Command::new_with_args(
             "getfattr",
             [
                 "-n",
@@ -387,27 +434,34 @@ impl RootStore {
                 path,
             ],
         );
-        cmd.stderr = FdMode::Pipe;
-        cmd.stdout = FdMode::Pipe;
-        let output = self.command_runner()
-            .output(cmd)
+        let output = self
+            .run_to_string(cmd)
             .await
             .map_err(|e| distrobox::Error::ResolveHostPath(e.to_string()));
 
-        
         let is_from_sandbox = path.starts_with("/run/user");
 
-        // If the path is not from a flatpak sandbox, we assume it's a regular path, so we can skip the getfattr command error.
-        // If the command was successful, but for some reason the output is empty, we also return the path as is.
-        let stdout = if (output.is_err() && !is_from_sandbox) || output.as_ref().map_or(false, |o| o.stdout.is_empty()) {
-            return Ok(path.to_string());
-        } else {
-            output?.stdout
-        };
-
-        Ok(String::from_utf8(stdout)
-            .map_err(|e| distrobox::Error::ParseOutput(e.to_string()))?
-            .trim().to_string())
+        match output {
+            Ok(resolved_path) => {
+                debug!(?resolved_path, "Resolved host path");
+                if resolved_path.is_empty() {
+                    // If the output is empty, we assume the path is already a real host path.
+                    return Ok(path.to_string());
+                }
+                Ok(resolved_path.trim().to_string())
+            }
+            Err(e) if !is_from_sandbox => {
+                debug!(
+                    ?e,
+                    "Failed to execute getfattr, but path doesn't seem from a sandbox anyway"
+                );
+                Ok(path.trim().to_string())
+            }
+            Err(e) => {
+                debug!(?e, "Failed to resolve host path using getfattr");
+                Err(e)
+            }
+        }
     }
 }
 
