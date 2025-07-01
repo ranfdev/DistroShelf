@@ -1,13 +1,22 @@
+use crate::fakers::{
+    Child, Command, CommandRunner, FdMode, InnerCommandRunner, NullCommandRunnerBuilder,
+};
 use std::{
-    cell::LazyCell, collections::BTreeMap, future::Future, io, path::{Path, PathBuf}, pin::Pin, process::Output, rc::Rc, str::FromStr
+    cell::LazyCell,
+    collections::BTreeMap,
+    future::Future,
+    io,
+    path::{Path, PathBuf},
+    pin::Pin,
+    process::Output,
+    rc::Rc,
+    str::FromStr,
 };
 use tracing::{debug, error, info, warn};
-use crate::fakers::{CommandRunner, NullCommandRunnerBuilder, Command, Child, InnerCommandRunner, FdMode};
 
 mod desktop_file;
 
 pub use desktop_file::*;
-
 
 #[derive(Clone)]
 pub struct FlatpakCommandRunner {
@@ -39,7 +48,6 @@ impl InnerCommandRunner for FlatpakCommandRunner {
         self.command_runner.output(Self::wrap_flatpak_cmd(command))
     }
 }
-
 
 pub struct Distrobox {
     cmd_runner: CommandRunner,
@@ -468,14 +476,10 @@ impl DistroboxCommandRunnerResponse {
 
 impl Distrobox {
     pub fn new(cmd_runner: CommandRunner) -> Self {
-        Self {
-            cmd_runner,
-        }
+        Self { cmd_runner }
     }
 
-    pub fn null_command_runner(
-        responses: &[DistroboxCommandRunnerResponse],
-    ) -> CommandRunner {
+    pub fn null_command_runner(responses: &[DistroboxCommandRunnerResponse]) -> CommandRunner {
         let mut builder = NullCommandRunnerBuilder::new();
         for res in responses {
             for (cmd, out) in res.clone().to_commands() {
@@ -700,7 +704,10 @@ impl Distrobox {
             ));
         }
         let mut cmd = dbcmd();
-        cmd.arg("assemble").arg("create").arg("--file").arg(file_path);
+        cmd.arg("assemble")
+            .arg("create")
+            .arg("--file")
+            .arg(file_path);
         self.cmd_spawn(cmd)
     }
 
@@ -726,7 +733,9 @@ impl Distrobox {
             cmd.arg("--name").arg(args.name.0);
         }
         if args.init {
-            cmd.arg("--init");
+            cmd.arg("--init")
+                .arg("--additional-packages")
+                .arg("systemd");
         }
         if args.nvidia {
             cmd.arg("--nvidia");
@@ -883,12 +892,15 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
             );
             assert_eq!(
                 db.list().await?,
-                BTreeMap::from_iter([("ubuntu".into(), ContainerInfo {
-                    id: "d24405b14180".into(),
-                    name: "ubuntu".into(),
-                    status: Status::Created("".into()),
-                    image: "ghcr.io/ublue-os/ubuntu-toolbox:latest".into(),
-                })])
+                BTreeMap::from_iter([(
+                    "ubuntu".into(),
+                    ContainerInfo {
+                        id: "d24405b14180".into(),
+                        name: "ubuntu".into(),
+                        status: Status::Created("".into()),
+                        image: "ghcr.io/ublue-os/ubuntu-toolbox:latest".into(),
+                    }
+                )])
             );
             Ok(())
         })
@@ -986,8 +998,11 @@ Categories=Utility;Network;
             ..Default::default()
         };
         smol::block_on(db.create(args))?;
-        let expected = "distrobox create --yes --image docker.io/library/ubuntu:latest --init --nvidia --home /home/me --volume /mnt/sdb1:/mnt/sdb1 --volume /mnt/sdb4:/mnt/sdb4:ro";
-        assert_eq!(output_tracker.items()[0].command().unwrap().to_string(), expected);
+        let expected = "distrobox create --yes --image docker.io/library/ubuntu:latest --init --additional-packages systemd --nvidia --home /home/me --volume /mnt/sdb1:/mnt/sdb1 --volume /mnt/sdb4:/mnt/sdb4:ro";
+        assert_eq!(
+            output_tracker.items()[0].command().unwrap().to_string(),
+            expected
+        );
         Ok(())
     }
     #[test]
