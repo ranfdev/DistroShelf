@@ -122,17 +122,15 @@ mod imp {
                     }
                 ));
 
-            let nvidia_row = adw::SwitchRow::new();
-            nvidia_row.set_title("NVIDIA Support");
+            self.nvidia_row.set_title("NVIDIA Support");
 
-            let init_row = adw::SwitchRow::new();
-            init_row.set_title("Init process");
+            self.init_row.set_title("Init process");
 
             preferences_group.add(&self.name_row);
             preferences_group.add(&self.image_row);
             preferences_group.add(&self.home_row_expander);
-            preferences_group.add(&nvidia_row);
-            preferences_group.add(&init_row);
+            preferences_group.add(&self.nvidia_row);
+            preferences_group.add(&self.init_row);
 
             let volumes_group = self.obj().build_volumes_group();
             gui_page.append(&preferences_group);
