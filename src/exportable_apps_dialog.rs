@@ -68,6 +68,11 @@ mod imp {
             export_apps_group.add(&self.list_box);
             self.stack.add_named(&export_apps_group, Some("apps"));
 
+            let empty_page = adw::StatusPage::new();
+            empty_page.set_title("No Exportable Apps");
+
+            self.stack.add_named(&empty_page, Some("empty"));
+
             self.content.append(&self.scrolled_window);
             self.toolbar_view.set_content(Some(&self.content));
             self.obj().set_child(Some(&self.toolbar_view));
@@ -130,6 +135,12 @@ impl ExportableAppsDialog {
         let this_clone = this.clone();
         container.apps().connect_data_changed(move |resource| {
             let apps = resource.data::<gio::ListStore>().unwrap();
+
+            if apps.n_items() == 0 {
+                this_clone.imp().stack.set_visible_child_name("empty");
+                return;
+            }
+
             this_clone.imp().stack.set_visible_child_name("apps");
 
             let this = this_clone.clone();
