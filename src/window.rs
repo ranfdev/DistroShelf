@@ -163,7 +163,9 @@ impl DistroShelfWindow {
         this.root_store()
             .connect_current_dialog_notify(move |root_store| {
                 if let Some(dialog) = this_clone.current_dialog() {
-                    dialog.close();
+                    if dialog.parent().is_some() {
+                        dialog.close();
+                    }
                 }
                 let dialog: adw::Dialog = match dbg!(root_store.current_dialog().tag().as_str()) {
                     "exportable-apps" => ExportableAppsDialog::new(
