@@ -585,6 +585,8 @@ impl DistroShelfWindow {
 
         toolbar_view.add_top_bar(&header_bar);
 
+        let toast_overlay = adw::ToastOverlay::new();
+
         // Create main content
         let main_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
 
@@ -651,16 +653,16 @@ impl DistroShelfWindow {
 
                     // Add click handler to copy command to clipboard
                     let command_str = command.to_string();
-                    let this = self.clone();
                     let gesture = gtk::GestureClick::new();
                     gesture.connect_pressed(clone!(
                         #[weak]
-                        this,
+                        toast_overlay,
                         move |_, _, _, _| {
                             if let Some(display) = gdk::Display::default() {
                                 let clipboard = display.clipboard();
                                 clipboard.set_text(&command_str);
-                                this.add_toast(adw::Toast::new("Command copied to clipboard"));
+                                toast_overlay
+                                    .add_toast(adw::Toast::new("Command copied to clipboard"));
                             }
                         }
                     ));
@@ -700,16 +702,16 @@ impl DistroShelfWindow {
 
                     // Add click handler to copy command to clipboard
                     let command_str = command.to_string();
-                    let this = self.clone();
                     let gesture = gtk::GestureClick::new();
                     gesture.connect_pressed(clone!(
                         #[weak]
-                        this,
+                        toast_overlay,
                         move |_, _, _, _| {
                             if let Some(display) = gdk::Display::default() {
                                 let clipboard = display.clipboard();
                                 clipboard.set_text(&command_str);
-                                this.add_toast(adw::Toast::new("Command copied to clipboard"));
+                                toast_overlay
+                                    .add_toast(adw::Toast::new("Command copied to clipboard"));
                             }
                         }
                     ));
@@ -755,7 +757,8 @@ impl DistroShelfWindow {
         scrolled_window.set_child(Some(&content_box));
         main_box.append(&scrolled_window);
 
-        toolbar_view.set_content(Some(&main_box));
+        toast_overlay.set_child(Some(&main_box));
+        toolbar_view.set_content(Some(&toast_overlay));
         dialog.set_child(Some(&toolbar_view));
 
         dialog.upcast()

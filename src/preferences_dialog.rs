@@ -4,7 +4,7 @@ use crate::terminal_combo_row::TerminalComboRow;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{clone, derived_properties, Properties};
-use gtk::{glib, gio};
+use gtk::{gio, glib};
 use std::cell::RefCell;
 use tracing::error;
 
@@ -16,7 +16,6 @@ mod imp {
     pub struct PreferencesDialog {
         #[property(get, set, construct)]
         pub root_store: RefCell<RootStore>,
-        
         pub terminal_combo_row: RefCell<Option<TerminalComboRow>>,
         pub delete_btn: gtk::Button,
         pub add_terminal_btn: gtk::Button,
@@ -38,7 +37,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
-            
+
             obj.set_title("Preferences");
 
             let page = adw::PreferencesPage::new();
@@ -46,11 +45,12 @@ mod imp {
             // Terminal Settings Group
             let terminal_group = adw::PreferencesGroup::new();
             terminal_group.set_title("Terminal Settings");
-            
+
             // Initialize terminal combo row
             let terminal_combo_row = TerminalComboRow::new_with_params(obj.root_store());
-            self.terminal_combo_row.replace(Some(terminal_combo_row.clone()));
-            
+            self.terminal_combo_row
+                .replace(Some(terminal_combo_row.clone()));
+
             // Initialize delete button
             self.delete_btn.set_label("Delete");
             self.delete_btn.add_css_class("destructive-action");
@@ -148,7 +148,7 @@ impl PreferencesDialog {
         let imp = self.imp();
         if let (Some(terminal_combo_row), Some(delete_btn)) = (
             imp.terminal_combo_row.borrow().as_ref(),
-            Some(&imp.delete_btn)
+            Some(&imp.delete_btn),
         ) {
             if let Some(selected) = terminal_combo_row.selected_item() {
                 let selected_name = selected
@@ -171,13 +171,13 @@ impl PreferencesDialog {
             Some(row) => row.clone(),
             None => return,
         };
-        
+
         let selected = terminal_combo_row
             .selected_item()
             .and_downcast_ref::<gtk::StringObject>()
             .unwrap()
             .string();
-            
+
         let dialog = adw::AlertDialog::builder()
             .heading("Delete this terminal?")
             .body(format!(
@@ -205,25 +205,24 @@ impl PreferencesDialog {
                         .delete_terminal(&selected)
                     {
                         Ok(_) => {
-                            glib::MainContext::ref_thread_default().spawn_local(
-                                async move {
-                                    if let Some(terminal_combo_row) = this.imp().terminal_combo_row.borrow().as_ref() {
-                                        terminal_combo_row.reload_terminals();
-                                        terminal_combo_row.set_selected_by_name(
-                                            &this.root_store()
-                                                .terminal_repository()
-                                                .default_terminal()
-                                                .await
-                                                .map(|x| x.name)
-                                                .unwrap_or_default(),
-                                        );
-                                    }
+                            glib::MainContext::ref_thread_default().spawn_local(async move {
+                                if let Some(terminal_combo_row) =
+                                    this.imp().terminal_combo_row.borrow().as_ref()
+                                {
+                                    terminal_combo_row.reload_terminals();
+                                    terminal_combo_row.set_selected_by_name(
+                                        &this
+                                            .root_store()
+                                            .terminal_repository()
+                                            .default_terminal()
+                                            .await
+                                            .map(|x| x.name)
+                                            .unwrap_or_default(),
+                                    );
+                                }
 
-                                    this.add_toast(adw::Toast::new(
-                                        "Terminal removed successfully",
-                                    ));
-                                },
-                            );
+                                this.add_toast(adw::Toast::new("Terminal removed successfully"));
+                            });
                         }
                         Err(err) => {
                             error!(error = %err, "Failed to delete terminal");
@@ -260,9 +259,7 @@ impl PreferencesDialog {
         let program_entry = adw::EntryRow::builder().title("Program Path").build();
 
         // Separator argument entry
-        let separator_entry = adw::EntryRow::builder()
-            .title("Separator Argument")
-            .build();
+        let separator_entry = adw::EntryRow::builder().title("Separator Argument").build();
 
         group.add(&name_entry);
         group.add(&program_entry);
@@ -348,7 +345,9 @@ impl PreferencesDialog {
                         // Show success toast
                         let toast = adw::Toast::new("Custom terminal added successfully");
 
-                        if let Some(terminal_combo_row) = this.imp().terminal_combo_row.borrow().as_ref() {
+                        if let Some(terminal_combo_row) =
+                            this.imp().terminal_combo_row.borrow().as_ref()
+                        {
                             terminal_combo_row.reload_terminals();
                             terminal_combo_row.set_selected_by_name(&terminal.name);
                         }
@@ -365,22 +364,5 @@ impl PreferencesDialog {
         ));
 
         custom_dialog.present(Some(self));
-    }
-
-    fn add_toast(&self, toast: adw::Toast) {
-        // Try to find a parent window with a toast overlay
-        let mut widget = self.parent();
-        while let Some(parent) = widget {
-            if let Some(window) = parent.downcast_ref::<crate::window::DistroShelfWindow>() {
-                window.imp().toast_overlay.add_toast(toast);
-                return;
-            }
-            widget = parent.parent();
-        }
-        
-        // Fallback: create a simple alert dialog if no toast overlay is found
-        let alert = adw::AlertDialog::new(toast.title().as_deref(), None);
-        alert.add_response("ok", "OK");
-        alert.present(Some(self));
     }
 }
