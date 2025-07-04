@@ -332,13 +332,8 @@ impl CreateDistroboxDialog {
             #[weak]
             this,
             async move {
-                this.root_store()
-                    .is_nvidia_host()
-                    .await
-                    .ok()
-                    .map(|is_nvidia| {
-                        this.imp().nvidia_row.set_active(is_nvidia);
-                    });
+                let is_nvidia = this.root_store().is_nvidia_host().await;
+                this.imp().nvidia_row.set_active(is_nvidia);
             }
         ));
 

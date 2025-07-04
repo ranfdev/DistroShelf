@@ -2,17 +2,22 @@
 // returning predefined outputs, to ease code testing.
 
 use std::{
-    collections::HashMap, future::Future, io::{self}, os::unix::process::ExitStatusExt, pin::Pin, process::ExitStatus, rc::Rc
+    collections::HashMap,
+    future::Future,
+    io::{self},
+    os::unix::process::ExitStatusExt,
+    pin::Pin,
+    process::ExitStatus,
+    rc::Rc,
 };
 
-use crate::fakers::{OutputTracker, Command};
+use crate::fakers::{Command, OutputTracker};
 
 use async_process::{Command as AsyncCommand, Output};
 use futures::{
     io::{AsyncRead, AsyncWrite, Cursor},
     FutureExt,
 };
-
 
 #[derive(Debug, Clone)]
 pub enum CommandRunnerEvent {
@@ -69,7 +74,10 @@ impl CommandRunner {
     }
 
     pub fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
-        self.output_tracker.push(CommandRunnerEvent::Spawned(self.event_id(), command.clone()));
+        self.output_tracker.push(CommandRunnerEvent::Spawned(
+            self.event_id(),
+            command.clone(),
+        ));
         self.inner.spawn(command)
     }
 
@@ -78,17 +86,17 @@ impl CommandRunner {
         command: Command,
     ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
         let event_id = self.event_id();
-        self.output_tracker.push(CommandRunnerEvent::Started(event_id, command.clone()));
+        self.output_tracker
+            .push(CommandRunnerEvent::Started(event_id, command.clone()));
         let fut = self.inner.output(command);
         let this = self.clone();
         fut.map(move |result| {
             let res_summary = match &result {
-                Ok(_output) => {
-                    Ok(())
-                }
+                Ok(_output) => Ok(()),
                 Err(_e) => Err(()),
             };
-            this.output_tracker.push(CommandRunnerEvent::Output(event_id, res_summary));
+            this.output_tracker
+                .push(CommandRunnerEvent::Output(event_id, res_summary));
             result
         })
         .boxed_local()
@@ -131,8 +139,6 @@ impl InnerCommandRunner for RealCommandRunner {
     }
 }
 
-
-
 #[derive(Default, Clone)]
 pub struct NullCommandRunnerBuilder {
     responses: HashMap<Vec<String>, Rc<dyn Fn() -> Result<String, io::Error>>>,
@@ -148,15 +154,15 @@ impl NullCommandRunnerBuilder {
         let mut cmd = Command::new(args[0]);
         cmd.args(&args[1..]);
         let out_text = out.as_ref().to_string();
-        self.cmd_full(cmd, Rc::new(move || Ok(out_text.clone())))
+        self.cmd_full(cmd, move || Ok(out_text.clone()))
     }
     pub fn cmd_full(
         &mut self,
         cmd: Command,
-        out: Rc<dyn Fn() -> Result<String, io::Error>>,
+        out: impl Fn() -> Result<String, io::Error> + 'static,
     ) -> &mut Self {
         let key = NullCommandRunner::key_for_cmd(&cmd);
-        self.responses.insert(key, out);
+        self.responses.insert(key, Rc::new(out));
         self
     }
     pub fn fallback(&mut self, status: ExitStatus) -> &mut Self {

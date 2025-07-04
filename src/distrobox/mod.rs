@@ -483,7 +483,7 @@ impl Distrobox {
         let mut builder = NullCommandRunnerBuilder::new();
         for res in responses {
             for (cmd, out) in res.clone().to_commands() {
-                builder.cmd_full(cmd, out.clone());
+                builder.cmd_full(cmd, move || out());
             }
         }
         builder.build()

@@ -396,7 +396,7 @@ impl RootStore {
         })?)
     }
 
-    pub async fn is_nvidia_host(&self) -> Result<bool, distrobox::Error> {
+    pub async fn is_nvidia_host(&self) -> bool {
         // uses lspci to check if the host has an NVIDIA GPU
         debug!("Checking if host is NVIDIA");
         let cmd = Command::new("lspci");
@@ -405,13 +405,25 @@ impl RootStore {
             Ok(output) => {
                 let is_nvidia = output.contains("NVIDIA") || output.contains("nVidia");
                 debug!(is_nvidia, "Checked if host is NVIDIA");
-                Ok(is_nvidia)
+                is_nvidia
             }
             Err(e) => {
                 debug!(?e, "Failed to check if host is NVIDIA");
-                Ok(false) // If we can't run lspci, we assume it's not NVIDIA
+                false // If we can't run lspci, we assume it's not NVIDIA
             }
         }
+    }
+
+    fn getfattr_cmd(path: &str) -> Command {
+        Command::new_with_args(
+            "getfattr",
+            [
+                "-n",
+                "user.document-portal.host-path",
+                "--only-values",
+                path,
+            ],
+        )
     }
 
     pub async fn resolve_host_path(&self, path: &str) -> Result<String, distrobox::Error> {
@@ -425,15 +437,7 @@ impl RootStore {
 
         debug!(?path, "Resolving host path");
 
-        let cmd = Command::new_with_args(
-            "getfattr",
-            [
-                "-n",
-                "user.document-portal.host-path",
-                "--only-values",
-                path,
-            ],
-        );
+        let cmd = Self::getfattr_cmd(path);
         let output = self
             .run_to_string(cmd)
             .await
@@ -468,5 +472,51 @@ impl RootStore {
 impl Default for RootStore {
     fn default() -> Self {
         glib::Object::builder().build()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+
+    use super::*;
+    use crate::fakers::NullCommandRunnerBuilder;
+
+    #[test]
+    fn test_resolve_path() {
+        // (input_path, getfattr_output, expected_resolved_path)
+        let tests = [
+            (
+                "/run/user/1000/doc/abc123",
+                Ok("/home/user/Documents/custom-home-folder"),
+                Ok("/home/user/Documents/custom-home-folder"),
+            ),
+            ("/home/user/Documents/custom-home-folder", Ok(""), {
+                Ok("/home/user/Documents/custom-home-folder")
+            }),
+            // If the resolution fails and the path is from a sandbox, we expect an error
+            ("/run/user/1000/doc/xyz456", Err(()), Err(())),
+        ];
+
+        for (input_path, getfattr_output, expected_resolved_path) in tests {
+            let runner = NullCommandRunnerBuilder::new()
+                .cmd_full(RootStore::getfattr_cmd(input_path), move || {
+                    getfattr_output
+                        .map(|s| s.to_string())
+                        // we need to return a real io::Error here
+                        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Command not found"))
+                })
+                .build();
+            let store = RootStore::new(runner);
+
+            let resolved_path: Result<String, distrobox::Error> =
+                smol::block_on(store.resolve_host_path(input_path));
+
+            if let Ok(expected_resolved_path) = expected_resolved_path {
+                assert_eq!(resolved_path.unwrap(), expected_resolved_path);
+            } else {
+                assert!(expected_resolved_path.is_err());
+            }
+        }
     }
 }
