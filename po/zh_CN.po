@@ -1,0 +1,117 @@
+# Chinese translations for distroshelf package
+# Copyright (C) 2025 THE distroshelf'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the distroshelf package.
+# Automatically generated, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: distroshelf\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-07-11 16:33+0800\n"
+"PO-Revision-Date: 2025-07-11 16:33+0800\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:3
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/window.ui:30
+msgid "DistroShelf"
+msgstr "DistroShelf"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:9
+msgid "GTK;"
+msgstr "GTK;"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:8
+msgid "Graphical interface for managing Distrobox containers"
+msgstr "用于管理 Distrobox 容器的图形界面"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:10
+msgid ""
+"DistroShelf is a graphical interface for managing Distrobox containers on "
+"Linux. It provides an easy way to:"
+msgstr ""
+"DistroShelf 是一个用于在 Linux 上管理 Distrobox 容器的图形界面。它提供了一种简单的方式来："
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:15
+msgid "Create and manage containers"
+msgstr "创建和管理容器"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:16
+msgid "View container status and details"
+msgstr "查看容器状态和详情"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:17
+msgid "Install packages"
+msgstr "安装软件包"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:18
+msgid "Manage exported applications"
+msgstr "管理已导出的应用程序"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:19
+msgid "Open terminal sessions"
+msgstr "打开终端会话"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:20
+msgid "Upgrade containers"
+msgstr "升级容器"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:21
+msgid "Clone and delete containers"
+msgstr "克隆和删除容器"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:6
+msgid "Selected terminal emulator"
+msgstr "选定的终端模拟器"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:7
+msgid "The terminal emulator selected by the user."
+msgstr "用户选定的终端模拟器。"
+
+#: src/window.ui:39 src/window.ui:80
+msgid "Create Distrobox"
+msgstr "创建 Distrobox"
+
+#: src/window.ui:47
+msgid "Main Menu"
+msgstr "主菜单"
+
+#: src/window.ui:59
+msgid "No Distroboxes Found"
+msgstr "未找到 Distrobox"
+
+#: src/window.ui:70
+msgid "Learn More"
+msgstr "了解更多"
+
+#: src/window.ui:120
+msgid "Container"
+msgstr "容器"
+
+#: src/window.ui:161
+msgid "_Refresh"
+msgstr "刷新(_R)"
+
+#: src/window.ui:165
+msgid "_Upgrade All"
+msgstr "全部升级(_U)"
+
+#: src/window.ui:169
+msgid "_Command Log"
+msgstr "命令日志(_C)"
+
+#: src/window.ui:175
+msgid "_Settings"
+msgstr "设置(_S)"
+
+#: src/window.ui:179
+msgid "_About"
+msgstr "关于(_A)"
+
+#: src/window.ui:183
+msgid "Discover _Distrobox"
+msgstr "发现 Distrobox(_D)"
