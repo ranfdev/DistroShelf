@@ -35,6 +35,8 @@ static SUPPORTED_TERMINALS: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
         ("COSMIC Terminal", "cosmic-term", "-e"),
         ("Ghostty", "ghostty", "-e"),
         ("Terminator", "terminator", "-x"),
+        ("QTerminal", "qterminal", "-e"),
+        ("Deepin Terminal", "deepin-terminal", "-e"),
     ]
     .iter()
     .map(|(name, program, separator_arg)| Terminal {
@@ -193,7 +195,7 @@ impl TerminalRepository {
         );
         command.stdout = FdMode::Pipe;
         command.stderr = FdMode::Pipe;
-        
+
         let output = self
             .imp()
             .command_runner
