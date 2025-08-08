@@ -18,6 +18,8 @@ mod desktop_file;
 
 pub use desktop_file::*;
 
+const POSIX_FIND_AND_CONCAT_DESKTOP_FILES: &str = "grep -L '^[[:space:]]*NoDisplay[[:space:]]*=[[:space:]]*true[[:space:]]*$' /usr/share/applications/*.desktop 2>/dev/null | while IFS= read -r file; do printf '# START FILE %s\n' \"$file\"; cat \"$file\"; done";
+
 #[derive(Clone)]
 pub struct FlatpakCommandRunner {
     pub command_runner: Rc<dyn InnerCommandRunner>,
@@ -437,9 +439,18 @@ impl DistroboxCommandRunnerResponse {
             ));
         }
         commands.push((
-            Command::new_with_args("distrobox", 
-                ["enter", box_name, "--", "sh", "-c", "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done"]),
-            contents
+            Command::new_with_args(
+                "distrobox",
+                [
+                    "enter",
+                    box_name,
+                    "--",
+                    "sh",
+                    "-c",
+                    POSIX_FIND_AND_CONCAT_DESKTOP_FILES,
+                ],
+            ),
+            contents,
         ));
 
         commands
@@ -604,7 +615,7 @@ impl Distrobox {
             "--",
             "sh",
             "-c",
-            "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done",
+            POSIX_FIND_AND_CONCAT_DESKTOP_FILES,
         ]);
         let concatenated_files = self.cmd_output_string(cmd).await?;
         debug!(concatenated_files = concatenated_files);
@@ -922,36 +933,25 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
 
     #[test]
     fn list_apps() -> Result<(), Error> {
-        let db = Distrobox::new(NullCommandRunnerBuilder::new()
-            .cmd(
-                &[
-                    "sh", "-c", "echo $XDG_DATA_HOME"
-                ],
-                ""
-            )
-            .cmd(
-                &[
-                    "sh", "-c", "echo $HOME"
-                ],
-                "/home/me"
-            )
-            .cmd(
-                &[
-                    "ls", "/home/me/.local/share/applications"
-                ],
-                "ubuntu-vim.desktop\n"
-            )
-            .cmd(
-                &[
-            "distrobox",
-            "enter",
-            "ubuntu",
-            "--",
-            "sh",
-            "-c",
-            "for file in $(grep --files-without-match \"NoDisplay=true\" /usr/share/applications/*.desktop); do echo \"# START FILE $file\"; cat \"$file\"; done",
-        ],
-            "# START FILE /usr/share/applications/vim.desktop
+        let db = Distrobox::new(
+            NullCommandRunnerBuilder::new()
+                .cmd(&["sh", "-c", "echo $XDG_DATA_HOME"], "")
+                .cmd(&["sh", "-c", "echo $HOME"], "/home/me")
+                .cmd(
+                    &["ls", "/home/me/.local/share/applications"],
+                    "ubuntu-vim.desktop\n",
+                )
+                .cmd(
+                    &[
+                        "distrobox",
+                        "enter",
+                        "ubuntu",
+                        "--",
+                        "sh",
+                        "-c",
+                        POSIX_FIND_AND_CONCAT_DESKTOP_FILES,
+                    ],
+                    "# START FILE /usr/share/applications/vim.desktop
 [Desktop Entry]
 Type=Application
 Name=Vim
@@ -967,8 +967,9 @@ Exec=/path/to/fish
 Icon=/path/to/icon.png
 Comment=A brief description of my application
 Categories=Utility;Network;
-",)
-            .build(),
+",
+                )
+                .build(),
         );
 
         let apps = block_on(db.list_apps("ubuntu"))?;
@@ -978,6 +979,51 @@ Categories=Utility;Network;
         assert_eq!(&apps[1].entry.name, "Fish");
         assert_eq!(&apps[1].entry.exec, "/path/to/fish");
         assert!(!apps[1].exported);
+        Ok(())
+    }
+
+    #[test]
+    fn list_apps_with_space_in_filename() -> Result<(), Error> {
+        // Simulate a desktop file with a space in its filename and ensure it's parsed/export-detected correctly
+        let db = Distrobox::new(
+            NullCommandRunnerBuilder::new()
+                .cmd(&["sh", "-c", "echo $XDG_DATA_HOME"], "")
+                .cmd(&["sh", "-c", "echo $HOME"], "/home/me")
+                .cmd(
+                    &["ls", "/home/me/.local/share/applications"],
+                    "ubuntu-Proton Authenticator.desktop\n",
+                )
+                .cmd(
+                    &[
+                        "distrobox",
+                        "enter",
+                        "ubuntu",
+                        "--",
+                        "sh",
+                        "-c",
+                        POSIX_FIND_AND_CONCAT_DESKTOP_FILES,
+                    ],
+                    "# START FILE /usr/share/applications/Proton Authenticator.desktop
+[Desktop Entry]
+Type=Application
+Name=Proton Authenticator
+Exec=/usr/bin/proton-authenticator %u
+Icon=proton-authenticator
+Categories=Utility;Security;",
+                )
+                .build(),
+        );
+
+        let apps = block_on(db.list_apps("ubuntu"))?;
+        assert_eq!(apps.len(), 1);
+        assert_eq!(&apps[0].entry.name, "Proton Authenticator");
+        assert_eq!(&apps[0].entry.exec, "/usr/bin/proton-authenticator %u");
+        assert_eq!(
+            &apps[0].desktop_file_path,
+            "/usr/share/applications/Proton Authenticator.desktop"
+        );
+        // Ensure exported detection matches the filename with space
+        assert!(apps[0].exported);
         Ok(())
     }
     #[test]
