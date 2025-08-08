@@ -71,6 +71,15 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.13" date="2025-08-08">
+      <description translate="no">
+        <ul>
+          <li>Fix listing apps with whitespace in the name</li>
+          <li>Add zh_CN translation</li>
+          <li>Add qterminal and deepin terminal support</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.12" date="2025-07-01">
       <description translate="no">
         <ul>
