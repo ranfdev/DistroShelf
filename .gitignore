@@ -5,3 +5,4 @@ _build/
 .aider*
 .env
 src/config.rs
+plans/
