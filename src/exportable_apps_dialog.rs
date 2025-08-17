@@ -1,7 +1,7 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib::{clone, BoxedAnyObject};
-use gtk::{gio, glib};
+use gtk::{gio, glib, pango};
 
 use crate::container::Container;
 use crate::distrobox::ExportableApp;
@@ -47,6 +47,8 @@ mod imp {
 
             self.stack
                 .set_transition_type(gtk::StackTransitionType::Crossfade);
+            self.error_label.set_wrap_mode(pango::WrapMode::WordChar);
+            self.error_label.set_wrap(true);
             self.stack.add_named(&self.error_label, Some("error"));
 
             let loading_page = adw::StatusPage::new();
