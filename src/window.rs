@@ -19,15 +19,13 @@
  */
 
 use crate::container::Container;
-use crate::create_distrobox_dialog::CreateDistroboxDialog;
-use crate::exportable_apps_dialog::ExportableAppsDialog;
+use crate::dialogs::{
+    CreateDistroboxDialog, ExportableAppsDialog, PreferencesDialog, TaskManagerDialog,
+};
 use crate::gtk_utils::reaction;
-use crate::known_distros::PackageManager;
-use crate::preferences_dialog::PreferencesDialog;
 use crate::root_store::RootStore;
 use crate::sidebar_row::SidebarRow;
 use crate::tagged_object::TaggedObject;
-use crate::task_manager_dialog::TaskManagerDialog;
 use crate::tasks_button::TasksButton;
 use adw::prelude::*;
 use adw::subclass::prelude::*;

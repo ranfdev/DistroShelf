@@ -21,26 +21,23 @@
 mod application;
 mod config;
 mod container;
-mod create_distrobox_dialog;
+mod dialogs;
 mod distro_combo_row_item;
 mod distro_icon;
 mod distrobox;
 mod distrobox_task;
-mod exportable_apps_dialog;
+mod fakers;
 mod gtk_utils;
 mod known_distros;
-mod preferences_dialog;
 mod remote_resource;
 mod sidebar_row;
 mod store;
 mod supported_terminals;
 mod tagged_object;
-mod task_manager_dialog;
 mod tasks_button;
 mod terminal_combo_row;
 mod welcome_view;
 mod window;
-mod fakers;
 pub use store::root_store;
 
 use self::application::DistroShelfApplication;
@@ -76,7 +73,8 @@ fn main() -> glib::ExitCode {
     // Create a new GtkApplication. The application manages our main loop,
     // application windows, integration with the window manager/compositor, and
     // desktop features such as file opening and single-instance applications.
-    let app = DistroShelfApplication::new("com.ranfdev.DistroShelf", &gio::ApplicationFlags::empty());
+    let app =
+        DistroShelfApplication::new("com.ranfdev.DistroShelf", &gio::ApplicationFlags::empty());
 
     // Run the application. This function will block until the application
     // exits. Upon return, we have our exit code to return to the shell. (This
