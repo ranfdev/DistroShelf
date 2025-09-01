@@ -30,6 +30,7 @@ use crate::tasks_button::TasksButton;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{derived_properties, Properties};
+use gtk::gio::ActionEntry;
 use gtk::glib::clone;
 use gtk::{gdk, gio, glib, pango};
 use std::cell::RefCell;
@@ -76,42 +77,7 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
-
-            klass.install_action("win.refresh", None, |win, _action, _target| {
-                win.root_store().load_containers();
-            });
             klass.add_binding_action(gdk::Key::F5, gdk::ModifierType::empty(), "win.refresh");
-
-            klass.install_action("win.upgrade-all", None, |win, _action, _target| {
-                win.root_store().upgrade_all();
-            });
-
-            klass.install_action("win.preferences", None, |win, _action, _target| {
-                win.root_store()
-                    .set_current_dialog(TaggedObject::new("preferences"));
-            });
-
-            klass.install_action("win.learn-more", None, |_win, _action, _target| {
-                gtk::UriLauncher::new("https://distrobox.it").launch(
-                    None::<&gtk::Window>,
-                    None::<&gio::Cancellable>,
-                    |res| {
-                        if let Err(e) = res {
-                            tracing::error!(error = %e, "Failed to open Distrobox website");
-                        }
-                    },
-                );
-            });
-
-            klass.install_action("win.create-distrobox", None, |win, _action, _target| {
-                win.root_store()
-                    .set_current_dialog(TaggedObject::new("create-distrobox"));
-            });
-
-            klass.install_action("win.command-log", None, |win, _action, _target| {
-                win.root_store()
-                    .set_current_dialog(TaggedObject::new("command-log"));
-            });
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
@@ -139,6 +105,7 @@ impl DistroShelfWindow {
             .property("root-store", root_store)
             .build();
 
+        this.setup_gactions();
         let this_clone = this.clone();
         this.root_store()
             .connect_selected_container_notify(move |root_store| {
@@ -183,9 +150,81 @@ impl DistroShelfWindow {
             });
         this.build_sidebar();
         this.root_store().load_containers();
+
         this
     }
 
+    fn setup_gactions(&self) {
+        let a = ActionEntry::builder;
+
+        let actions = [
+            a("refresh")
+                .activate(move |this: &DistroShelfWindow, _, _| {
+                    this.root_store().load_containers();
+                }),
+            a("upgrade-all")
+                .activate(move |this: &DistroShelfWindow, _, _| {
+                    this.root_store().upgrade_all();
+                }),
+            a("preferences")
+                .activate(|this, _, _| {
+                    this.root_store()
+                        .set_current_dialog(TaggedObject::new("preferences"));
+                }),
+            a("learn-more")
+                .activate(|_, _, _| {
+                    gtk::UriLauncher::new("https://distrobox.it").launch(
+                        None::<&gtk::Window>,
+                        None::<&gio::Cancellable>,
+                        |res| {
+                            if let Err(e) = res {
+                                tracing::error!(error = %e, "Failed to open Distrobox website");
+                            }
+                        },
+                    );
+                }),
+            a("create-distrobox")
+                .activate(|this, _, _| {
+                    this.root_store()
+                        .set_current_dialog(TaggedObject::new("create-distrobox"));
+                }),
+            a("command-log")
+                .activate(|this, _, _| {
+                    this.root_store()
+                        .set_current_dialog(TaggedObject::new("command-log"));
+                }),
+            a("clone-container")
+                .activate(|this, _, _| {
+                    this.build_clone_dialog();
+                }),
+            a("upgrade-container")
+                .activate(|this, _, _| {
+                    let task = this.root_store().selected_container().unwrap().upgrade();
+                    this.root_store().view_task(&task);
+                }),
+            a("view-exportable-apps")
+                .activate(|this, _, _| {
+                    this.root_store().view_exportable_apps();
+                }),
+            a("install-package")
+                .activate(|this, _, _| {
+                    this.build_install_package_dialog();
+                }),
+            a("stop-container")
+                .activate(|this, _, _| {
+                    this.root_store().selected_container().unwrap().stop();
+                }),
+            a("delete-container")
+                .activate(|this, _, _| {
+                    this.build_delete_dialog();
+                }),
+            a("open-terminal")
+                .activate(|this, _, _| {
+                    this.open_terminal();
+                }),
+        ];
+        self.add_action_entries(actions.into_iter().map(|entry| entry.build()));
+    }
     fn build_sidebar(&self) {
         let imp = self.imp();
 
@@ -314,43 +353,12 @@ impl DistroShelfWindow {
 
         let stop_btn = gtk::Button::from_icon_name("media-playback-stop-symbolic");
         stop_btn.set_tooltip_text(Some("Stop"));
-        stop_btn.connect_clicked(clone!(
-            #[weak(rename_to=this)]
-            self,
-            move |_| {
-                this.root_store().selected_container().unwrap().stop();
-            }
-        ));
+        stop_btn.set_action_name(Some("win.stop-container"));
         status_child.append(&stop_btn);
 
         let terminal_btn = gtk::Button::from_icon_name("terminal-symbolic");
         terminal_btn.set_tooltip_text(Some("Open Terminal"));
-        terminal_btn.connect_clicked(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                let task = this
-                    .root_store()
-                    .selected_container()
-                    .unwrap()
-                    .spawn_terminal();
-                task.connect_status_notify(move |task| {
-                    if let Some(_) = &*task.error() {
-                        let toast = adw::Toast::new("Check your terminal settings.");
-                        toast.set_button_label(Some("Preferences"));
-                        toast.connect_button_clicked(clone!(
-                            #[weak]
-                            this,
-                            move |_| {
-                                this.root_store()
-                                    .set_current_dialog(TaggedObject::new("preferences"));
-                            }
-                        ));
-                        this.add_toast(toast);
-                    }
-                });
-            }
-        ));
+        terminal_btn.set_action_name(Some("win.open-terminal"));
         status_child.append(&terminal_btn);
 
         status_row.add_suffix(&status_child);
@@ -373,10 +381,7 @@ impl DistroShelfWindow {
             "Upgrade Container",
             "software-update-available-symbolic",
             "Update all packages",
-            |win| {
-                let task = win.root_store().selected_container().unwrap().upgrade();
-                win.root_store().view_task(&task);
-            },
+            "win.upgrade-container",
         );
         actions_group.add(&upgrade_row);
 
@@ -384,9 +389,7 @@ impl DistroShelfWindow {
             "Applications",
             "view-list-bullet-symbolic",
             "Manage exportable applications",
-            |win| {
-                win.root_store().view_exportable_apps();
-            },
+            "win.view-exportable-apps",
         );
         actions_group.add(&apps_row);
 
@@ -396,9 +399,7 @@ impl DistroShelfWindow {
                     &format!("Install {} Package", installable_file),
                     "package-symbolic",
                     "Install packages into container",
-                    |win| {
-                        win.build_install_package_dialog();
-                    },
+                    "win.install-package",
                 );
                 actions_group.add(&install_package_row);
             }
@@ -408,9 +409,7 @@ impl DistroShelfWindow {
             "Clone Container",
             "edit-copy-symbolic",
             "Create a copy of this container",
-            |win| {
-                win.build_clone_dialog();
-            },
+            "win.clone-container",
         );
         actions_group.add(&clone_row);
 
@@ -423,9 +422,7 @@ impl DistroShelfWindow {
             "Delete Container",
             "user-trash-symbolic",
             "Permanently remove this container and all its data",
-            |win| {
-                win.build_delete_dialog();
-            },
+            "win.delete-container",
         );
         delete_row.add_css_class("error");
 
@@ -443,6 +440,30 @@ impl DistroShelfWindow {
         widget.append(&clamp);
 
         self.imp().main_slot.set_child(Some(&widget));
+    }
+
+    fn open_terminal(&self) {
+        let task = self
+            .root_store()
+            .selected_container()
+            .unwrap()
+            .spawn_terminal();
+        let this = self.clone();
+        task.connect_status_notify(move |task| {
+            if let Some(_) = &*task.error() {
+                let toast = adw::Toast::new("Check your terminal settings.");
+                toast.set_button_label(Some("Preferences"));
+                toast.connect_button_clicked(clone!(
+                    #[weak]
+                    this,
+                    move |_| {
+                        this.root_store()
+                            .set_current_dialog(TaggedObject::new("preferences"));
+                    }
+                ));
+                this.add_toast(toast);
+            }
+        });
     }
 
     fn build_delete_dialog(&self) {
@@ -769,7 +790,7 @@ impl DistroShelfWindow {
         title: &str,
         icon_name: &str,
         subtitle: &str,
-        action_fn: impl Fn(&Self) + 'static,
+        action_name: &str,
     ) -> adw::ActionRow {
         let row = adw::ActionRow::new();
         row.set_title(title);
@@ -777,17 +798,8 @@ impl DistroShelfWindow {
 
         let icon = gtk::Image::from_icon_name(icon_name);
         row.add_prefix(&icon);
-
         row.set_activatable(true);
-
-        row.connect_activated(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_| {
-                action_fn(&this);
-            }
-        ));
-
+        row.set_action_name(Some(action_name));
         row
     }
 }
