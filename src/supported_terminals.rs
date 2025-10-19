@@ -4,7 +4,7 @@ use std::{
 };
 
 use gtk::glib;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::fakers::{CommandRunner, Command, FdMode};
 
@@ -96,7 +96,7 @@ impl TerminalRepository {
         if let Ok(loaded_list) = Self::load_terminals_from_json(&this.imp().custom_list_path) {
             list.extend(loaded_list);
         } else {
-            error!(
+            warn!(
                 "Failed to load custom terminals from JSON file {:?}",
                 &this.imp().custom_list_path
             );
