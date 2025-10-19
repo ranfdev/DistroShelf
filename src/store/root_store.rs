@@ -1,6 +1,7 @@
 // You can copy/paste this file every time you need a simple GObject
 // to hold some data
 
+use anyhow::Context;
 use futures::prelude::*;
 use glib::subclass::prelude::*;
 use glib::Properties;
@@ -10,9 +11,9 @@ use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::path::Path;
 use std::time::Duration;
+use tracing::{debug, warn};
 use tracing::error;
 use tracing::info;
-use tracing::{debug, warn};
 
 use crate::container::Container;
 use crate::distrobox;
@@ -400,15 +401,20 @@ impl RootStore {
         // uses lspci to check if the host has an NVIDIA GPU
         debug!("Checking if host is NVIDIA");
         let cmd = Command::new("lspci");
-        let output = self.run_to_string(cmd).await;
+        let output = glib::future_with_timeout(Duration::from_secs(2), async move {
+            self.run_to_string(cmd).await.context("Calling lspci")
+        })
+        .await
+        .context("timeout")
+        .flatten();
         match output {
             Ok(output) => {
                 let is_nvidia = output.contains("NVIDIA") || output.contains("nVidia");
-                debug!(is_nvidia, "Checked if host is NVIDIA");
+                debug!(is_nvidia, "lspci ran successfully");
                 is_nvidia
             }
             Err(e) => {
-                debug!(?e, "Failed to check if host is NVIDIA");
+                warn!(?e, "Failed to check if host is NVIDIA");
                 false // If we can't run lspci, we assume it's not NVIDIA
             }
         }
