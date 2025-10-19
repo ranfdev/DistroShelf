@@ -71,6 +71,18 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.14" date="2025-10-19">
+      <description translate="no">
+        <ul>
+          <li>Improve lscpi handling with a timeout to avoid blocking operations</li>
+          <li>Reduce terminal repository lookup errors from fatal to warnings</li>
+          <li>Added keyboard shortcuts for common actions</li>
+          <li>Switch to GIO actions for window-level commands</li>
+          <li>Ignore the development "plans/" folder from distribution</li>
+          <li>Refactor dialogs: add and reorganize various dialog modules (create, exportable apps, preferences, task manager)</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.13" date="2025-08-08">
       <description translate="no">
         <ul>
