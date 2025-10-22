@@ -40,6 +40,8 @@ mod imp {
         pub distro: RefCell<Option<KnownDistro>>,
         #[property(get, set)]
         pub apps: RefCell<RemoteResource>,
+        #[property(get, set)]
+        pub binaries: RefCell<RemoteResource>,
     }
 
     #[derived_properties]
@@ -79,7 +81,6 @@ impl Container {
 
         let this_clone = this.clone();
         let loader = move |apps_list: Option<&gio::ListStore>| {
-            dbg!(apps_list);
             let this = this_clone.clone();
             let mut apps_list = apps_list
                 .cloned()
@@ -100,6 +101,29 @@ impl Container {
             }
         };
         this.set_apps(RemoteResource::new::<gio::ListStore, _>(loader));
+
+        let this_clone = this.clone();
+        let binaries_loader = move |binaries_list: Option<&gio::ListStore>| {
+            let this = this_clone.clone();
+            let mut binaries_list = binaries_list
+                .cloned()
+                .unwrap_or_else(gio::ListStore::new::<BoxedAnyObject>);
+            async move {
+                let binaries = this
+                    .root_store()
+                    .distrobox()
+                    .get_exported_binaries(&this.name())
+                    .await?;
+
+                binaries_list.remove_all();
+                binaries_list.extend(binaries.into_iter().map(BoxedAnyObject::new));
+
+                // Listing the binaries starts the container, we need to update its status
+                this.root_store().load_containers();
+                Ok(binaries_list)
+            }
+        };
+        this.set_binaries(RemoteResource::new::<gio::ListStore, _>(binaries_loader));
 
         this
     }
@@ -182,6 +206,32 @@ impl Container {
                     .unexport_app(&this.name(), &desktop_file_path)
                     .await?;
                 this.apps().reload();
+                Ok(())
+            });
+    }
+    pub fn export_binary(&self, binary_path: &str) -> DistroboxTask {
+        let this = self.clone();
+        let binary_path = binary_path.to_string();
+        self.root_store()
+            .create_task(&self.name(), "export-binary", move |_task| async move {
+                this.root_store()
+                    .distrobox()
+                    .export_binary(&this.name(), &binary_path)
+                    .await?;
+                this.binaries().reload();
+                Ok(())
+            })
+    }
+    pub fn unexport_binary(&self, binary_path: &str) {
+        let this = self.clone();
+        let binary_path = binary_path.to_string();
+        self.root_store()
+            .create_task(&self.name(), "unexport-binary", move |_task| async move {
+                this.root_store()
+                    .distrobox()
+                    .unexport_binary(&this.name(), &binary_path)
+                    .await?;
+                this.binaries().reload();
                 Ok(())
             });
     }

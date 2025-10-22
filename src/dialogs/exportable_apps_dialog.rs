@@ -4,7 +4,8 @@ use gtk::glib::{clone, BoxedAnyObject};
 use gtk::{gio, glib, pango};
 
 use crate::container::Container;
-use crate::distrobox::ExportableApp;
+use crate::distrobox::{ExportableApp, ExportableBinary};
+use crate::gtk_utils::reaction;
 
 use std::cell::RefCell;
 
@@ -20,19 +21,22 @@ mod imp {
         #[property(get, set)]
         pub container: RefCell<Container>,
         pub dialog: adw::Dialog,
+        pub toast_overlay: adw::ToastOverlay,
         pub toolbar_view: adw::ToolbarView,
         pub content: gtk::Box,
         pub scrolled_window: gtk::ScrolledWindow,
         pub stack: gtk::Stack,
         pub error_label: gtk::Label,
         pub list_box: gtk::ListBox,
+        pub binaries_list_box: gtk::ListBox,
+        pub binary_name_entry: adw::EntryRow,
     }
 
     #[derived_properties]
     impl ObjectImpl for ExportableAppsDialog {
         fn constructed(&self) {
             let obj = self.obj();
-            obj.set_title("Exportable Apps");
+            obj.set_title("Manage Exports");
             obj.set_content_width(360);
             obj.set_content_height(640);
 
@@ -52,9 +56,9 @@ mod imp {
             self.stack.add_named(&self.error_label, Some("error"));
 
             let loading_page = adw::StatusPage::new();
-            loading_page.set_title("Loading App List");
+            loading_page.set_title("Loading Exports");
             loading_page.set_description(Some(
-                "Please wait while we load the list of exportable apps. This may take some time if the distrobox wasn't running",
+                "Please wait while we load the list of exportable apps and binaries. This may take some time if the distrobox wasn't running",
             ));
             loading_page.set_child(Some(&adw::Spinner::new()));
             self.stack.add_named(&loading_page, Some("loading"));
@@ -68,16 +72,41 @@ mod imp {
             export_apps_group.set_margin_bottom(12);
             export_apps_group.set_title("Exportable Apps");
             export_apps_group.add(&self.list_box);
-            self.stack.add_named(&export_apps_group, Some("apps"));
+
+            // Setup binary export input
+            self.binary_name_entry.set_title("Export New Binary");
+            self.binary_name_entry.set_show_apply_button(true);
+            self.binary_name_entry
+                .add_css_class("add-binary-entry-row");
+
+            self.binaries_list_box.add_css_class("boxed-list");
+            self.binaries_list_box.set_selection_mode(gtk::SelectionMode::None);
+            self.binaries_list_box.set_margin_top(12);
+            
+            let export_binaries_group = adw::PreferencesGroup::new();
+            export_binaries_group.set_margin_start(12);
+            export_binaries_group.set_margin_end(12);
+            export_binaries_group.set_margin_top(0);
+            export_binaries_group.set_margin_bottom(12);
+            export_binaries_group.set_title("Exported Binaries");
+            export_binaries_group.add(&self.binary_name_entry);
+            export_binaries_group.add(&self.binaries_list_box);
+
+            let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            content_box.append(&export_apps_group);
+            content_box.append(&export_binaries_group);
+            self.stack.add_named(&content_box, Some("apps"));
 
             let empty_page = adw::StatusPage::new();
-            empty_page.set_title("No Exportable Apps");
+            empty_page.set_title("No Exportable Items");
+            empty_page.set_description(Some("No applications or binaries found in this container"));
 
             self.stack.add_named(&empty_page, Some("empty"));
 
             self.content.append(&self.scrolled_window);
             self.toolbar_view.set_content(Some(&self.content));
-            self.obj().set_child(Some(&self.toolbar_view));
+            self.toast_overlay.set_child(Some(&self.toolbar_view));
+            self.obj().set_child(Some(&self.toast_overlay));
         }
     }
 
@@ -104,6 +133,22 @@ mod imp {
                     this.container().unexport(file_path);
                 },
             );
+            klass.install_action(
+                "dialog.export-binary",
+                Some(VariantTy::STRING),
+                |this, _action, target| {
+                    let binary_path = target.unwrap().str().unwrap();
+                    this.container().export_binary(binary_path);
+                },
+            );
+            klass.install_action(
+                "dialog.unexport-binary",
+                Some(VariantTy::STRING),
+                |this, _action, target| {
+                    let binary_path = target.unwrap().str().unwrap();
+                    this.container().unexport_binary(binary_path);
+                },
+            );
         }
     }
 
@@ -121,43 +166,119 @@ impl ExportableAppsDialog {
             .property("container", container)
             .build();
 
-        let this_clone = this.clone();
-        container.apps().connect_loading_notify(move |resource| {
-            if resource.loading() {
-                this_clone.imp().stack.set_visible_child_name("loading");
-            }
-        });
-        let this_clone = this.clone();
-        container.apps().connect_error_notify(move |resource| {
-            if let Some(err) = resource.error() {
-                this_clone.imp().error_label.set_label(&err);
-                this_clone.imp().stack.set_visible_child_name("error");
-            }
-        });
-        let this_clone = this.clone();
-        container.apps().connect_data_changed(move |resource| {
-            let apps = resource.data::<gio::ListStore>().unwrap();
+        let apps = this.container().apps();
+        let binaries = this.container().binaries();
 
-            if apps.n_items() == 0 {
-                this_clone.imp().stack.set_visible_child_name("empty");
-                return;
+        let is_empty = move || -> bool {
+            let n_apps = apps.data::<gio::ListStore>().map(|s| s.n_items()).unwrap_or(0);
+            let n_binaries = binaries.data::<gio::ListStore>().map(|s| s.n_items()).unwrap_or(0);
+            n_apps == 0 && n_binaries == 0
+        };
+        
+        let this_clone = this.clone();
+        let apps = this.container().apps();
+        let binaries = this.container().binaries();
+        reaction! {
+            (apps.error(), binaries.error()),
+            move |(e1, e2): (Option<String>, Option<String>)| {
+                if let Some(err) = e1.or(e2) {
+                    this_clone.imp().error_label.set_label(&err);
+                    this_clone.imp().stack.set_visible_child_name("error");
+                }
             }
+        };
+        
+        let this_clone = this.clone();
+        let apps = this.container().apps();
+        let render_apps = move || {
+            let apps = apps.data::<gio::ListStore>();
 
             this_clone.imp().stack.set_visible_child_name("apps");
-
             let this = this_clone.clone();
             this_clone
                 .imp()
                 .list_box
-                .bind_model(Some(&apps), move |obj| {
+                .bind_model(apps.as_ref(), move |obj| {
                     let app = obj
                         .downcast_ref::<BoxedAnyObject>()
                         .map(|obj| obj.borrow::<ExportableApp>())
                         .unwrap();
                     this.build_row(&app).upcast()
                 });
-        });
+                
+        };
+        
+        let this_clone = this.clone();
+        let binaries = this.container().binaries();
+        let render_binaries = move || {
+            let binaries = binaries.data::<gio::ListStore>();
+
+            this_clone.imp().stack.set_visible_child_name("apps");
+            let this = this_clone.clone();
+            this_clone
+                .imp()
+                .binaries_list_box
+                .bind_model(binaries.as_ref(), move |obj| {
+                    let binary = obj
+                        .downcast_ref::<BoxedAnyObject>()
+                        .map(|obj| obj.borrow::<ExportableBinary>())
+                        .unwrap();
+                    this.build_binary_row(&binary).upcast()
+                });
+        };
+
+        let this_clone = this.clone();
+        let apps = this.container().apps();
+        let binaries = this.container().binaries();
+        reaction! {
+            (apps.loading(), binaries.loading()),
+            move |(b1, b2): (bool, bool)| {
+                if b1 || b2 {
+                    this_clone.imp().stack.set_visible_child_name("loading");
+                } else if is_empty() {
+                    this_clone.imp().stack.set_visible_child_name("empty");
+                } else {
+                    render_apps();
+                    render_binaries();
+                }
+            }
+        };
+
+        
+        // Connect the binary name entry apply signal
+        let this_clone = this.clone();
+        this.imp()
+            .binary_name_entry
+            .connect_apply(move |entry| {
+                let binary_name = entry.text().to_string();
+                if !binary_name.is_empty() {
+                    let task = this_clone.container().export_binary(&binary_name);
+                    entry.set_text("");
+                    
+                    // Monitor task status to show error toasts
+                    let this = this_clone.clone();
+                    let binary_name_clone = binary_name.clone();
+                    reaction!(task.status(), move |status: String| {
+                        match status.as_str() {
+                            "failed" => {
+                                let error_ref = task.error();
+                                let error_msg = if let Some(err) = error_ref.as_ref() {
+                                    format!("Failed to export '{}': {}", binary_name_clone, err)
+                                } else {
+                                    format!("Failed to export '{}'", binary_name_clone)
+                                };
+                                let toast = adw::Toast::new(&error_msg);
+                                toast.set_timeout(5);
+                                this.imp().toast_overlay.add_toast(toast);
+                            }
+                            _ => {}
+                        }
+                    });
+                }
+            });
+
         container.apps().reload();
+        container.binaries().reload();
 
         this
     }
@@ -202,6 +323,39 @@ impl ExportableAppsDialog {
             );
             menu_model.append_item(&unexport_action);
         }
+
+        // Set up the popover menu
+        let popover = gtk::PopoverMenu::from_model(Some(&menu_model));
+        menu_button.set_popover(Some(&popover));
+
+        // Add the menu button to the action row
+        row.add_suffix(&menu_button);
+
+        row
+    }
+    
+    pub fn build_binary_row(&self, binary: &ExportableBinary) -> adw::ActionRow {
+        // Create the action row
+        let row = adw::ActionRow::new();
+        row.set_title(&binary.name);
+        row.set_subtitle(&binary.source_path);
+
+        // Create the menu button
+        let menu_button = gtk::MenuButton::new();
+        menu_button.set_icon_name("view-more-symbolic");
+        menu_button.set_valign(gtk::Align::Center);
+        menu_button.add_css_class("flat");
+
+        // Create the menu model - only show unexport since we're only showing exported binaries
+        let menu_model = gio::Menu::new();
+        let unexport_action = gio::MenuItem::new(
+            Some("Unexport Binary"),
+            Some(&format!(
+                "dialog.unexport-binary(\"{}\")",
+                binary.source_path
+            )),
+        );
+        menu_model.append_item(&unexport_action);
 
         // Set up the popover menu
         let popover = gtk::PopoverMenu::from_model(Some(&menu_model));

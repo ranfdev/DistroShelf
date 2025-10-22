@@ -158,6 +158,13 @@ pub struct ExportableApp {
     pub exported: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct ExportableBinary {
+    pub name: String,
+    pub source_path: String,
+    pub exported_path: String,
+}
+
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct CreateArgName(String);
 
@@ -664,6 +671,58 @@ impl Distrobox {
         Ok(res)
     }
 
+    /// Lists only the binaries that have already been exported from the container.
+    pub async fn get_exported_binaries(&self, box_name: &str) -> Result<Vec<ExportableBinary>, Error> {
+        let mut cmd = dbcmd();
+        cmd.args([
+            "enter",
+            box_name,
+            "--",
+            "distrobox-export",
+            "--list-binaries",
+        ]);
+        // Example output: '/usr/bin/vim' | /home/user/.local/bin/vim
+        let output = self.cmd_output_string(cmd).await?;
+        debug!(binaries_output = output);
+        
+        let mut binaries = Vec::new();
+        for line in output.lines() {
+            if line.is_empty() || !line.contains('|') {
+                continue;
+            }
+            
+            let parts: Vec<&str> = line.split('|').collect();
+            if parts.len() >= 2 {
+                let source_path = parts[0].trim().to_string();
+                // For some reason distrobox formats the source path between single quotes, so we need to remove those
+                let source_path = source_path.trim_matches('\'').to_string();
+
+                let exported_path_str = parts[1].trim();
+                
+                // Only include binaries that have a non-empty exported path. It should always be the case, but BoxBuddy defensively checks it.
+                // In this case we try to follow BoxBuddy's behavior to keep consistency for users.
+                if !exported_path_str.is_empty() {
+                    let exported_path = exported_path_str.to_string();
+                    
+                    // Extract binary name from source path
+                    let name = Path::new(&source_path)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or(&source_path)
+                        .to_string();
+                    
+                    binaries.push(ExportableBinary {
+                        name,
+                        source_path,
+                        exported_path,
+                    });
+                }
+            }
+        }
+        
+        Ok(binaries)
+    }
+
     pub fn launch_app(
         &self,
         container: &str,
@@ -701,6 +760,62 @@ impl Distrobox {
         cmd.args(["enter", "--name", container]).extend(
             "--",
             &Command::new_with_args("distrobox-export", ["-d", "--app", desktop_file_path]),
+        );
+
+        self.cmd_output_string(cmd).await
+    }
+
+    pub async fn export_binary(
+        &self,
+        container: &str,
+        binary_name_or_path: &str,
+    ) -> Result<String, Error> {
+        // Check if the input is a path or just a binary name
+        // If it doesn't contain a '/' it's likely just a binary name
+        let resolved_path = if !binary_name_or_path.contains('/') {
+            // Resolve the binary name to its full path using 'which'
+            self.resolve_binary_path(container, binary_name_or_path).await?
+        } else {
+            binary_name_or_path.to_string()
+        };
+
+        let mut cmd = dbcmd();
+        cmd.args(["enter", "--name", container]).extend(
+            "--",
+            &Command::new_with_args("distrobox-export", ["--bin", &resolved_path]),
+        );
+
+        self.cmd_output_string(cmd).await
+    }
+
+    /// Resolves a binary name to its full path using 'which' inside the container
+    async fn resolve_binary_path(&self, container: &str, binary_name: &str) -> Result<String, Error> {
+        let mut cmd = dbcmd();
+        cmd.args(["enter", "--name", container, "--", "which", binary_name]);
+        
+        let output = self.cmd_output_string(cmd).await?;
+        let path = output.trim();
+        
+        if path.is_empty() {
+            return Err(Error::CommandFailed {
+                exit_code: Some(1),
+                command: format!("which {}", binary_name),
+                stderr: format!("Binary '{}' not found in container", binary_name),
+            });
+        }
+        
+        Ok(path.to_string())
+    }
+
+    pub async fn unexport_binary(
+        &self,
+        container: &str,
+        binary_path: &str,
+    ) -> Result<String, Error> {
+        let mut cmd = dbcmd();
+        cmd.args(["enter", "--name", container]).extend(
+            "--",
+            &Command::new_with_args("distrobox-export", ["-d", "--bin", binary_path]),
         );
 
         self.cmd_output_string(cmd).await

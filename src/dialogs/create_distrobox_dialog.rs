@@ -500,7 +500,7 @@ impl CreateDistroboxDialog {
         let imp = self.imp();
         imp.name_row.remove_css_class("error");
         imp.name_row.set_tooltip_text(None);
-        if let Err(ref e) = res {
+        if let Err(e) = res {
             error!(error = %e, "CreateDistroboxDialog: update_errors");
         }
         match res {
