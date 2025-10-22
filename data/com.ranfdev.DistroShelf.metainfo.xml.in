@@ -71,6 +71,14 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.15" date="2025-10-22">
+      <description translate="no">
+        <ul>
+          <li>Save and restore main window size between sessions</li>
+          <li>Add support for exporting binaries</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.14" date="2025-10-19">
       <description translate="no">
         <ul>
