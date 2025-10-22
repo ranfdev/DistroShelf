@@ -116,6 +116,12 @@ impl DistroShelfWindow {
             .property("root-store", root_store)
             .build();
 
+        // Restore window size from settings
+        let settings = gio::Settings::new("com.ranfdev.DistroShelf");
+        let width = settings.int("window-width");
+        let height = settings.int("window-height");
+        this.set_default_size(width, height);
+
         this.setup_gactions();
         let this_clone = this.clone();
         this.root_store()
@@ -161,6 +167,16 @@ impl DistroShelfWindow {
             });
         this.build_sidebar();
         this.root_store().load_containers();
+
+        // Save window size when closing
+        let this_clone = this.clone();
+        this.connect_close_request(move |_| {
+            let (width, height) = this_clone.default_size();
+            let settings = gio::Settings::new("com.ranfdev.DistroShelf");
+            let _ = settings.set_int("window-width", width);
+            let _ = settings.set_int("window-height", height);
+            glib::Propagation::Proceed
+        });
 
         this
     }
