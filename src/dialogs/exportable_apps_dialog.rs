@@ -30,6 +30,8 @@ mod imp {
         pub list_box: gtk::ListBox,
         pub binaries_list_box: gtk::ListBox,
         pub binary_name_entry: adw::EntryRow,
+        pub export_apps_group: adw::PreferencesGroup,
+        pub export_binaries_group: adw::PreferencesGroup,
     }
 
     #[derived_properties]
@@ -65,13 +67,13 @@ mod imp {
 
             self.list_box.add_css_class("boxed-list");
             self.list_box.set_selection_mode(gtk::SelectionMode::None);
-            let export_apps_group = adw::PreferencesGroup::new();
-            export_apps_group.set_margin_start(12);
-            export_apps_group.set_margin_end(12);
-            export_apps_group.set_margin_top(12);
-            export_apps_group.set_margin_bottom(12);
-            export_apps_group.set_title("Exportable Apps");
-            export_apps_group.add(&self.list_box);
+            self.export_apps_group.set_margin_start(12);
+            self.export_apps_group.set_margin_end(12);
+            self.export_apps_group.set_margin_top(12);
+            self.export_apps_group.set_margin_bottom(12);
+            self.export_apps_group.set_title("Exportable Apps");
+            self.export_apps_group.set_description(Some("No exportable apps found"));
+            self.export_apps_group.add(&self.list_box);
 
             // Setup binary export input
             self.binary_name_entry.set_title("Export New Binary");
@@ -83,25 +85,19 @@ mod imp {
             self.binaries_list_box.set_selection_mode(gtk::SelectionMode::None);
             self.binaries_list_box.set_margin_top(12);
             
-            let export_binaries_group = adw::PreferencesGroup::new();
-            export_binaries_group.set_margin_start(12);
-            export_binaries_group.set_margin_end(12);
-            export_binaries_group.set_margin_top(0);
-            export_binaries_group.set_margin_bottom(12);
-            export_binaries_group.set_title("Exported Binaries");
-            export_binaries_group.add(&self.binary_name_entry);
-            export_binaries_group.add(&self.binaries_list_box);
+            self.export_binaries_group.set_margin_start(12);
+            self.export_binaries_group.set_margin_end(12);
+            self.export_binaries_group.set_margin_top(0);
+            self.export_binaries_group.set_margin_bottom(12);
+            self.export_binaries_group.set_title("Exported Binaries");
+            self.export_binaries_group.set_description(Some("No exported binaries"));
+            self.export_binaries_group.add(&self.binary_name_entry);
+            self.export_binaries_group.add(&self.binaries_list_box);
 
             let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-            content_box.append(&export_apps_group);
-            content_box.append(&export_binaries_group);
+            content_box.append(&self.export_apps_group);
+            content_box.append(&self.export_binaries_group);
             self.stack.add_named(&content_box, Some("apps"));
-
-            let empty_page = adw::StatusPage::new();
-            empty_page.set_title("No Exportable Items");
-            empty_page.set_description(Some("No applications or binaries found in this container"));
-
-            self.stack.add_named(&empty_page, Some("empty"));
 
             self.content.append(&self.scrolled_window);
             self.toolbar_view.set_content(Some(&self.content));
@@ -166,15 +162,6 @@ impl ExportableAppsDialog {
             .property("container", container)
             .build();
 
-        let apps = this.container().apps();
-        let binaries = this.container().binaries();
-
-        let is_empty = move || -> bool {
-            let n_apps = apps.data::<gio::ListStore>().map(|s| s.n_items()).unwrap_or(0);
-            let n_binaries = binaries.data::<gio::ListStore>().map(|s| s.n_items()).unwrap_or(0);
-            n_apps == 0 && n_binaries == 0
-        };
-        
         let this_clone = this.clone();
         let apps = this.container().apps();
         let binaries = this.container().binaries();
@@ -192,6 +179,14 @@ impl ExportableAppsDialog {
         let apps = this.container().apps();
         let render_apps = move || {
             let apps = apps.data::<gio::ListStore>();
+            let n_apps = apps.as_ref().map(|s| s.n_items()).unwrap_or(0);
+
+            // Update description based on whether there are apps
+            if n_apps == 0 {
+                this_clone.imp().export_apps_group.set_description(Some("No exportable apps found"));
+            } else {
+                this_clone.imp().export_apps_group.set_description(None);
+            }
 
             this_clone.imp().stack.set_visible_child_name("apps");
             let this = this_clone.clone();
@@ -212,6 +207,14 @@ impl ExportableAppsDialog {
         let binaries = this.container().binaries();
         let render_binaries = move || {
             let binaries = binaries.data::<gio::ListStore>();
+            let n_binaries = binaries.as_ref().map(|s| s.n_items()).unwrap_or(0);
+
+            // Update description based on whether there are binaries
+            if n_binaries == 0 {
+                this_clone.imp().export_binaries_group.set_description(Some("No exported binaries"));
+            } else {
+                this_clone.imp().export_binaries_group.set_description(None);
+            }
 
             this_clone.imp().stack.set_visible_child_name("apps");
             let this = this_clone.clone();
@@ -235,8 +238,6 @@ impl ExportableAppsDialog {
             move |(b1, b2): (bool, bool)| {
                 if b1 || b2 {
                     this_clone.imp().stack.set_visible_child_name("loading");
-                } else if is_empty() {
-                    this_clone.imp().stack.set_visible_child_name("empty");
                 } else {
                     render_apps();
                     render_binaries();
