@@ -6,6 +6,7 @@ use gtk::{gio, glib, pango};
 use crate::container::Container;
 use crate::distrobox::{ExportableApp, ExportableBinary};
 use crate::gtk_utils::reaction;
+use crate::fakers::Command;
 
 use std::cell::RefCell;
 
@@ -157,6 +158,43 @@ glib::wrapper! {
         @extends adw::Dialog, gtk::Widget;
 }
 impl ExportableAppsDialog {
+    /// Check if a binary exists on the host system
+    /// Handles both binary names (e.g., "nvim") and paths (e.g., "/usr/bin/nvim")
+    async fn binary_exists_on_host(container: &Container, binary_name_or_path: &str) -> bool {
+        // If it contains a '/', treat it as a path
+        if binary_name_or_path.contains('/') {
+            // For paths, we need to check on the host using a command
+            // We'll use 'test -e' which returns 0 if the file exists
+            let expanded_path = if binary_name_or_path.starts_with("~/") {
+                // Expand home on host - use $HOME variable
+                format!("$HOME/{}", &binary_name_or_path[2..])
+            } else {
+                binary_name_or_path.to_string()
+            };
+            
+            let mut cmd = Command::new("test");
+            cmd.args(["-e", &expanded_path]);
+            
+            let command_runner = container.root_store().command_runner();
+            if let Ok(output) = command_runner.output(cmd).await {
+                output.status.success()
+            } else {
+                false
+            }
+        } else {
+            // It's a binary name, check using 'which' on the host
+            let mut cmd = Command::new("which");
+            cmd.arg(binary_name_or_path);
+            
+            let command_runner = container.root_store().command_runner();
+            if let Ok(output) = command_runner.output(cmd).await {
+                output.status.success()
+            } else {
+                false
+            }
+        }
+    }
+    
     pub fn new(container: &Container) -> Self {
         let this: Self = glib::Object::builder()
             .property("container", container)
@@ -253,28 +291,45 @@ impl ExportableAppsDialog {
             .connect_apply(move |entry| {
                 let binary_name = entry.text().to_string();
                 if !binary_name.is_empty() {
-                    let task = this_clone.container().export_binary(&binary_name);
-                    entry.set_text("");
-                    
-                    // Monitor task status to show error toasts
                     let this = this_clone.clone();
                     let binary_name_clone = binary_name.clone();
-                    reaction!(task.status(), move |status: String| {
-                        match status.as_str() {
-                            "failed" => {
-                                let error_ref = task.error();
-                                let error_msg = if let Some(err) = error_ref.as_ref() {
-                                    format!("Failed to export '{}': {}", binary_name_clone, err)
-                                } else {
-                                    format!("Failed to export '{}'", binary_name_clone)
-                                };
-                                let toast = adw::Toast::new(&error_msg);
-                                toast.set_timeout(5);
-                                this.imp().toast_overlay.add_toast(toast);
-                            }
-                            _ => {}
+                    let container = this_clone.container();
+                    
+                    // Check if binary exists on host and show confirmation dialog if needed
+                    glib::spawn_future_local(async move {
+                        let exists = Self::binary_exists_on_host(&container, &binary_name).await;
+                        
+                        if exists {
+                            // Show confirmation dialog
+                            let dialog = adw::AlertDialog::new(
+                                Some("Binary Already Exists on Host"),
+                                Some(&format!(
+                                    "The binary '{}' already exists on your host system.\n\nDo you want to continue?",
+                                    binary_name_clone
+                                )),
+                            );
+                            dialog.add_response("cancel", "Cancel");
+                            dialog.add_response("export", "Export Anyway");
+                            dialog.set_response_appearance("export", adw::ResponseAppearance::Destructive);
+                            dialog.set_default_response(Some("cancel"));
+                            dialog.set_close_response("cancel");
+                            
+                            let this_inner = this.clone();
+                            let binary_name_inner = binary_name_clone.clone();
+                            dialog.connect_response(None, move |_dialog, response| {
+                                if response == "export" {
+                                    this_inner.do_export_binary(&binary_name_inner);
+                                }
+                            });
+                            
+                            dialog.present(Some(&this));
+                        } else {
+                            // No conflict, export directly
+                            this.do_export_binary(&binary_name_clone);
                         }
                     });
+                    
+                    entry.set_text("");
                 }
             });
 
@@ -283,6 +338,32 @@ impl ExportableAppsDialog {
 
         this
     }
+    
+    /// Helper method to perform the actual export of a binary
+    fn do_export_binary(&self, binary_name: &str) {
+        let task = self.container().export_binary(binary_name);
+        
+        // Monitor task status to show error toasts
+        let this = self.clone();
+        let binary_name_clone = binary_name.to_string();
+        reaction!(task.status(), move |status: String| {
+            match status.as_str() {
+                "failed" => {
+                    let error_ref = task.error();
+                    let error_msg = if let Some(err) = error_ref.as_ref() {
+                        format!("Failed to export '{}': {}", binary_name_clone, err)
+                    } else {
+                        format!("Failed to export '{}'", binary_name_clone)
+                    };
+                    let toast = adw::Toast::new(&error_msg);
+                    toast.set_timeout(5);
+                    this.imp().toast_overlay.add_toast(toast);
+                }
+                _ => {}
+            }
+        });
+    }
+    
     pub fn build_row(&self, app: &ExportableApp) -> adw::ActionRow {
         // Create the action row
         let row = adw::ActionRow::new();
