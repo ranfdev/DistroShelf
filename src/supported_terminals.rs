@@ -18,6 +18,29 @@ pub struct Terminal {
     pub read_only: bool,
 }
 
+// Mapping of flatpak app IDs to terminal metadata
+static FLATPAK_TERMINAL_MAPPINGS: LazyLock<Vec<(&'static str, &'static str, &'static str)>> = LazyLock::new(|| {
+    vec![
+        ("org.gnome.Console", "GNOME Console", "--"),
+        ("org.gnome.Console.Devel", "GNOME Console", "--"),
+        ("org.gnome.Terminal", "GNOME Terminal", "--"),
+        ("org.kde.konsole", "Konsole", "-e"),
+        ("org.xfce.Terminal", "Xfce Terminal", "-x"),
+        ("com.gexperts.Tilix", "Tilix", "-e"),
+        ("io.github.kovidgoyal.kitty", "Kitty", "--"),
+        ("io.alacritty.Alacritty", "Alacritty", "-e"),
+        ("org.wezfurlong.wezterm", "WezTerm", "-e"),
+        ("io.elementary.terminal", "elementary Terminal", "--"),
+        ("app.devsuite.Ptyxis", "Ptyxis", "--"),
+        ("app.devsuite.Ptyxis.Devel", "Ptyxis", "--"),
+        ("org.codeberg.dnkl.foot", "Foot", "-e"),
+        ("com.system76.CosmicTerm", "COSMIC Terminal", "-e"),
+        ("com.mitchellh.ghostty", "Ghostty", "-e"),
+        ("com.gexperts.Terminator", "Terminator", "-x"),
+        ("org.lxqt.QTerminal", "QTerminal", "-e"),
+    ]
+});
+
 static SUPPORTED_TERMINALS: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
     [
         ("GNOME Console", "kgx", "--"),
@@ -105,6 +128,117 @@ impl TerminalRepository {
         list.sort_by(|a, b| a.name.cmp(&b.name));
         this.imp().list.replace(list);
         this
+    }
+
+    /// Discover flatpak terminals installed on the system
+    async fn discover_flatpak_terminals(&self) -> Vec<Terminal> {
+        let mut flatpak_terminals = Vec::new();
+
+        // Get list of installed flatpak applications
+        let mut command = Command::new_with_args(
+            "flatpak",
+            &["list", "--app", "--columns=application"],
+        );
+        command.stdout = FdMode::Pipe;
+        command.stderr = FdMode::Pipe;
+
+        let output = match self
+            .imp()
+            .command_runner
+            .get()
+            .unwrap()
+            .output(command.clone())
+            .await
+        {
+            Ok(output) => output,
+            Err(e) => {
+                info!("Failed to run flatpak list command: {}", e);
+                return flatpak_terminals;
+            }
+        };
+
+        if !output.status.success() {
+            info!("flatpak list command failed");
+            return flatpak_terminals;
+        }
+
+        let installed_apps = String::from_utf8_lossy(&output.stdout);
+        
+        // Check each installed app against our known terminal mappings
+        for (app_id, base_name, separator_arg) in FLATPAK_TERMINAL_MAPPINGS.iter() {
+            if installed_apps.lines().any(|line| line.trim() == *app_id) {
+                // Get the command that the flatpak executes
+                if let Some(command_name) = self.get_flatpak_command(app_id).await {
+                    // Determine variant suffix
+                    let variant = if app_id.ends_with(".Devel") {
+                        " (Flatpak, Devel)"
+                    } else {
+                        " (Flatpak)"
+                    };
+                    
+                    let terminal = Terminal {
+                        name: format!("{}{}", base_name, variant),
+                        program: format!("flatpak run {}", app_id),
+                        separator_arg: separator_arg.to_string(),
+                        read_only: true,
+                    };
+                    flatpak_terminals.push(terminal);
+                    info!("Discovered flatpak terminal: {} -> {}", app_id, command_name);
+                }
+            }
+        }
+
+        flatpak_terminals
+    }
+
+    /// Get the command that a flatpak application executes
+    async fn get_flatpak_command(&self, app_id: &str) -> Option<String> {
+        let mut command = Command::new_with_args("flatpak", &["info", app_id]);
+        command.stdout = FdMode::Pipe;
+        command.stderr = FdMode::Pipe;
+
+        let output = self
+            .imp()
+            .command_runner
+            .get()
+            .unwrap()
+            .output(command)
+            .await
+            .ok()?;
+
+        if !output.status.success() {
+            return None;
+        }
+
+        let info = String::from_utf8_lossy(&output.stdout);
+        
+        // Look for the "Command:" line in the flatpak info output
+        for line in info.lines() {
+            if line.trim().starts_with("Command:") {
+                let command = line.split(':').nth(1)?.trim();
+                // Extract just the binary name from the path (e.g., /app/bin/ptyxis -> ptyxis)
+                return command.split('/').last().map(|s| s.to_string());
+            }
+        }
+
+        None
+    }
+
+    /// Reload terminals including flatpak discoveries
+    pub async fn reload_with_flatpak_discovery(&self) {
+        let mut list = SUPPORTED_TERMINALS.clone();
+        
+        // Add flatpak terminals
+        let flatpak_terminals = self.discover_flatpak_terminals().await;
+        list.extend(flatpak_terminals);
+        
+        // Add custom terminals
+        if let Ok(loaded_list) = Self::load_terminals_from_json(&self.imp().custom_list_path) {
+            list.extend(loaded_list);
+        }
+
+        list.sort_by(|a, b| a.name.cmp(&b.name));
+        self.imp().list.replace(list);
     }
 
     pub fn is_read_only(&self, name: &str) -> bool {
@@ -227,3 +361,115 @@ impl Default for TerminalRepository {
         Self::new(CommandRunner::default())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fakers::NullCommandRunnerBuilder;
+
+    #[test]
+    fn test_discover_flatpak_terminals() {
+        smol::block_on(async {
+            let flatpak_list_output = "org.gnome.Console\napp.devsuite.Ptyxis\napp.devsuite.Ptyxis.Devel\n";
+            let console_info = "Ref: app/org.gnome.Console/x86_64/stable\nID: org.gnome.Console\nCommand: /app/bin/kgx\n";
+            let ptyxis_info = "Ref: app/app.devsuite.Ptyxis/x86_64/stable\nID: app.devsuite.Ptyxis\nCommand: /app/bin/ptyxis\n";
+            let ptyxis_devel_info = "Ref: app/app.devsuite.Ptyxis.Devel/x86_64/stable\nID: app.devsuite.Ptyxis.Devel\nCommand: /app/bin/ptyxis\n";
+
+            let runner = NullCommandRunnerBuilder::new()
+                .cmd(&["flatpak", "list", "--app", "--columns=application"], flatpak_list_output)
+                .cmd(&["flatpak", "info", "org.gnome.Console"], console_info)
+                .cmd(&["flatpak", "info", "app.devsuite.Ptyxis"], ptyxis_info)
+                .cmd(&["flatpak", "info", "app.devsuite.Ptyxis.Devel"], ptyxis_devel_info)
+                .build();
+
+            let repo = TerminalRepository::new(runner);
+            let flatpak_terminals = repo.discover_flatpak_terminals().await;
+
+            // Should discover 3 terminals
+            assert_eq!(flatpak_terminals.len(), 3);
+
+            // Check that GNOME Console was discovered
+            let console = flatpak_terminals.iter().find(|t| t.name.contains("GNOME Console"));
+            assert!(console.is_some());
+            let console = console.unwrap();
+            assert_eq!(console.name, "GNOME Console (Flatpak)");
+            assert_eq!(console.program, "flatpak run org.gnome.Console");
+            assert_eq!(console.separator_arg, "--");
+            assert!(console.read_only);
+
+            // Check that Ptyxis was discovered
+            let ptyxis = flatpak_terminals.iter().find(|t| t.name == "Ptyxis (Flatpak)");
+            assert!(ptyxis.is_some());
+            let ptyxis = ptyxis.unwrap();
+            assert_eq!(ptyxis.program, "flatpak run app.devsuite.Ptyxis");
+
+            // Check that Ptyxis Devel was discovered with proper variant
+            let ptyxis_devel = flatpak_terminals.iter().find(|t| t.name == "Ptyxis (Flatpak, Devel)");
+            assert!(ptyxis_devel.is_some());
+            let ptyxis_devel = ptyxis_devel.unwrap();
+            assert_eq!(ptyxis_devel.program, "flatpak run app.devsuite.Ptyxis.Devel");
+        });
+    }
+
+    #[test]
+    fn test_discover_no_flatpak_terminals() {
+        smol::block_on(async {
+            let flatpak_list_output = "";
+
+            let runner = NullCommandRunnerBuilder::new()
+                .cmd(&["flatpak", "list", "--app", "--columns=application"], flatpak_list_output)
+                .build();
+
+            let repo = TerminalRepository::new(runner);
+            let flatpak_terminals = repo.discover_flatpak_terminals().await;
+
+            assert_eq!(flatpak_terminals.len(), 0);
+        });
+    }
+
+    #[test]
+    fn test_get_flatpak_command() {
+        smol::block_on(async {
+            let info_output = "Ref: app/org.gnome.Console/x86_64/stable\nID: org.gnome.Console\nCommand: /app/bin/kgx\n";
+
+            let runner = NullCommandRunnerBuilder::new()
+                .cmd(&["flatpak", "info", "org.gnome.Console"], info_output)
+                .build();
+
+            let repo = TerminalRepository::new(runner);
+            let command = repo.get_flatpak_command("org.gnome.Console").await;
+
+            assert_eq!(command, Some("kgx".to_string()));
+        });
+    }
+
+    #[test]
+    fn test_reload_with_flatpak_discovery() {
+        smol::block_on(async {
+            let flatpak_list_output = "app.devsuite.Ptyxis\n";
+            let ptyxis_info = "Ref: app/app.devsuite.Ptyxis/x86_64/stable\nID: app.devsuite.Ptyxis\nCommand: /app/bin/ptyxis\n";
+
+            let runner = NullCommandRunnerBuilder::new()
+                .cmd(&["flatpak", "list", "--app", "--columns=application"], flatpak_list_output)
+                .cmd(&["flatpak", "info", "app.devsuite.Ptyxis"], ptyxis_info)
+                .build();
+
+            let repo = TerminalRepository::new(runner);
+            repo.reload_with_flatpak_discovery().await;
+
+            let all_terminals = repo.all_terminals();
+            
+            // Should have both system terminals and the discovered flatpak terminal
+            assert!(all_terminals.len() > SUPPORTED_TERMINALS.len());
+            
+            // Check that the flatpak variant is present
+            let ptyxis_flatpak = all_terminals.iter().find(|t| t.name == "Ptyxis (Flatpak)");
+            assert!(ptyxis_flatpak.is_some());
+            
+            // Check that the system Ptyxis is also still present
+            let ptyxis_system = all_terminals.iter().find(|t| t.name == "Ptyxis");
+            assert!(ptyxis_system.is_some());
+        });
+    }
+}
+

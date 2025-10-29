@@ -141,27 +141,33 @@ impl TerminalComboRow {
         }
     }
     pub fn reload_terminals(&self) {
-        let terminals = self
-            .root_store()
-            .clone()
-            .terminal_repository()
-            .all_terminals();
-        let terminals = terminals
-            .iter()
-            .map(|x| x.name.as_ref())
-            .collect::<Vec<_>>();
+        let this = self.clone();
+        glib::MainContext::default().spawn_local(async move {
+            // First reload with flatpak discovery
+            this.root_store()
+                .terminal_repository()
+                .reload_with_flatpak_discovery()
+                .await;
+            
+            // Then update the UI
+            let terminals = this.root_store().terminal_repository().all_terminals();
+            let terminals = terminals
+                .iter()
+                .map(|x| x.name.as_ref())
+                .collect::<Vec<_>>();
 
-        let terminal_list = gtk::StringList::new(&terminals);
+            let terminal_list = gtk::StringList::new(&terminals);
 
-        let signal_handler = self.imp().selected_item_signal_handler.borrow();
-        self.block_signal(&signal_handler.as_ref().unwrap());
-        {
-            self.set_model(Some(&terminal_list));
-            if let Some(selected_terminal) = self.root_store().selected_terminal() {
-                self.set_selected_by_name(&selected_terminal.name);
+            let signal_handler = this.imp().selected_item_signal_handler.borrow();
+            this.block_signal(&signal_handler.as_ref().unwrap());
+            {
+                this.set_model(Some(&terminal_list));
+                if let Some(selected_terminal) = this.root_store().selected_terminal() {
+                    this.set_selected_by_name(&selected_terminal.name);
+                }
             }
-        }
-        self.unblock_signal(&signal_handler.as_ref().unwrap());
+            this.unblock_signal(&signal_handler.as_ref().unwrap());
+        });
     }
 }
 
