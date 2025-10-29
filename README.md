@@ -62,13 +62,29 @@ sudo ninja -C build install
 
 You can configure your preferred terminal emulator in the Preferences dialog.
 
+### Terminal Support
+
+DistroShelf automatically detects both system-installed and Flatpak terminal emulators. 
+
+**Automatic Flatpak Terminal Discovery:**
+- DistroShelf will automatically discover terminal emulators installed via Flatpak
+- Flatpak terminals are shown with a `(Flatpak)` suffix in the preferences
+- Developer versions of flatpak terminals are shown with a `(Flatpak, Devel)` suffix
+- Both system and Flatpak versions of the same terminal can coexist in the list
+
 Supported terminals:
-- GNOME Terminal
+- GNOME Terminal / GNOME Console
 - Konsole
 - Xfce Terminal
+- Ptyxis
 - Tilix
 - Alacritty
+- Kitty
+- WezTerm
 - And more...
+
+**Custom Terminals:**
+You can also add custom terminal configurations in Preferences using the "Add Custom" button.
 
 ## Contributing
 
