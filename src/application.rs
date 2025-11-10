@@ -23,11 +23,10 @@ use std::rc::Rc;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gettextrs::gettext;
 use gtk::{gio, glib};
 
 use crate::DistroShelfWindow;
-use crate::config::{self, VERSION};
+use crate::config;
 use crate::distrobox::{Distrobox, DistroboxCommandRunnerResponse, FlatpakCommandRunner};
 use crate::fakers::{CommandRunner, RealCommandRunner};
 use crate::root_store::RootStore;

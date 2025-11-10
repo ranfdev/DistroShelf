@@ -21,7 +21,7 @@ use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
 use crate::distrobox_task::DistroboxTask;
-use crate::fakers::{Child, Command, CommandRunner, FdMode};
+use crate::fakers::{Command, CommandRunner, FdMode};
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
 use crate::supported_terminals::{Terminal, TerminalRepository};
