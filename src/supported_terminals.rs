@@ -6,7 +6,7 @@ use std::{
 use gtk::glib;
 use tracing::{error, info, warn};
 
-use crate::fakers::{CommandRunner, Command, FdMode};
+use crate::fakers::{Command, CommandRunner, FdMode};
 
 use gtk::subclass::prelude::*;
 
@@ -50,9 +50,7 @@ static SUPPORTED_TERMINALS: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
 
 mod imp {
     use super::*;
-    use std::{
-        cell::{OnceCell, RefCell},
-    };
+    use std::cell::{OnceCell, RefCell};
 
     pub struct TerminalRepository {
         pub list: RefCell<Vec<Terminal>>,

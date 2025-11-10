@@ -1,15 +1,15 @@
 use crate::{
     distrobox::{ContainerInfo, ExportableApp, Status},
     distrobox_task::DistroboxTask,
-    known_distros::{known_distro_by_image, KnownDistro},
+    fakers::Command,
+    known_distros::{KnownDistro, known_distro_by_image},
     remote_resource::RemoteResource,
     root_store::RootStore,
-    fakers::Command
 };
 
 use gtk::{
     gio,
-    glib::{derived_properties, BoxedAnyObject, Properties},
+    glib::{BoxedAnyObject, Properties, derived_properties},
 };
 
 use adw::prelude::*;

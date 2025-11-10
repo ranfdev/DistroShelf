@@ -1,6 +1,6 @@
 use adw::prelude::*;
 
-use crate::known_distros::{known_distro_by_image, KnownDistro};
+use crate::known_distros::{KnownDistro, known_distro_by_image};
 
 pub fn setup(image_widget: &gtk::Image) {
     image_widget.set_icon_size(gtk::IconSize::Large);

@@ -9,7 +9,7 @@ use crate::{container::Container, distro_icon};
 mod imp {
     use std::cell::RefCell;
 
-    use gtk::glib::{derived_properties, Properties};
+    use gtk::glib::{Properties, derived_properties};
 
     use super::*;
 

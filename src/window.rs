@@ -29,7 +29,7 @@ use crate::tagged_object::TaggedObject;
 use crate::tasks_button::TasksButton;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use glib::{derived_properties, Properties};
+use glib::{Properties, derived_properties};
 use gtk::gio::ActionEntry;
 use gtk::glib::clone;
 use gtk::{gdk, gio, glib, pango};
@@ -78,17 +78,61 @@ mod imp {
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
             klass.add_binding_action(gdk::Key::F5, gdk::ModifierType::empty(), "win.refresh");
-            klass.add_binding_action(gdk::Key::N, gdk::ModifierType::CONTROL_MASK, "win.create-distrobox");
-            klass.add_binding_action(gdk::Key::U, gdk::ModifierType::CONTROL_MASK, "win.upgrade-container");
-            klass.add_binding_action(gdk::Key::U, gdk::ModifierType::CONTROL_MASK | gdk::ModifierType::SHIFT_MASK, "win.upgrade-all");
-            klass.add_binding_action(gdk::Key::I, gdk::ModifierType::CONTROL_MASK, "win.install-package");
-            klass.add_binding_action(gdk::Key::comma, gdk::ModifierType::CONTROL_MASK, "win.preferences");
-            klass.add_binding_action(gdk::Key::L, gdk::ModifierType::CONTROL_MASK, "win.command-log");
-            klass.add_binding_action(gdk::Key::T, gdk::ModifierType::CONTROL_MASK, "win.open-terminal");
-            klass.add_binding_action(gdk::Key::D, gdk::ModifierType::CONTROL_MASK, "win.clone-container");
-            klass.add_binding_action(gdk::Key::E, gdk::ModifierType::CONTROL_MASK, "win.view-exportable-apps");
-            klass.add_binding_action(gdk::Key::Delete, gdk::ModifierType::CONTROL_MASK, "win.delete-container");
-            klass.add_binding_action(gdk::Key::S, gdk::ModifierType::CONTROL_MASK, "win.stop-container");
+            klass.add_binding_action(
+                gdk::Key::N,
+                gdk::ModifierType::CONTROL_MASK,
+                "win.create-distrobox",
+            );
+            klass.add_binding_action(
+                gdk::Key::U,
+                gdk::ModifierType::CONTROL_MASK,
+                "win.upgrade-container",
+            );
+            klass.add_binding_action(
+                gdk::Key::U,
+                gdk::ModifierType::CONTROL_MASK | gdk::ModifierType::SHIFT_MASK,
+                "win.upgrade-all",
+            );
+            klass.add_binding_action(
+                gdk::Key::I,
+                gdk::ModifierType::CONTROL_MASK,
+                "win.install-package",
+            );
+            klass.add_binding_action(
+                gdk::Key::comma,
+                gdk::ModifierType::CONTROL_MASK,
+                "win.preferences",
+            );
+            klass.add_binding_action(
+                gdk::Key::L,
+                gdk::ModifierType::CONTROL_MASK,
+                "win.command-log",
+            );
+            klass.add_binding_action(
+                gdk::Key::T,
+                gdk::ModifierType::CONTROL_MASK,
+                "win.open-terminal",
+            );
+            klass.add_binding_action(
+                gdk::Key::D,
+                gdk::ModifierType::CONTROL_MASK,
+                "win.clone-container",
+            );
+            klass.add_binding_action(
+                gdk::Key::E,
+                gdk::ModifierType::CONTROL_MASK,
+                "win.view-exportable-apps",
+            );
+            klass.add_binding_action(
+                gdk::Key::Delete,
+                gdk::ModifierType::CONTROL_MASK,
+                "win.delete-container",
+            );
+            klass.add_binding_action(
+                gdk::Key::S,
+                gdk::ModifierType::CONTROL_MASK,
+                "win.stop-container",
+            );
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
@@ -185,70 +229,57 @@ impl DistroShelfWindow {
         let a = ActionEntry::builder;
 
         let actions = [
-            a("refresh")
-                .activate(move |this: &DistroShelfWindow, _, _| {
-                    this.root_store().load_containers();
-                }),
-            a("upgrade-all")
-                .activate(move |this: &DistroShelfWindow, _, _| {
-                    this.root_store().upgrade_all();
-                }),
-            a("preferences")
-                .activate(|this, _, _| {
-                    this.root_store()
-                        .set_current_dialog(TaggedObject::new("preferences"));
-                }),
-            a("learn-more")
-                .activate(|_, _, _| {
-                    gtk::UriLauncher::new("https://distrobox.it").launch(
-                        None::<&gtk::Window>,
-                        None::<&gio::Cancellable>,
-                        |res| {
-                            if let Err(e) = res {
-                                tracing::error!(error = %e, "Failed to open Distrobox website");
-                            }
-                        },
-                    );
-                }),
-            a("create-distrobox")
-                .activate(|this, _, _| {
-                    this.root_store()
-                        .set_current_dialog(TaggedObject::new("create-distrobox"));
-                }),
-            a("command-log")
-                .activate(|this, _, _| {
-                    this.root_store()
-                        .set_current_dialog(TaggedObject::new("command-log"));
-                }),
-            a("clone-container")
-                .activate(|this, _, _| {
-                    this.build_clone_dialog();
-                }),
-            a("upgrade-container")
-                .activate(|this, _, _| {
-                    let task = this.root_store().selected_container().unwrap().upgrade();
-                    this.root_store().view_task(&task);
-                }),
-            a("view-exportable-apps")
-                .activate(|this, _, _| {
-                    this.root_store().view_exportable_apps();
-                }),
-            a("install-package")
-                .activate(|this, _, _| {
-                    this.build_install_package_dialog();
-                }),
-            a("stop-container")
-                .activate(|this, _, _| {
-                    this.root_store().selected_container().unwrap().stop();
-                }),
-            a("delete-container")
-                .activate(|this, _, _| {
-                    this.build_delete_dialog();
-                }),
-            a("open-terminal")
-                .activate(|this, _, _| {
-                    this.open_terminal();
-                }),
+            a("refresh").activate(move |this: &DistroShelfWindow, _, _| {
+                this.root_store().load_containers();
+            }),
+            a("upgrade-all").activate(move |this: &DistroShelfWindow, _, _| {
+                this.root_store().upgrade_all();
+            }),
+            a("preferences").activate(|this, _, _| {
+                this.root_store()
+                    .set_current_dialog(TaggedObject::new("preferences"));
+            }),
+            a("learn-more").activate(|_, _, _| {
+                gtk::UriLauncher::new("https://distrobox.it").launch(
+                    None::<&gtk::Window>,
+                    None::<&gio::Cancellable>,
+                    |res| {
+                        if let Err(e) = res {
+                            tracing::error!(error = %e, "Failed to open Distrobox website");
+                        }
+                    },
+                );
+            }),
+            a("create-distrobox").activate(|this, _, _| {
+                this.root_store()
+                    .set_current_dialog(TaggedObject::new("create-distrobox"));
+            }),
+            a("command-log").activate(|this, _, _| {
+                this.root_store()
+                    .set_current_dialog(TaggedObject::new("command-log"));
+            }),
+            a("clone-container").activate(|this, _, _| {
+                this.build_clone_dialog();
+            }),
+            a("upgrade-container").activate(|this, _, _| {
+                let task = this.root_store().selected_container().unwrap().upgrade();
+                this.root_store().view_task(&task);
+            }),
+            a("view-exportable-apps").activate(|this, _, _| {
+                this.root_store().view_exportable_apps();
+            }),
+            a("install-package").activate(|this, _, _| {
+                this.build_install_package_dialog();
+            }),
+            a("stop-container").activate(|this, _, _| {
+                this.root_store().selected_container().unwrap().stop();
+            }),
+            a("delete-container").activate(|this, _, _| {
+                this.build_delete_dialog();
+            }),
+            a("open-terminal").activate(|this, _, _| {
+                this.open_terminal();
+            }),
         ];
         self.add_action_entries(actions.into_iter().map(|entry| entry.build()));
     }

@@ -15,8 +15,8 @@ use crate::fakers::{Command, OutputTracker};
 
 use async_process::{Command as AsyncCommand, Output};
 use futures::{
-    io::{AsyncRead, AsyncWrite, Cursor},
     FutureExt,
+    io::{AsyncRead, AsyncWrite, Cursor},
 };
 
 #[derive(Debug, Clone)]
