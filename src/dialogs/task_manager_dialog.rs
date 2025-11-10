@@ -7,7 +7,7 @@ use crate::distrobox_task::DistroboxTask;
 use crate::gtk_utils::reaction;
 use crate::root_store::RootStore;
 
-use gtk::glib::{derived_properties, Properties};
+use gtk::glib::{Properties, derived_properties};
 use std::cell::RefCell;
 
 mod imp {

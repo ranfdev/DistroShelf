@@ -1,5 +1,7 @@
 use std::{
-    ffi::{OsStr, OsString}, fmt::Display, process::Stdio
+    ffi::{OsStr, OsString},
+    fmt::Display,
+    process::Stdio,
 };
 
 #[derive(Debug, Clone)]

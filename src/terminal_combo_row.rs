@@ -2,13 +2,12 @@
 // This file is licensed under the same terms as the project it belongs to
 
 use crate::root_store::RootStore;
-use crate::supported_terminals;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use glib::Properties;
 use glib::clone;
 use glib::subclass::Signal;
-use glib::Properties;
-use gtk::{glib, StringObject};
+use gtk::{StringObject, glib};
 use std::cell::RefCell;
 use std::sync::OnceLock;
 

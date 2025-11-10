@@ -2,10 +2,10 @@
 // to hold some data
 
 use futures::FutureExt;
-use glib::prelude::*;
-use glib::subclass::prelude::*;
-use glib::subclass::Signal;
 use glib::Properties;
+use glib::prelude::*;
+use glib::subclass::Signal;
+use glib::subclass::prelude::*;
 use gtk::glib;
 use std::cell::RefCell;
 use std::sync::OnceLock;

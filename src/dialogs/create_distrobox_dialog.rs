@@ -12,7 +12,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::distro_combo_row_item;
 use glib::clone;
-use gtk::glib::{derived_properties, Properties};
+use gtk::glib::{Properties, derived_properties};
 
 pub enum FileRowSelection {
     File,

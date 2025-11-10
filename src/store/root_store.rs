@@ -3,17 +3,17 @@
 
 use anyhow::Context;
 use futures::prelude::*;
-use glib::subclass::prelude::*;
 use glib::Properties;
+use glib::subclass::prelude::*;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::path::Path;
 use std::time::Duration;
-use tracing::{debug, warn};
 use tracing::error;
 use tracing::info;
+use tracing::{debug, warn};
 
 use crate::container::Container;
 use crate::distrobox;
@@ -21,7 +21,7 @@ use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
 use crate::distrobox_task::DistroboxTask;
-use crate::fakers::{Child, Command, CommandRunner, FdMode};
+use crate::fakers::{Command, CommandRunner, FdMode};
 use crate::gtk_utils::reconcile_list_by_key;
 use crate::remote_resource::RemoteResource;
 use crate::supported_terminals::{Terminal, TerminalRepository};
