@@ -202,22 +202,33 @@ impl ExportableAppsDialog {
 
         let this_clone = this.clone();
         let apps = this.container().apps();
-        let binaries = this.container().binaries();
-        reaction! {
-            (apps.error(), binaries.error()),
-            move |(e1, e2): (Option<String>, Option<String>)| {
-                if let Some(err) = e1.or(e2) {
-                    this_clone.imp().error_label.set_label(&err);
-                    this_clone.imp().stack.set_visible_child_name("error");
-                }
+        let this_inner = this_clone.clone();
+        apps.connect_loading(move |is_loading| {
+            if is_loading {
+                this_inner.imp().stack.set_visible_child_name("loading");
             }
-        };
+        });
+        let this_inner = this_clone.clone();
+        apps.connect_error(move |error| {
+            this_inner.imp().error_label.set_label(&error.to_string());
+            this_inner.imp().stack.set_visible_child_name("error");
+        });
+        let binaries = this.container().binaries();
+        let this_inner = this_clone.clone();
+        binaries.connect_loading(move |is_loading| {
+            if is_loading {
+                this_inner.imp().stack.set_visible_child_name("loading");
+            }
+        });
+        let this_inner = this_clone.clone();
+        binaries.connect_error(move |error| {
+            this_inner.imp().error_label.set_label(&error.to_string());
+            this_inner.imp().stack.set_visible_child_name("error");
+        });
         
         let this_clone = this.clone();
-        let apps = this.container().apps();
-        let render_apps = move || {
-            let apps = apps.data::<gio::ListStore>();
-            let n_apps = apps.as_ref().map(|s| s.n_items()).unwrap_or(0);
+        let render_apps = move |apps_data: &gio::ListStore| {
+            let n_apps = apps_data.n_items();
 
             // Update description based on whether there are apps
             if n_apps == 0 {
@@ -231,21 +242,18 @@ impl ExportableAppsDialog {
             this_clone
                 .imp()
                 .list_box
-                .bind_model(apps.as_ref(), move |obj| {
+                .bind_model(Some(apps_data), move |obj| {
                     let app = obj
                         .downcast_ref::<BoxedAnyObject>()
                         .map(|obj| obj.borrow::<ExportableApp>())
                         .unwrap();
                     this.build_row(&app).upcast()
                 });
-                
         };
         
         let this_clone = this.clone();
-        let binaries = this.container().binaries();
-        let render_binaries = move || {
-            let binaries = binaries.data::<gio::ListStore>();
-            let n_binaries = binaries.as_ref().map(|s| s.n_items()).unwrap_or(0);
+        let render_binaries = move |binaries_data: &gio::ListStore| {
+            let n_binaries = binaries_data.n_items();
 
             // Update description based on whether there are binaries
             if n_binaries == 0 {
@@ -259,7 +267,7 @@ impl ExportableAppsDialog {
             this_clone
                 .imp()
                 .binaries_list_box
-                .bind_model(binaries.as_ref(), move |obj| {
+                .bind_model(Some(binaries_data), move |obj| {
                     let binary = obj
                         .downcast_ref::<BoxedAnyObject>()
                         .map(|obj| obj.borrow::<ExportableBinary>())
@@ -268,20 +276,16 @@ impl ExportableAppsDialog {
                 });
         };
 
-        let this_clone = this.clone();
         let apps = this.container().apps();
+        let render_apps_closure = render_apps.clone();
+        apps.connect_success(move |apps_data| {
+            render_apps_closure(apps_data);
+        });
         let binaries = this.container().binaries();
-        reaction! {
-            (apps.loading(), binaries.loading()),
-            move |(b1, b2): (bool, bool)| {
-                if b1 || b2 {
-                    this_clone.imp().stack.set_visible_child_name("loading");
-                } else {
-                    render_apps();
-                    render_binaries();
-                }
-            }
-        };
+        let render_binaries_closure = render_binaries.clone();
+        binaries.connect_success(move |binaries_data| {
+            render_binaries_closure(binaries_data);
+        });
 
         
         // Connect the binary name entry apply signal
@@ -333,8 +337,8 @@ impl ExportableAppsDialog {
                 }
             });
 
-        container.apps().reload();
-        container.binaries().reload();
+        container.apps().refetch();
+        container.binaries().refetch();
 
         this
     }

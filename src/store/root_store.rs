@@ -3,17 +3,17 @@
 
 use anyhow::Context;
 use futures::prelude::*;
-use glib::subclass::prelude::*;
 use glib::Properties;
+use glib::subclass::prelude::*;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::path::Path;
 use std::time::Duration;
-use tracing::{debug, warn};
 use tracing::error;
 use tracing::info;
+use tracing::{debug, warn};
 
 use crate::container::Container;
 use crate::distrobox;
@@ -21,13 +21,15 @@ use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
 use crate::distrobox_task::DistroboxTask;
-use crate::fakers::{Child, Command, CommandRunner, FdMode};
+use crate::fakers::{Command, CommandRunner, FdMode};
 use crate::gtk_utils::reconcile_list_by_key;
-use crate::remote_resource::RemoteResource;
+use crate::query::Query;
 use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
 
 mod imp {
+    use crate::query::Query;
+
     use super::*;
 
     #[derive(Properties)]
@@ -37,11 +39,8 @@ mod imp {
         pub terminal_repository: RefCell<TerminalRepository>,
         pub command_runner: OnceCell<CommandRunner>,
 
-        #[property(get, set)]
-        pub distrobox_version: RefCell<RemoteResource>,
-
-        #[property(get, set)]
-        pub images: RefCell<RemoteResource>,
+        pub distrobox_version: Query<String, anyhow::Error>,
+        pub images_query: Query<Vec<String>, anyhow::Error>,
 
         #[property(get)]
         containers: gio::ListStore,
@@ -74,8 +73,10 @@ mod imp {
                 current_view: Default::default(),
                 current_dialog: Default::default(),
                 distrobox: Default::default(),
-                distrobox_version: Default::default(),
-                images: Default::default(),
+                distrobox_version: Query::new("distrobox_version".into(), || async {
+                    Ok(String::new())
+                }),
+                images_query: Query::new("images".into(), || async { Ok(vec![]) }),
                 tasks: gio::ListStore::new::<DistroboxTask>(),
                 selected_task: Default::default(),
                 settings: gio::Settings::new("com.ranfdev.DistroShelf"),
@@ -117,32 +118,27 @@ impl RootStore {
             .unwrap();
 
         let this_clone = this.clone();
-        this.imp()
-            .distrobox_version
-            .replace(RemoteResource::new(move |_| {
-                let this_clone = this_clone.clone();
-                async move {
-                    let distrobox = this_clone.distrobox();
-                    distrobox.version().map_err(|e| e.into()).await
-                }
-            }));
+        this.imp().distrobox_version.set_fetcher(move || {
+            let this_clone = this_clone.clone();
+            async move {
+                let distrobox = this_clone.distrobox();
+                distrobox.version().map_err(|e| e.into()).await
+            }
+        });
         let this_clone = this.clone();
-        this.distrobox_version()
-            .connect_error_notify(move |resource| {
-                if resource.error().is_some() {
-                    this_clone.set_current_view(TaggedObject::new("welcome"));
-                }
-            });
-        this.distrobox_version().reload();
+        this.distrobox_version().connect_error(move |_error| {
+            this_clone.set_current_view(TaggedObject::new("welcome"));
+        });
+        this.distrobox_version().refetch();
 
         let this_clone = this.clone();
-        this.set_images(RemoteResource::new(move |_| {
+        this.imp().images_query.set_fetcher(move || {
             let this_clone = this_clone.clone();
             async move {
                 let distrobox = this_clone.distrobox();
                 distrobox.list_images().map_err(|e| e.into()).await
             }
-        }));
+        });
 
         if this.selected_terminal().is_none() {
             let this = this.clone();
@@ -161,6 +157,14 @@ impl RootStore {
 
     pub fn distrobox(&self) -> &crate::distrobox::Distrobox {
         self.imp().distrobox.get().unwrap()
+    }
+
+    pub fn distrobox_version(&self) -> Query<String, anyhow::Error> {
+        self.imp().distrobox_version.clone()
+    }
+
+    pub fn images_query(&self) -> Query<Vec<String>, anyhow::Error> {
+        self.imp().images_query.clone()
     }
 
     pub fn command_runner(&self) -> CommandRunner {

@@ -62,20 +62,18 @@ mod imp {
         #[template_callback]
         fn continue_to_terminal_page(&self, _: &gtk::Button) {
             let obj = self.obj();
-            let obj = obj.clone();
+            let obj_clone = obj.clone();
             obj.root_store().distrobox_version()
-                .connect_loading_notify(move |resource| {
-                    if resource.loading() {
-                        return
-                    }
-                    if let Some(e) = resource.error() {
-                        obj.set_distrobox_error(Some(e.as_str()));
-                    } else {
-                        obj.imp().carousel
-                            .scroll_to(&*obj.imp().terminal_preferences_page, true);
-                    }
+                .connect_success(move |_version| {
+                    obj_clone.imp().carousel
+                        .scroll_to(&*obj_clone.imp().terminal_preferences_page, true);
                 });
-            self.obj().root_store().distrobox_version().reload();
+            let obj_clone = obj.clone();
+            obj.root_store().distrobox_version()
+                .connect_error(move |error| {
+                    obj_clone.set_distrobox_error(Some(error.to_string()));
+                });
+            self.obj().root_store().distrobox_version().refetch();
             self.obj().root_store().load_containers();
         }
         #[template_callback]

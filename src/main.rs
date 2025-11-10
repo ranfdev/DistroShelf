@@ -29,7 +29,6 @@ mod distrobox_task;
 mod fakers;
 mod gtk_utils;
 mod known_distros;
-mod remote_resource;
 mod sidebar_row;
 mod store;
 mod supported_terminals;
@@ -39,6 +38,7 @@ mod terminal_combo_row;
 mod welcome_view;
 mod window;
 pub use store::root_store;
+pub mod query;
 
 use self::application::DistroShelfApplication;
 use window::DistroShelfWindow;

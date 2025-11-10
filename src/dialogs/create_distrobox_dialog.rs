@@ -313,20 +313,20 @@ impl CreateDistroboxDialog {
             .property("root-store", root_store)
             .build();
 
-        this.root_store().images().connect_data_changed(clone!(
+        this.root_store()
+            .images_query()
+            .connect_success(clone!(
             #[weak]
             this,
-            move |resource| {
+            move |images| {
                 let string_list = gtk::StringList::new(&[]);
-                if let Some(images) = resource.data::<Vec<String>>() {
-                    for image in images {
-                        string_list.append(&image);
-                    }
+                for image in images {
+                    string_list.append(&image);
                 }
                 this.imp().image_row.set_model(Some(&string_list));
             }
         ));
-        this.root_store().images().reload();
+        this.root_store().images_query().refetch();
 
         glib::MainContext::ref_thread_default().spawn_local(clone!(
             #[weak]

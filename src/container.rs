@@ -1,8 +1,9 @@
 use crate::{
     distrobox::{ContainerInfo, ExportableApp, Status},
     distrobox_task::DistroboxTask,
+    fakers::CommandRunner,
     known_distros::{known_distro_by_image, KnownDistro},
-    remote_resource::RemoteResource,
+    query::Query,
     root_store::RootStore,
     fakers::Command
 };
@@ -15,15 +16,14 @@ use gtk::{
 use adw::prelude::*;
 use glib::subclass::prelude::*;
 use gtk::glib;
-use std::{cell::RefCell, path::Path};
+use std::cell::RefCell;
+use std::path::Path;
 
 mod imp {
-    use crate::remote_resource::RemoteResource;
-
     use super::*;
 
     // This contains all the container informations given by distrobox, plus an associated KnownDistro struct
-    #[derive(Default, Properties)]
+    #[derive(Properties)]
     #[properties(wrapper_type=super::Container)]
     pub struct Container {
         #[property(get, set)]
@@ -38,10 +38,27 @@ mod imp {
         pub image: RefCell<String>,
         #[property(get, set)]
         pub distro: RefCell<Option<KnownDistro>>,
-        #[property(get, set)]
-        pub apps: RefCell<RemoteResource>,
-        #[property(get, set)]
-        pub binaries: RefCell<RemoteResource>,
+        pub apps: Query<gio::ListStore, anyhow::Error>,
+        pub binaries: Query<gio::ListStore, anyhow::Error>,
+    }
+
+    impl Default for Container {
+        fn default() -> Self {
+            Self {
+                root_store: RefCell::new(RootStore::new(CommandRunner::new_null())),
+                name: RefCell::new(String::new()),
+                status_tag: RefCell::new(String::new()),
+                status_detail: RefCell::new(String::new()),
+                image: RefCell::new(String::new()),
+                distro: RefCell::new(None),
+                apps: Query::new("apps".into(), || async {
+                    Ok(gio::ListStore::new::<BoxedAnyObject>())
+                }),
+                binaries: Query::new("binaries".into(), || async {
+                    Ok(gio::ListStore::new::<BoxedAnyObject>())
+                }),
+            }
+        }
     }
 
     #[derived_properties]
@@ -80,11 +97,8 @@ impl Container {
             .build();
 
         let this_clone = this.clone();
-        let loader = move |apps_list: Option<&gio::ListStore>| {
+        this.apps().set_fetcher(move || {
             let this = this_clone.clone();
-            let mut apps_list = apps_list
-                .cloned()
-                .unwrap_or_else(gio::ListStore::new::<BoxedAnyObject>);
             async move {
                 let apps = this
                     .root_store()
@@ -92,22 +106,18 @@ impl Container {
                     .list_apps(&this.name())
                     .await?;
 
-                apps_list.remove_all();
+                let mut apps_list = gio::ListStore::new::<BoxedAnyObject>();
                 apps_list.extend(apps.into_iter().map(BoxedAnyObject::new));
 
                 // Listing the apps starts the container, we need to update its status
                 this.root_store().load_containers();
                 Ok(apps_list)
             }
-        };
-        this.set_apps(RemoteResource::new::<gio::ListStore, _>(loader));
+        });
 
         let this_clone = this.clone();
-        let binaries_loader = move |binaries_list: Option<&gio::ListStore>| {
+        this.binaries().set_fetcher(move || {
             let this = this_clone.clone();
-            let mut binaries_list = binaries_list
-                .cloned()
-                .unwrap_or_else(gio::ListStore::new::<BoxedAnyObject>);
             async move {
                 let binaries = this
                     .root_store()
@@ -115,17 +125,24 @@ impl Container {
                     .get_exported_binaries(&this.name())
                     .await?;
 
-                binaries_list.remove_all();
+                let mut binaries_list = gio::ListStore::new::<BoxedAnyObject>();
                 binaries_list.extend(binaries.into_iter().map(BoxedAnyObject::new));
 
                 // Listing the binaries starts the container, we need to update its status
                 this.root_store().load_containers();
                 Ok(binaries_list)
             }
-        };
-        this.set_binaries(RemoteResource::new::<gio::ListStore, _>(binaries_loader));
+        });
 
         this
+    }
+
+    pub fn apps(&self) -> Query<gio::ListStore, anyhow::Error> {
+        self.imp().apps.clone()
+    }
+
+    pub fn binaries(&self) -> Query<gio::ListStore, anyhow::Error> {
+        self.imp().binaries.clone()
     }
 
     pub fn upgrade(&self) -> DistroboxTask {
@@ -192,7 +209,7 @@ impl Container {
                     .distrobox()
                     .export_app(&this.name(), &desktop_file_path)
                     .await?;
-                this.apps().reload();
+                this.apps().refetch();
                 Ok(())
             });
     }
@@ -205,7 +222,7 @@ impl Container {
                     .distrobox()
                     .unexport_app(&this.name(), &desktop_file_path)
                     .await?;
-                this.apps().reload();
+                this.apps().refetch();
                 Ok(())
             });
     }
@@ -218,7 +235,7 @@ impl Container {
                     .distrobox()
                     .export_binary(&this.name(), &binary_path)
                     .await?;
-                this.binaries().reload();
+                this.binaries().refetch();
                 Ok(())
             })
     }
@@ -231,7 +248,7 @@ impl Container {
                     .distrobox()
                     .unexport_binary(&this.name(), &binary_path)
                     .await?;
-                this.binaries().reload();
+                this.binaries().refetch();
                 Ok(())
             });
     }
