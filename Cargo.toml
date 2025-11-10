@@ -12,6 +12,7 @@ async-process = "2.3.0"
 futures = "0.3.31"
 anyhow = "1.0.92"
 regex = "1.11.1"
+toml = "0.9.8"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = { version = "1.0", features = ["derive"] }
