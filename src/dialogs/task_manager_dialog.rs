@@ -68,7 +68,7 @@ mod imp {
             let this = self.obj().clone();
             let root_store = self.obj().root_store();
             self.list_box
-                .bind_model(Some(&root_store.tasks()), move |obj| {
+                .bind_model(Some(root_store.tasks().inner()), move |obj| {
                     let task = obj.downcast_ref::<DistroboxTask>().unwrap();
                     this.build_row(task).upcast()
                 });
@@ -102,13 +102,13 @@ mod imp {
                 "Manage Tasks",
             ));
             let this = self.obj().clone();
-            if root_store.tasks().n_items() == 0 {
+            if root_store.tasks().len() == 0 {
                 this.imp().stack.set_visible_child_name("empty");
             } else {
                 this.imp().stack.set_visible_child_name("list");
             }
             root_store
-                .tasks()
+                .tasks().inner()
                 .connect_items_changed(move |tasks, _, _, _| {
                     dbg!(tasks.n_items());
                     if tasks.n_items() == 0 {

@@ -22,7 +22,7 @@ use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
 use crate::distrobox_task::DistroboxTask;
 use crate::fakers::{Command, CommandRunner, FdMode};
-use crate::gtk_utils::reconcile_list_by_key;
+use crate::gtk_utils::{reconcile_list_by_key, TypedListStore};
 use crate::query::Query;
 use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
@@ -42,13 +42,11 @@ mod imp {
         pub distrobox_version: Query<String, anyhow::Error>,
         pub images_query: Query<Vec<String>, anyhow::Error>,
 
-        #[property(get)]
-        containers: gio::ListStore,
+        pub containers: TypedListStore<Container>,
         #[property(get, set, nullable)]
         selected_container: RefCell<Option<crate::container::Container>>,
 
-        #[property(get)]
-        pub tasks: gio::ListStore,
+        pub tasks: TypedListStore<DistroboxTask>,
         #[property(get, set, nullable)]
         pub selected_task: RefCell<Option<DistroboxTask>>,
 
@@ -64,7 +62,7 @@ mod imp {
     impl Default for RootStore {
         fn default() -> Self {
             Self {
-                containers: gio::ListStore::new::<crate::container::Container>(),
+                containers: TypedListStore::new(),
                 command_runner: OnceCell::new(),
                 terminal_repository: RefCell::new(TerminalRepository::new(
                     CommandRunner::new_null(),
@@ -77,7 +75,7 @@ mod imp {
                     Ok(String::new())
                 }),
                 images_query: Query::new("images".into(), || async { Ok(vec![]) }),
-                tasks: gio::ListStore::new::<DistroboxTask>(),
+                tasks: TypedListStore::new(),
                 selected_task: Default::default(),
                 settings: gio::Settings::new("com.ranfdev.DistroShelf"),
             }
@@ -175,6 +173,14 @@ impl RootStore {
         self.imp().terminal_repository.borrow().clone()
     }
 
+    pub fn containers(&self) -> &TypedListStore<Container> {
+        &self.imp().containers
+    }
+
+    pub fn tasks(&self) -> &TypedListStore<DistroboxTask> {
+        &self.imp().tasks
+    }
+
     pub fn load_containers(&self) {
         let this = self.clone();
         glib::MainContext::ref_thread_default().spawn_local_with_priority(
@@ -233,7 +239,6 @@ impl RootStore {
 
     pub fn clear_ended_tasks(&self) {
         self.tasks().retain(|task| {
-            let task: &DistroboxTask = task.downcast_ref().unwrap();
             !task.ended()
         });
     }
@@ -265,8 +270,7 @@ impl RootStore {
         self.view_task(&task);
     }
     pub fn upgrade_all(&self) {
-        for container in self.containers().snapshot() {
-            let container: &Container = container.downcast_ref().unwrap();
+        for container in self.containers().iter() {
             container.upgrade();
         }
     }

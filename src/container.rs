@@ -2,6 +2,7 @@ use crate::{
     distrobox::{ContainerInfo, ExportableApp, Status},
     distrobox_task::DistroboxTask,
     fakers::CommandRunner,
+    gtk_utils::TypedListStore,
     known_distros::{known_distro_by_image, KnownDistro},
     query::Query,
     root_store::RootStore,
@@ -9,7 +10,6 @@ use crate::{
 };
 
 use gtk::{
-    gio,
     glib::{derived_properties, BoxedAnyObject, Properties},
 };
 
@@ -38,8 +38,8 @@ mod imp {
         pub image: RefCell<String>,
         #[property(get, set)]
         pub distro: RefCell<Option<KnownDistro>>,
-        pub apps: Query<gio::ListStore, anyhow::Error>,
-        pub binaries: Query<gio::ListStore, anyhow::Error>,
+        pub apps: Query<TypedListStore<glib::BoxedAnyObject>, anyhow::Error>,
+        pub binaries: Query<TypedListStore<glib::BoxedAnyObject>, anyhow::Error>,
     }
 
     impl Default for Container {
@@ -52,10 +52,10 @@ mod imp {
                 image: RefCell::new(String::new()),
                 distro: RefCell::new(None),
                 apps: Query::new("apps".into(), || async {
-                    Ok(gio::ListStore::new::<BoxedAnyObject>())
+                    Ok(TypedListStore::new())
                 }),
                 binaries: Query::new("binaries".into(), || async {
-                    Ok(gio::ListStore::new::<BoxedAnyObject>())
+                    Ok(TypedListStore::new())
                 }),
             }
         }
@@ -106,8 +106,7 @@ impl Container {
                     .list_apps(&this.name())
                     .await?;
 
-                let mut apps_list = gio::ListStore::new::<BoxedAnyObject>();
-                apps_list.extend(apps.into_iter().map(BoxedAnyObject::new));
+                let apps_list: TypedListStore<BoxedAnyObject> = TypedListStore::from_iter(apps.into_iter().map(BoxedAnyObject::new));
 
                 // Listing the apps starts the container, we need to update its status
                 this.root_store().load_containers();
@@ -125,8 +124,7 @@ impl Container {
                     .get_exported_binaries(&this.name())
                     .await?;
 
-                let mut binaries_list = gio::ListStore::new::<BoxedAnyObject>();
-                binaries_list.extend(binaries.into_iter().map(BoxedAnyObject::new));
+                let binaries_list: TypedListStore<BoxedAnyObject> = TypedListStore::from_iter(binaries.into_iter().map(BoxedAnyObject::new));
 
                 // Listing the binaries starts the container, we need to update its status
                 this.root_store().load_containers();
@@ -137,11 +135,11 @@ impl Container {
         this
     }
 
-    pub fn apps(&self) -> Query<gio::ListStore, anyhow::Error> {
+    pub fn apps(&self) -> Query<TypedListStore<BoxedAnyObject>, anyhow::Error> {
         self.imp().apps.clone()
     }
 
-    pub fn binaries(&self) -> Query<gio::ListStore, anyhow::Error> {
+    pub fn binaries(&self) -> Query<TypedListStore<BoxedAnyObject>, anyhow::Error> {
         self.imp().binaries.clone()
     }
 

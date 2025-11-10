@@ -256,13 +256,13 @@ impl DistroShelfWindow {
         let imp = self.imp();
 
         imp.sidebar_list_box
-            .bind_model(Some(&self.root_store().containers()), |obj| {
+            .bind_model(Some(self.root_store().containers().inner()), |obj| {
                 let container = obj.downcast_ref().unwrap();
                 SidebarRow::new(container).upcast()
             });
 
         let this = self.clone();
-        self.root_store().containers().connect_items_changed(
+        self.root_store().containers().inner().connect_items_changed(
             move |list, _position, _removed, _added| {
                 let visible_child_name = if list.n_items() == 0 {
                     "no-distroboxes"
@@ -277,10 +277,9 @@ impl DistroShelfWindow {
         let this = self.clone();
         imp.sidebar_list_box.connect_row_activated(move |_, row| {
             let index = row.index();
-            let item = this.root_store().containers().item(index as u32);
-            let selected_container: &Container = item.and_downcast_ref().unwrap();
+            let selected_container = this.root_store().containers().get(index as u32);
             this.root_store()
-                .set_selected_container(Some(selected_container.clone()));
+                .set_selected_container(selected_container);
         });
 
         // Add tasks button to the bottom of the sidebar

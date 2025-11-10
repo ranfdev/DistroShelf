@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use gtk::prelude::*;
-use gtk::{gio, glib};
+use gtk::glib;
+mod typed_list_store;
+pub use typed_list_store::TypedListStore;
 
 pub fn reconcile_properties<T: IsA<glib::Object>>(dest: &T, src: &T, properties: &[&str]) {
     for prop in dest.list_properties() {
@@ -19,7 +21,7 @@ pub fn reconcile_properties<T: IsA<glib::Object>>(dest: &T, src: &T, properties:
     }
 }
 pub fn reconcile_list_by_key<T: IsA<glib::Object>, K: Hash + std::cmp::Eq>(
-    list: gio::ListStore,
+    list: &TypedListStore<T>,
     other: &[T],
     key_fn: impl Fn(&T) -> K,
     properties: &[&str],
@@ -27,7 +29,6 @@ pub fn reconcile_list_by_key<T: IsA<glib::Object>, K: Hash + std::cmp::Eq>(
     let mut other_map: HashMap<K, (&T, bool)> =
         other.iter().map(|v| (key_fn(v), (v, false))).collect();
     list.retain(|item| {
-        let item = item.downcast_ref().unwrap();
         let key = key_fn(item);
         if let Some(other) = other_map.get_mut(&key) {
             reconcile_properties(item, other.0, properties);

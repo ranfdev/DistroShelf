@@ -5,7 +5,7 @@ use gtk::{gio, glib, pango};
 
 use crate::container::Container;
 use crate::distrobox::{ExportableApp, ExportableBinary};
-use crate::gtk_utils::reaction;
+use crate::gtk_utils::{reaction, TypedListStore};
 use crate::fakers::Command;
 
 use std::cell::RefCell;
@@ -227,8 +227,8 @@ impl ExportableAppsDialog {
         });
         
         let this_clone = this.clone();
-        let render_apps = move |apps_data: &gio::ListStore| {
-            let n_apps = apps_data.n_items();
+        let render_apps = move |apps_data: &TypedListStore<BoxedAnyObject>| {
+            let n_apps = apps_data.len();
 
             // Update description based on whether there are apps
             if n_apps == 0 {
@@ -242,7 +242,7 @@ impl ExportableAppsDialog {
             this_clone
                 .imp()
                 .list_box
-                .bind_model(Some(apps_data), move |obj| {
+                .bind_model(Some(apps_data.inner()), move |obj| {
                     let app = obj
                         .downcast_ref::<BoxedAnyObject>()
                         .map(|obj| obj.borrow::<ExportableApp>())
@@ -252,8 +252,8 @@ impl ExportableAppsDialog {
         };
         
         let this_clone = this.clone();
-        let render_binaries = move |binaries_data: &gio::ListStore| {
-            let n_binaries = binaries_data.n_items();
+        let render_binaries = move |binaries_data: &TypedListStore<BoxedAnyObject>| {
+            let n_binaries = binaries_data.len();
 
             // Update description based on whether there are binaries
             if n_binaries == 0 {
@@ -267,7 +267,7 @@ impl ExportableAppsDialog {
             this_clone
                 .imp()
                 .binaries_list_box
-                .bind_model(Some(binaries_data), move |obj| {
+                .bind_model(Some(binaries_data.inner()), move |obj| {
                     let binary = obj
                         .downcast_ref::<BoxedAnyObject>()
                         .map(|obj| obj.borrow::<ExportableBinary>())

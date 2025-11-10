@@ -69,7 +69,7 @@ mod imp {
             obj.set_child(Some(&self.button));
 
             let this_clone = obj.clone();
-            obj.root_store().tasks().connect_items_changed(
+            obj.root_store().tasks().inner().connect_items_changed(
                 move |tasks, position, _removed, added| {
                     // Show warning if a task already failed
                     // This loop will reset the previous warning flag if there is no failed task
