@@ -21,11 +21,97 @@ use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
 use crate::distrobox_task::DistroboxTask;
-use crate::fakers::{Command, CommandRunner, FdMode};
+use crate::fakers::{Child, Command, CommandRunner, FdMode};
 use crate::gtk_utils::{reconcile_list_by_key, TypedListStore};
 use crate::query::Query;
 use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
+
+use std::pin::Pin;
+use std::task::{Context as TaskContext, Poll};
+use serde::Deserialize;
+use std::collections::HashMap;
+
+/// Podman event structure
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct PodmanEvent {
+    #[serde(rename = "ID")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub status: Option<String>,
+    #[serde(rename = "Type")]
+    pub event_type: Option<String>,
+    pub attributes: Option<HashMap<String, String>>,
+}
+
+impl PodmanEvent {
+    /// Check if this event is for a distrobox container
+    pub fn is_distrobox(&self) -> bool {
+        self.attributes
+            .as_ref()
+            .and_then(|attrs| attrs.get("manager"))
+            .map(|manager| manager == "distrobox")
+            .unwrap_or(false)
+    }
+
+    /// Check if this is a container event
+    pub fn is_container_event(&self) -> bool {
+        self.event_type
+            .as_ref()
+            .map(|t| t == "container")
+            .unwrap_or(false)
+    }
+}
+
+/// Stream wrapper for podman events
+pub struct PodmanEventsStream {
+    lines: Option<futures::io::Lines<futures::io::BufReader<Box<dyn futures::io::AsyncRead + Send + Unpin>>>>,
+    _child: Option<Box<dyn Child + Send>>,
+}
+
+impl Stream for PodmanEventsStream {
+    type Item = Result<String, std::io::Error>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut TaskContext<'_>) -> Poll<Option<Self::Item>> {
+        if let Some(ref mut lines) = self.lines {
+            Pin::new(lines).poll_next(cx)
+        } else {
+            Poll::Ready(None)
+        }
+    }
+}
+
+/// Listen to podman events and return a stream of event lines
+pub fn listen_podman_events(
+    command_runner: CommandRunner,
+) -> Result<PodmanEventsStream, std::io::Error> {
+    use futures::io::{AsyncBufReadExt, BufReader};
+
+    // Create the podman events command
+    let mut cmd = Command::new("podman");
+    cmd.arg("events");
+    cmd.arg("--format");
+    cmd.arg("json");
+    cmd.stdout = FdMode::Pipe;
+    cmd.stderr = FdMode::Pipe;
+
+    // Spawn the command
+    let mut child = command_runner.spawn(cmd)?;
+
+    // Get stdout and create a buffered reader
+    let stdout = child.take_stdout().ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::Other, "No stdout available")
+    })?;
+
+    let bufread = BufReader::new(stdout);
+    let lines = bufread.lines();
+
+    Ok(PodmanEventsStream {
+        lines: Some(lines),
+        _child: Some(child),
+    })
+}
 
 mod imp {
     use crate::query::Query;
@@ -150,6 +236,7 @@ impl RootStore {
         }
 
         this.load_containers();
+        this.start_listening_podman_events();
         this
     }
 
@@ -209,6 +296,64 @@ impl RootStore {
             },
         );
     }
+
+    /// Start listening to podman events and auto-refresh container list for distrobox events
+    pub fn start_listening_podman_events(&self) {
+        let this = self.clone();
+        let command_runner = self.command_runner();
+
+        glib::MainContext::ref_thread_default().spawn_local(async move {
+            info!("Starting podman events listener");
+            
+            let stream = match listen_podman_events(command_runner) {
+                Ok(stream) => stream,
+                Err(e) => {
+                    warn!("Failed to start podman events listener: {}", e);
+                    return;
+                }
+            };
+
+            // Process events
+            stream
+                .for_each(|line_result| {
+                    let this = this.clone();
+                    async move {
+                        match line_result {
+                            Ok(line) => {
+                                // Parse the JSON event
+                                match serde_json::from_str::<PodmanEvent>(&line) {
+                                    Ok(event) => {
+                                        debug!(
+                                            "Received podman event: type={:?}, status={:?}, name={:?}",
+                                            event.event_type, event.status, event.name
+                                        );
+
+                                        // Only refresh if this is a distrobox container event
+                                        if event.is_container_event() && event.is_distrobox() {
+                                            info!(
+                                                "Distrobox container event detected ({}), refreshing container list",
+                                                event.status.as_deref().unwrap_or("unknown")
+                                            );
+                                            this.load_containers();
+                                        }
+                                    }
+                                    Err(e) => {
+                                        debug!("Failed to parse podman event JSON: {} - Line: {}", e, line);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                error!("Error reading podman event: {}", e);
+                            }
+                        }
+                    }
+                })
+                .await;
+
+            warn!("Podman events listener stopped");
+        });
+    }
+
     pub fn selected_container_name(&self) -> Option<String> {
         self.selected_container().map(|c| c.name())
     }
