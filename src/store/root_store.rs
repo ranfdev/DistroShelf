@@ -127,6 +127,7 @@ mod imp {
 
         pub distrobox_version: Query<String, anyhow::Error>,
         pub images_query: Query<Vec<String>, anyhow::Error>,
+        pub containers_query: Query<Vec<Container>, anyhow::Error>,
 
         pub containers: TypedListStore<Container>,
         #[property(get, set, nullable)]
@@ -161,6 +162,7 @@ mod imp {
                     Ok(String::new())
                 }),
                 images_query: Query::new("images".into(), || async { Ok(vec![]) }),
+                containers_query: Query::new("containers".into(), || async { Ok(vec![]) }),
                 tasks: TypedListStore::new(),
                 selected_task: Default::default(),
                 settings: gio::Settings::new("com.ranfdev.DistroShelf"),
@@ -224,6 +226,38 @@ impl RootStore {
             }
         });
 
+        let this_clone = this.clone();
+        this.imp().containers_query.set_fetcher(move || {
+            let this_clone = this_clone.clone();
+            async move {
+                let containers = this_clone.distrobox().list().await?;
+                let containers: Vec<_> = containers
+                    .into_values()
+                    .map(|v| Container::from_info(&this_clone, v))
+                    .collect();
+                Ok(containers)
+            }
+        });
+
+        let this_clone = this.clone();
+        this.containers_query().connect_success(move |containers| {
+            let this = this_clone.clone();
+            let previous_selected = this.selected_container().clone();
+            
+            reconcile_list_by_key(
+                this.containers(),
+                &containers[..],
+                |item| item.name(),
+                &["name", "status-tag", "status-detail", "distro", "image"],
+            );
+            
+            if previous_selected.is_none() {
+                if let Some(first) = containers.first() {
+                    this.set_selected_container(Some(first.clone()));
+                }
+            }
+        });
+
         if this.selected_terminal().is_none() {
             let this = this.clone();
             glib::MainContext::ref_thread_default().spawn_local(async move {
@@ -235,7 +269,7 @@ impl RootStore {
             });
         }
 
-        this.load_containers();
+        // this.load_containers();
         this.start_listening_podman_events();
         this
     }
@@ -250,6 +284,10 @@ impl RootStore {
 
     pub fn images_query(&self) -> Query<Vec<String>, anyhow::Error> {
         self.imp().images_query.clone()
+    }
+
+    pub fn containers_query(&self) -> Query<Vec<Container>, anyhow::Error> {
+        self.imp().containers_query.clone()
     }
 
     pub fn command_runner(&self) -> CommandRunner {
@@ -269,32 +307,7 @@ impl RootStore {
     }
 
     pub fn load_containers(&self) {
-        let this = self.clone();
-        glib::MainContext::ref_thread_default().spawn_local_with_priority(
-            glib::Priority::LOW,
-            async move {
-                let previous_selected = this.selected_container().clone();
-                let Ok(containers) = this.distrobox().list().await else {
-                    return;
-                };
-                let containers: Vec<_> = containers
-                    .into_values()
-                    .map(|v| Container::from_info(&this, v))
-                    .collect();
-                reconcile_list_by_key(
-                    this.containers(),
-                    &containers[..],
-                    |item| item.name(),
-                    &["name", "status-tag", "status-detail", "distro", "image"],
-                );
-                if previous_selected.is_none() {
-                    if let Some(first) = containers.first() {
-                        let container: &Container = first.downcast_ref().unwrap();
-                        this.set_selected_container(Some(container.clone()));
-                    }
-                }
-            },
-        );
+        self.containers_query().refetch();
     }
 
     /// Start listening to podman events and auto-refresh container list for distrobox events
@@ -334,7 +347,7 @@ impl RootStore {
                                                 "Distrobox container event detected ({}), refreshing container list",
                                                 event.status.as_deref().unwrap_or("unknown")
                                             );
-                                            this.load_containers();
+                                            this.containers_query().refetch_if_stale(Duration::from_secs(1));
                                         }
                                     }
                                     Err(e) => {

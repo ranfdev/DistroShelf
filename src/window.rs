@@ -149,7 +149,7 @@ impl DistroShelfWindow {
                         dialog.close();
                     }
                 }
-                let dialog: adw::Dialog = match dbg!(root_store.current_dialog().tag().as_str()) {
+                let dialog: adw::Dialog = match root_store.current_dialog().tag().as_str() {
                     "exportable-apps" => ExportableAppsDialog::new(
                         &this_clone.root_store().selected_container().unwrap(),
                     )
