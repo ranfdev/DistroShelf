@@ -38,6 +38,7 @@ mod terminal_combo_row;
 mod welcome_view;
 mod window;
 pub use store::root_store;
+use tracing::level_filters::LevelFilter;
 pub mod query;
 
 use self::application::DistroShelfApplication;
@@ -48,13 +49,17 @@ use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use tracing::info;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 fn main() -> glib::ExitCode {
     // Initialize tracing
     tracing_subscriber::registry()
         .with(fmt::layer())
-        .with(EnvFilter::from_default_env())
+        .with(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
         .init();
 
     info!("Starting DistroShelf application");

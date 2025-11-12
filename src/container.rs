@@ -20,6 +20,8 @@ use std::cell::RefCell;
 use std::path::Path;
 
 mod imp {
+    use std::time::Duration;
+
     use super::*;
 
     // This contains all the container informations given by distrobox, plus an associated KnownDistro struct
@@ -36,10 +38,10 @@ mod imp {
         pub status_detail: RefCell<String>,
         #[property(get, set)]
         pub image: RefCell<String>,
-        #[property(get, set)]
+        #[property(get, set, nullable)]
         pub distro: RefCell<Option<KnownDistro>>,
-        pub apps: Query<TypedListStore<glib::BoxedAnyObject>, anyhow::Error>,
-        pub binaries: Query<TypedListStore<glib::BoxedAnyObject>, anyhow::Error>,
+        pub apps: Query<TypedListStore<glib::BoxedAnyObject>>,
+        pub binaries: Query<TypedListStore<glib::BoxedAnyObject>>,
     }
 
     impl Default for Container {
@@ -51,11 +53,26 @@ mod imp {
                 status_detail: RefCell::new(String::new()),
                 image: RefCell::new(String::new()),
                 distro: RefCell::new(None),
+
+                // Fetching apps often fails when the container is not running and distrobox has to start it, 
+                // so we add retries
                 apps: Query::new("apps".into(), || async {
                     Ok(TypedListStore::new())
+                })
+                .with_timeout(Duration::from_secs(1))
+                .with_retry_strategy(|n|  if n < 3 {
+                    Some(Duration::from_secs(n as u64))
+                } else {
+                    None
                 }),
                 binaries: Query::new("binaries".into(), || async {
                     Ok(TypedListStore::new())
+                })
+                .with_timeout(Duration::from_secs(1))
+                .with_retry_strategy(|n|  if n < 3 {
+                    Some(Duration::from_secs(n as u64))
+                } else {
+                    None
                 }),
             }
         }
@@ -79,22 +96,11 @@ impl Container {
         glib::Object::builder().build()
     }
     pub fn from_info(root_store: &RootStore, value: ContainerInfo) -> Self {
-        let distro = known_distro_by_image(&value.image);
-
-        let (status_tag, status_detail) = match value.status {
-            Status::Up(v) => ("up", v),
-            Status::Created(v) => ("created", v),
-            Status::Exited(v) => ("exited", v),
-            Status::Other(v) => ("other", v),
-        };
         let this: Self = glib::Object::builder()
             .property("root-store", root_store)
-            .property("name", value.name)
-            .property("image", value.image)
-            .property("distro", distro)
-            .property("status-tag", status_tag)
-            .property("status-detail", status_detail)
             .build();
+
+        this.apply_container_info(value);
 
         let this_clone = this.clone();
         this.apps().set_fetcher(move || {
@@ -135,11 +141,28 @@ impl Container {
         this
     }
 
-    pub fn apps(&self) -> Query<TypedListStore<BoxedAnyObject>, anyhow::Error> {
+    pub fn apply_container_info(&self, value: ContainerInfo) {
+        let distro = known_distro_by_image(&value.image);
+
+        let (status_tag, status_detail) = match value.status {
+            Status::Up(v) => ("up", v),
+            Status::Created(v) => ("created", v),
+            Status::Exited(v) => ("exited", v),
+            Status::Other(v) => ("other", v),
+        };
+
+        self.set_name(value.name);
+        self.set_image(value.image);
+        self.set_distro(distro);
+        self.set_status_tag(status_tag.to_string());
+        self.set_status_detail(status_detail);
+    }
+
+    pub fn apps(&self) -> Query<TypedListStore<BoxedAnyObject>> {
         self.imp().apps.clone()
     }
 
-    pub fn binaries(&self) -> Query<TypedListStore<BoxedAnyObject>, anyhow::Error> {
+    pub fn binaries(&self) -> Query<TypedListStore<BoxedAnyObject>> {
         self.imp().binaries.clone()
     }
 

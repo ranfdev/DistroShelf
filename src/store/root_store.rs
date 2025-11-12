@@ -125,9 +125,9 @@ mod imp {
         pub terminal_repository: RefCell<TerminalRepository>,
         pub command_runner: OnceCell<CommandRunner>,
 
-        pub distrobox_version: Query<String, anyhow::Error>,
-        pub images_query: Query<Vec<String>, anyhow::Error>,
-        pub containers_query: Query<Vec<Container>, anyhow::Error>,
+        pub distrobox_version: Query<String>,
+        pub images_query: Query<Vec<String>>,
+        pub containers_query: Query<Vec<Container>>,
 
         pub containers: TypedListStore<Container>,
         #[property(get, set, nullable)]
@@ -278,15 +278,15 @@ impl RootStore {
         self.imp().distrobox.get().unwrap()
     }
 
-    pub fn distrobox_version(&self) -> Query<String, anyhow::Error> {
+    pub fn distrobox_version(&self) -> Query<String> {
         self.imp().distrobox_version.clone()
     }
 
-    pub fn images_query(&self) -> Query<Vec<String>, anyhow::Error> {
+    pub fn images_query(&self) -> Query<Vec<String>> {
         self.imp().images_query.clone()
     }
 
-    pub fn containers_query(&self) -> Query<Vec<Container>, anyhow::Error> {
+    pub fn containers_query(&self) -> Query<Vec<Container>> {
         self.imp().containers_query.clone()
     }
 
@@ -307,7 +307,7 @@ impl RootStore {
     }
 
     pub fn load_containers(&self) {
-        self.containers_query().refetch();
+        self.containers_query().refetch_if_stale(Duration::from_secs(1));
     }
 
     /// Start listening to podman events and auto-refresh container list for distrobox events
@@ -336,14 +336,9 @@ impl RootStore {
                                 // Parse the JSON event
                                 match serde_json::from_str::<PodmanEvent>(&line) {
                                     Ok(event) => {
-                                        debug!(
-                                            "Received podman event: type={:?}, status={:?}, name={:?}",
-                                            event.event_type, event.status, event.name
-                                        );
-
                                         // Only refresh if this is a distrobox container event
                                         if event.is_container_event() && event.is_distrobox() {
-                                            info!(
+                                            debug!(
                                                 "Distrobox container event detected ({}), refreshing container list",
                                                 event.status.as_deref().unwrap_or("unknown")
                                             );
