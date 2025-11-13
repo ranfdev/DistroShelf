@@ -130,8 +130,7 @@ mod imp {
         pub containers_query: Query<Vec<Container>>,
 
         pub containers: TypedListStore<Container>,
-        #[property(get, set, nullable)]
-        selected_container: RefCell<Option<crate::container::Container>>,
+        pub selected_container_model: OnceCell<gtk::SingleSelection>,
 
         pub tasks: TypedListStore<DistroboxTask>,
         #[property(get, set, nullable)]
@@ -154,7 +153,7 @@ mod imp {
                 terminal_repository: RefCell::new(TerminalRepository::new(
                     CommandRunner::new_null(),
                 )),
-                selected_container: Default::default(),
+                selected_container_model: OnceCell::new(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
                 distrobox: Default::default(),
@@ -203,6 +202,14 @@ impl RootStore {
             .or(Err("distrobox already set"))
             .unwrap();
 
+        // Initialize the SingleSelection model
+        let selection = gtk::SingleSelection::new(Some(this.containers().inner().clone()));
+        this.imp()
+            .selected_container_model
+            .set(selection)
+            .or(Err("selected_container_model already set"))
+            .unwrap();
+
         let this_clone = this.clone();
         this.imp().distrobox_version.set_fetcher(move || {
             let this_clone = this_clone.clone();
@@ -242,7 +249,6 @@ impl RootStore {
         let this_clone = this.clone();
         this.containers_query().connect_success(move |containers| {
             let this = this_clone.clone();
-            let previous_selected = this.selected_container().clone();
             
             reconcile_list_by_key(
                 this.containers(),
@@ -250,12 +256,6 @@ impl RootStore {
                 |item| item.name(),
                 &["name", "status-tag", "status-detail", "distro", "image"],
             );
-            
-            if previous_selected.is_none() {
-                if let Some(first) = containers.first() {
-                    this.set_selected_container(Some(first.clone()));
-                }
-            }
         });
 
         if this.selected_terminal().is_none() {
@@ -304,6 +304,21 @@ impl RootStore {
 
     pub fn tasks(&self) -> &TypedListStore<DistroboxTask> {
         &self.imp().tasks
+    }
+
+    pub fn selected_container_model(&self) -> gtk::SingleSelection {
+        self.imp().selected_container_model.get().unwrap().clone()
+    }
+
+    /// Get the currently selected container, if any
+    pub fn selected_container(&self) -> Option<Container> {
+        let model = self.selected_container_model();
+        let position = model.selected();
+        if position == gtk::INVALID_LIST_POSITION {
+            None
+        } else {
+            model.selected_item().and_then(|obj| obj.downcast::<Container>().ok())
+        }
     }
 
     pub fn load_containers(&self) {

@@ -25,7 +25,7 @@ mod imp {
         pub status_overlay: gtk::Overlay,
         pub status_dot: gtk::Box,
 
-        #[property(get, set)]
+        #[property(get, set=Self::set_container)]
         pub container: RefCell<Container>,
         #[property(get, set=Self::set_status_tag)]
         pub status_tag: RefCell<String>,
@@ -34,6 +34,22 @@ mod imp {
     }
 
     impl SidebarRow {
+        fn set_container(&self, value: &Container) {
+            self.container.replace(value.clone());
+            // Bind properties
+            value
+                .bind_property("status-tag", &self.obj().clone(), "status-tag")
+                .sync_create()
+                .build();
+            value
+                .bind_property("name", &self.title_label, "label")
+                .sync_create()
+                .build();
+            value
+                .bind_property("image", &self.obj().clone(), "image")
+                .sync_create()
+                .build();
+        }
         fn set_image(&self, value: &str) {
             self.image.replace(value.to_string());
             distro_icon::set_image(&self.icon, value);
@@ -150,23 +166,7 @@ glib::wrapper! {
 impl SidebarRow {
     pub fn new(container: &Container) -> Self {
         let obj: Self = glib::Object::builder().build();
-        obj.set_data(container);
+        obj.set_container(container);
         obj
-    }
-
-    fn set_data(&self, container: &Container) {
-        let imp = self.imp();
-        container
-            .bind_property("status-tag", self, "status-tag")
-            .sync_create()
-            .build();
-        container
-            .bind_property("name", &imp.title_label, "label")
-            .sync_create()
-            .build();
-        container
-            .bind_property("image", self, "image")
-            .sync_create()
-            .build();
     }
 }
