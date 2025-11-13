@@ -89,7 +89,7 @@ impl TerminalRepository {
         this.imp()
             .command_runner
             .set(command_runner)
-            .map_err(|e| "command runner already set")
+            .map_err(|_| "command runner already set")
             .unwrap();
 
         let mut list = SUPPORTED_TERMINALS.clone();

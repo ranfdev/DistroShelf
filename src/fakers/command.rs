@@ -1,5 +1,7 @@
 use std::{
-    ffi::{OsStr, OsString}, fmt::Display, process::Stdio
+    ffi::{OsStr, OsString},
+    fmt::Display,
+    process::Stdio,
 };
 
 #[derive(Debug, Clone)]
@@ -83,6 +85,21 @@ impl Command {
         S: AsRef<OsStr>,
     {
         self.args.push(arg.as_ref().to_owned());
+        self
+    }
+
+    // removes the first occurrence of an arg by name and its value
+    pub fn remove_flag_value_arg(&mut self, name: &str) -> &mut Command {
+        self.args.iter().position(|x| x == name).map(|index| {
+            self.args.remove(index);
+            self.args.remove(index); // same index, as the vector has shifted
+        });
+        self
+    }
+    pub fn remove_flag_arg(&mut self, name: &str) -> &mut Command {
+        self.args.iter().position(|x| x == name).map(|index| {
+            self.args.remove(index);
+        });
         self
     }
 }

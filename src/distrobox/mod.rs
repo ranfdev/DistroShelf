@@ -672,7 +672,10 @@ impl Distrobox {
     }
 
     /// Lists only the binaries that have already been exported from the container.
-    pub async fn get_exported_binaries(&self, box_name: &str) -> Result<Vec<ExportableBinary>, Error> {
+    pub async fn get_exported_binaries(
+        &self,
+        box_name: &str,
+    ) -> Result<Vec<ExportableBinary>, Error> {
         let mut cmd = dbcmd();
         cmd.args([
             "enter",
@@ -684,13 +687,13 @@ impl Distrobox {
         // Example output: '/usr/bin/vim' | /home/user/.local/bin/vim
         let output = self.cmd_output_string(cmd).await?;
         debug!(binaries_output = output);
-        
+
         let mut binaries = Vec::new();
         for line in output.lines() {
             if line.is_empty() || !line.contains('|') {
                 continue;
             }
-            
+
             let parts: Vec<&str> = line.split('|').collect();
             if parts.len() >= 2 {
                 let source_path = parts[0].trim().to_string();
@@ -698,19 +701,19 @@ impl Distrobox {
                 let source_path = source_path.trim_matches('\'').to_string();
 
                 let exported_path_str = parts[1].trim();
-                
+
                 // Only include binaries that have a non-empty exported path. It should always be the case, but BoxBuddy defensively checks it.
                 // In this case we try to follow BoxBuddy's behavior to keep consistency for users.
                 if !exported_path_str.is_empty() {
                     let exported_path = exported_path_str.to_string();
-                    
+
                     // Extract binary name from source path
                     let name = Path::new(&source_path)
                         .file_name()
                         .and_then(|n| n.to_str())
                         .unwrap_or(&source_path)
                         .to_string();
-                    
+
                     binaries.push(ExportableBinary {
                         name,
                         source_path,
@@ -719,7 +722,7 @@ impl Distrobox {
                 }
             }
         }
-        
+
         Ok(binaries)
     }
 
@@ -774,7 +777,8 @@ impl Distrobox {
         // If it doesn't contain a '/' it's likely just a binary name
         let resolved_path = if !binary_name_or_path.contains('/') {
             // Resolve the binary name to its full path using 'which'
-            self.resolve_binary_path(container, binary_name_or_path).await?
+            self.resolve_binary_path(container, binary_name_or_path)
+                .await?
         } else {
             binary_name_or_path.to_string()
         };
@@ -789,13 +793,17 @@ impl Distrobox {
     }
 
     /// Resolves a binary name to its full path using 'which' inside the container
-    async fn resolve_binary_path(&self, container: &str, binary_name: &str) -> Result<String, Error> {
+    async fn resolve_binary_path(
+        &self,
+        container: &str,
+        binary_name: &str,
+    ) -> Result<String, Error> {
         let mut cmd = dbcmd();
         cmd.args(["enter", "--name", container, "--", "which", binary_name]);
-        
+
         let output = self.cmd_output_string(cmd).await?;
         let path = output.trim();
-        
+
         if path.is_empty() {
             return Err(Error::CommandFailed {
                 exit_code: Some(1),
@@ -803,7 +811,7 @@ impl Distrobox {
                 stderr: format!("Binary '{}' not found in container", binary_name),
             });
         }
-        
+
         Ok(path.to_string())
     }
 
@@ -848,8 +856,7 @@ impl Distrobox {
         cmd.arg("assemble").arg("create").arg("--file").arg(url);
         self.cmd_spawn(cmd)
     }
-    // create
-    pub async fn create(&self, args: CreateArgs) -> Result<Box<dyn Child + Send>, Error> {
+    fn create_cmd(args: CreateArgs) -> Command {
         let mut cmd = dbcmd();
         cmd.arg("create").arg("--yes");
         if !args.image.is_empty() {
@@ -872,6 +879,11 @@ impl Distrobox {
         for volume in args.volumes {
             cmd.arg("--volume").arg(volume.to_string());
         }
+        cmd
+    }
+    // create
+    pub async fn create(&self, args: CreateArgs) -> Result<Box<dyn Child + Send>, Error> {
+        let cmd = Self::create_cmd(args);
         self.cmd_spawn(cmd)
     }
     // create --compatibility
@@ -897,18 +909,16 @@ impl Distrobox {
         cmd.arg("enter").arg(name);
         cmd
     }
-    // clone
-    pub async fn clone_to(
+    // clone from an existing container using create args to customize the clone
+    pub async fn clone_from(
         &self,
         source_name: &str,
-        target_name: &str,
+        args: CreateArgs,
     ) -> Result<Box<dyn Child + Send>, Error> {
-        let mut cmd = dbcmd();
-        cmd.arg("create")
-            .arg("--name")
-            .arg(target_name)
-            .arg("--clone")
-            .arg(source_name);
+        let mut cmd = Self::create_cmd(args);
+        cmd.remove_flag_value_arg("--image");
+        cmd.remove_flag_arg("--yes");
+        cmd.arg("--clone").arg(source_name);
         self.cmd_spawn(cmd)
     }
     // list | ls

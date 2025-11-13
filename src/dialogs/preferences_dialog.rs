@@ -4,7 +4,7 @@ use crate::terminal_combo_row::TerminalComboRow;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{clone, derived_properties, Properties};
-use gtk::{gio, glib};
+use gtk::glib;
 use std::cell::RefCell;
 use tracing::error;
 

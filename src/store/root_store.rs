@@ -423,6 +423,22 @@ impl RootStore {
         });
         self.view_task(&task);
     }
+    pub fn clone_container(&self, source_name: &str, create_args: CreateArgs) {
+        let this = self.clone();
+        let name = create_args.name.to_string();
+        let source = source_name.to_string();
+        let task = self.create_task(&name, "clone", move |task| {
+            let this = this.clone();
+            let create_args = create_args;
+            let source = source.clone();
+            async move {
+                task.set_description("Cloning container (may take some time)...");
+                let child = this.distrobox().clone_from(&source, create_args).await?;
+                task.handle_child_output(child).await
+            }
+        });
+        self.view_task(&task);
+    }
     pub fn assemble_container(&self, file_path: &str) {
         let this = self.clone();
         let file_path_clone = file_path.to_string();

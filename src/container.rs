@@ -1,5 +1,5 @@
 use crate::{
-    distrobox::{ContainerInfo, ExportableApp, Status},
+    distrobox::{ContainerInfo, CreateArgs, CreateArgName, ExportableApp, Status},
     distrobox_task::DistroboxTask,
     fakers::CommandRunner,
     gtk_utils::TypedListStore,
@@ -272,22 +272,6 @@ impl Container {
                 this.binaries().refetch();
                 Ok(())
             });
-    }
-    pub fn clone_to(&self, target_name: &str) {
-        let this = self.clone();
-        let target_name_clone = target_name.to_string();
-        let task = self
-            .root_store()
-            .create_task(&this.name(), "clone", move |task| async move {
-                let child = this
-                    .root_store()
-                    .distrobox()
-                    .clone_to(&this.name(), &target_name_clone)
-                    .await?;
-                task.handle_child_output(child).await?;
-                Ok(())
-            });
-        self.root_store().view_task(&task);
     }
     pub fn delete(&self) {
         let this = self.clone();

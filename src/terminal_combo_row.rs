@@ -2,7 +2,6 @@
 // This file is licensed under the same terms as the project it belongs to
 
 use crate::root_store::RootStore;
-use crate::supported_terminals;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::clone;

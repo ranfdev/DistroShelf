@@ -6,6 +6,8 @@ use tracing::error;
 
 use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
 use crate::root_store::RootStore;
+use crate::container::Container;
+use crate::sidebar_row::SidebarRow;
 
 use std::path::PathBuf;
 use std::{cell::RefCell, rc::Rc};
@@ -42,6 +44,38 @@ mod imp {
         pub init_row: adw::SwitchRow,
         pub volume_rows: Rc<RefCell<Vec<adw::EntryRow>>>,
         pub scrolled_window: gtk::ScrolledWindow,
+        #[property(get, set=Self::set_clone_src, nullable)]
+        pub clone_src: RefCell<Option<Container>>,
+        // transient widget used to show the source container info when cloning
+        pub clone_sidebar: RefCell<Option<SidebarRow>>,
+        pub cloning_content: gtk::Box,
+        pub view_switcher: adw::InlineViewSwitcher,
+    }
+
+    impl CreateDistroboxDialog {
+        fn set_clone_src(&self, value: Option<Container>) {
+            // store the value
+            self.clone_src.replace(value.clone());
+
+            if let Some(sidebar_row) = self.clone_sidebar.borrow_mut().take() {
+                self.cloning_content.remove(&sidebar_row);
+            }
+
+            if let Some(container) = value {
+                self.image_row.set_visible(false);
+                self.cloning_content.set_visible(true);
+                self.view_switcher.set_visible(false);
+                let sidebar_row = SidebarRow::new(&container);
+                // insert at the top of the cloning_content box
+                self.cloning_content.append(&sidebar_row);
+                self.clone_sidebar.replace(Some(sidebar_row));
+            } else {
+                // no clone source, ensure image row is visible
+                self.image_row.set_visible(true);
+                self.cloning_content.set_visible(false);
+                self.view_switcher.set_visible(true);
+            }
+        }
     }
 
     #[derived_properties]
@@ -56,15 +90,35 @@ mod imp {
             // Create view switcher and stack
             let view_stack = adw::ViewStack::new();
 
-            // Create GUI creation page
-            let gui_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
-            gui_page.set_margin_start(12);
-            gui_page.set_margin_end(12);
-            gui_page.set_margin_top(12);
-            gui_page.set_margin_bottom(12);
+            self.content.set_margin_start(12);
+            self.content.set_margin_end(12);
+            self.content.set_margin_top(12);
+            self.content.set_margin_bottom(12);
+            self.content.set_spacing(12);
+            self.content.set_orientation(gtk::Orientation::Vertical);
+
+
+            // Create cloning_content box with header and sidebar
+            self.cloning_content.set_orientation(gtk::Orientation::Vertical);
+            self.cloning_content.set_spacing(12);
+            self.cloning_content.set_visible(false);
+
+            // Create header box with "Cloning" label
+            let cloning_header = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+            cloning_header.set_homogeneous(false);
+
+            let cloning_label = gtk::Label::new(Some("Cloning"));
+            cloning_label.set_halign(gtk::Align::Start);
+            cloning_label.add_css_class("title-3");
+
+            cloning_header.set_hexpand(true);
+            cloning_header.append(&cloning_label);
+
+            self.cloning_content.append(&cloning_header);
+            self.content.append(&self.cloning_content);
+
             let preferences_group = adw::PreferencesGroup::new();
             preferences_group.set_title("Settings");
-
             self.name_row.set_title("Name");
 
             self.image_row
@@ -133,8 +187,8 @@ mod imp {
             preferences_group.add(&self.init_row);
 
             let volumes_group = self.obj().build_volumes_group();
-            gui_page.append(&preferences_group);
-            gui_page.append(&volumes_group);
+            self.content.append(&preferences_group);
+            self.content.append(&volumes_group);
 
             let create_btn = gtk::Button::with_label("Create");
             create_btn.set_halign(gtk::Align::Center);
@@ -148,7 +202,14 @@ mod imp {
                         let res = obj.extract_create_args().await;
                         obj.update_errors(&res);
                         if let Ok(create_args) = res {
-                            obj.root_store().create_container(create_args);
+                            // If cloning from a source, delegate to clone_container, otherwise create normally
+                            if let Some(src) = obj.clone_src() {
+                                obj.root_store()
+                                    .clone_container(&src.name(), create_args);
+                            } else {
+                                obj.root_store().create_container(create_args);
+                            }
+                            obj.close();
                         }
                     });
                 }
@@ -157,7 +218,7 @@ mod imp {
             create_btn.add_css_class("pill");
             create_btn.set_margin_top(12);
 
-            gui_page.append(&create_btn);
+            self.content.append(&create_btn);
 
             // Create page for assemble from file
             let assemble_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
@@ -261,22 +322,22 @@ mod imp {
             });
 
             // Add pages to view stack
-            view_stack.add_titled(&gui_page, Some("create"), "Guided");
+            view_stack.add_titled(&self.content, Some("create"), "Guided");
             view_stack.add_titled(&assemble_page, Some("assemble-file"), "From File");
             view_stack.add_titled(&url_page, Some("assemble-url"), "From URL");
+
 
             // Create a box to hold the view switcher and content
             let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
             // Add inline view switcher
-            let view_switcher = adw::InlineViewSwitcher::new();
-            view_switcher.set_stack(Some(&view_stack));
-            view_switcher.set_margin_start(12);
-            view_switcher.set_margin_end(12);
-            view_switcher.set_margin_top(12);
-            view_switcher.set_margin_bottom(12);
+            self.view_switcher.set_stack(Some(&view_stack));
+            self.view_switcher.set_margin_start(12);
+            self.view_switcher.set_margin_end(12);
+            self.view_switcher.set_margin_top(12);
+            self.view_switcher.set_margin_bottom(12);
 
-            content_box.append(&view_switcher);
+            content_box.append(&self.view_switcher);
             content_box.append(&view_stack);
 
             // Wrap content_box in a scrolled window

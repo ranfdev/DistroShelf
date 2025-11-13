@@ -260,7 +260,11 @@ impl DistroShelfWindow {
                     .set_current_dialog(TaggedObject::new("command-log"));
             }),
             a("clone-container").activate(|this, _, _| {
-                this.build_clone_dialog();
+                let dialog = CreateDistroboxDialog::new(this.root_store());
+                if let Some(src) = this.root_store().selected_container() {
+                    dialog.set_clone_src(Some(src));
+                }
+                dialog.present(Some(this));
             }),
             a("upgrade-container").activate(|this, _, _| {
                 let task = this.root_store().selected_container().unwrap().upgrade();
@@ -568,70 +572,6 @@ impl DistroShelfWindow {
                 }
             ),
         );
-
-        dialog.present(Some(self));
-    }
-
-    fn build_clone_dialog(&self) {
-        let dialog = adw::Dialog::new();
-        dialog.set_title("Clone Container");
-
-        let toolbar_view = adw::ToolbarView::new();
-        toolbar_view.add_top_bar(&adw::HeaderBar::new());
-
-        let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
-        content.set_margin_start(12);
-        content.set_margin_end(12);
-        content.set_margin_top(12);
-        content.set_margin_bottom(12);
-
-        let info_label = gtk::Label::new(Some("Cloning a container may take several minutes."));
-        info_label.add_css_class("dim-label");
-        info_label.set_wrap(true);
-        content.append(&info_label);
-
-        let group = adw::PreferencesGroup::new();
-        let entry = adw::EntryRow::builder().title("New container name").build();
-        group.add(&entry);
-
-        content.append(&group);
-
-        let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-        button_box.set_homogeneous(true);
-
-        let cancel_btn = gtk::Button::with_label("Cancel");
-        cancel_btn.add_css_class("pill");
-        let clone_btn = gtk::Button::with_label("Clone");
-        clone_btn.add_css_class("suggested-action");
-        clone_btn.add_css_class("pill");
-
-        button_box.append(&cancel_btn);
-        button_box.append(&clone_btn);
-        content.append(&button_box);
-
-        toolbar_view.set_content(Some(&content));
-        dialog.set_child(Some(&toolbar_view));
-
-        cancel_btn.connect_clicked(clone!(
-            #[weak]
-            dialog,
-            move |_| {
-                dialog.close();
-            }
-        ));
-
-        clone_btn.connect_clicked(clone!(
-            #[weak(rename_to = this)]
-            self,
-            #[weak]
-            entry,
-            move |_| {
-                this.root_store()
-                    .selected_container()
-                    .unwrap()
-                    .clone_to(&entry.text());
-            }
-        ));
 
         dialog.present(Some(self));
     }
