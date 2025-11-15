@@ -73,6 +73,10 @@ impl CommandRunner {
         self.output_tracker.len()
     }
 
+    pub fn wrap_command(&self, command: Command) -> Command {
+        self.inner.wrap_command(command)
+    }
+
     pub fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
         self.output_tracker.push(CommandRunnerEvent::Spawned(
             self.event_id(),
@@ -110,6 +114,9 @@ impl Default for CommandRunner {
 }
 
 pub trait InnerCommandRunner {
+    fn wrap_command(&self, command: Command) -> Command {
+        command
+    }
     fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>>;
     fn output(
         &self,

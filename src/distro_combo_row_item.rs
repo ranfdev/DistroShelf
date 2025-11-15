@@ -29,6 +29,7 @@ mod imp {
             self.label.set_xalign(0.0);
 
             let obj = self.obj();
+            obj.set_spacing(6);
             obj.append(&self.icon);
             obj.append(&self.label);
         }
@@ -47,7 +48,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct DistroComboRowItem(ObjectSubclass<imp::DistroComboRowItem>)
-    @extends gtk::Box, gtk::Widget;
+    @extends gtk::Box, gtk::Widget,
+    @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 impl DistroComboRowItem {
     pub fn new() -> Self {

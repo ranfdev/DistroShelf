@@ -28,26 +28,25 @@ impl FlatpakCommandRunner {
     pub fn new(command_runner: Rc<dyn InnerCommandRunner>) -> Self {
         FlatpakCommandRunner { command_runner }
     }
-
-    pub fn wrap_flatpak_cmd(mut prev: Command) -> Command {
-        let mut args = vec!["--host".into(), prev.program];
-        args.extend(prev.args);
-
-        prev.args = args;
-        prev.program = "flatpak-spawn".into();
-        prev
-    }
 }
 
 impl InnerCommandRunner for FlatpakCommandRunner {
+    fn wrap_command(&self, mut command: Command) -> Command {
+        let mut args = vec!["--host".into(), command.program];
+        args.extend(command.args);
+        
+        command.args = args;
+        command.program = "flatpak-spawn".into();
+        command
+    }
     fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
-        self.command_runner.spawn(Self::wrap_flatpak_cmd(command))
+        self.command_runner.spawn(self.wrap_command(command))
     }
     fn output(
         &self,
         command: Command,
     ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
-        self.command_runner.output(Self::wrap_flatpak_cmd(command))
+        self.command_runner.output(self.wrap_command(command))
     }
 }
 

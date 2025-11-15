@@ -155,7 +155,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct ExportableAppsDialog(ObjectSubclass<imp::ExportableAppsDialog>)
-        @extends adw::Dialog, gtk::Widget;
+        @extends adw::Dialog, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 impl ExportableAppsDialog {
     /// Check if a binary exists on the host system

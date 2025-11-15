@@ -161,7 +161,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct TaskManagerDialog(ObjectSubclass<imp::TaskManagerDialog>)
-        @extends adw::Dialog, gtk::Widget;
+        @extends adw::Dialog, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 
 impl TaskManagerDialog {

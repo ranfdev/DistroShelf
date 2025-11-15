@@ -110,7 +110,7 @@ mod imp {
 glib::wrapper! {
     pub struct TerminalComboRow(ObjectSubclass<imp::TerminalComboRow>)
         @extends adw::ComboRow, adw::ActionRow, adw::PreferencesRow, gtk::ListBoxRow, gtk::Widget,
-        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 
 impl TerminalComboRow {

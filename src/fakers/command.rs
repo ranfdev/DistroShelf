@@ -102,6 +102,13 @@ impl Command {
         });
         self
     }
+
+    pub fn to_vec(&self) -> Vec<OsString> {
+        let mut v = Vec::with_capacity(1 + self.args.len());
+        v.push(self.program.clone());
+        v.extend(self.args.iter().cloned());
+        v
+    }
 }
 
 impl Display for Command {

@@ -50,6 +50,7 @@ mod imp {
         pub clone_sidebar: RefCell<Option<SidebarRow>>,
         pub cloning_content: gtk::Box,
         pub view_switcher: adw::InlineViewSwitcher,
+        pub clone_warning_banner: adw::Banner,
     }
 
     impl CreateDistroboxDialog {
@@ -69,11 +70,19 @@ mod imp {
                 // insert at the top of the cloning_content box
                 self.cloning_content.append(&sidebar_row);
                 self.clone_sidebar.replace(Some(sidebar_row));
+                
+                // Show warning if container is running
+                if container.is_running() {
+                    self.clone_warning_banner.set_revealed(true);
+                } else {
+                    self.clone_warning_banner.set_revealed(false);
+                }
             } else {
                 // no clone source, ensure image row is visible
                 self.image_row.set_visible(true);
                 self.cloning_content.set_visible(false);
                 self.view_switcher.set_visible(true);
+                self.clone_warning_banner.set_revealed(false);
             }
         }
     }
@@ -115,6 +124,12 @@ mod imp {
             cloning_header.append(&cloning_label);
 
             self.cloning_content.append(&cloning_header);
+            
+            // Add warning banner for running containers
+            self.clone_warning_banner.set_title("Cloning the container requires stopping it first");
+            self.clone_warning_banner.set_revealed(false);
+            self.cloning_content.append(&self.clone_warning_banner);
+            
             self.content.append(&self.cloning_content);
 
             let preferences_group = adw::PreferencesGroup::new();
@@ -204,6 +219,7 @@ mod imp {
                         if let Ok(create_args) = res {
                             // If cloning from a source, delegate to clone_container, otherwise create normally
                             if let Some(src) = obj.clone_src() {
+                                src.stop();
                                 obj.root_store()
                                     .clone_container(&src.name(), create_args);
                             } else {
@@ -366,7 +382,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct CreateDistroboxDialog(ObjectSubclass<imp::CreateDistroboxDialog>)
-        @extends adw::Dialog, gtk::Widget;
+        @extends adw::Dialog, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 impl CreateDistroboxDialog {
     pub fn new(root_store: RootStore) -> Self {

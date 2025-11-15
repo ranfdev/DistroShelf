@@ -25,6 +25,7 @@ use crate::dialogs::{
     PreferencesDialog,
     TaskManagerDialog,
 };
+use crate::fakers::Command;
 use crate::gtk_utils::reaction;
 use crate::root_store::RootStore;
 use crate::sidebar_row::SidebarRow;
@@ -38,6 +39,7 @@ use gtk::glib::clone;
 use gtk::{gdk, gio, glib, pango};
 use std::cell::RefCell;
 use tracing::info;
+use vte4::prelude::*;
 
 mod imp {
     use super::*;
@@ -149,7 +151,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct DistroShelfWindow(ObjectSubclass<imp::DistroShelfWindow>)
-        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow,        @implements gio::ActionGroup, gio::ActionMap;
+        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow, gtk::ShortcutManager, gtk::Root, gtk::Native,  
+        @implements gio::ActionGroup, gio::ActionMap, gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 
 impl DistroShelfWindow {
@@ -402,6 +405,17 @@ impl DistroShelfWindow {
         let toolbar_view = adw::ToolbarView::new();
         let header_bar = adw::HeaderBar::new();
         toolbar_view.add_top_bar(&header_bar);
+
+        // Create view stack and inline view switcher, wire them together and add the switcher to the header
+        let view_stack = adw::ViewStack::new();
+        let inline_view_switcher = adw::InlineViewSwitcher::new();
+        inline_view_switcher.set_stack(Some(&view_stack));
+        inline_view_switcher.set_margin_start(6);
+        inline_view_switcher.set_margin_end(6);
+        // Put the switcher in the header bar (acts as title widget)
+        header_bar.set_title_widget(Some(&inline_view_switcher));
+
+        // The content container will be taking the view stack
         let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
         let clamp = adw::Clamp::new();
@@ -511,10 +525,130 @@ impl DistroShelfWindow {
         main_box.append(&actions_group);
         main_box.append(&danger_group);
 
-        // Finish layout
+        // Finish layout: the Overview page is the existing content inside a Clamp + ScrolledWindow
         scrolled_window.set_child(Some(&main_box));
         clamp.set_child(Some(&scrolled_window));
-        content.append(&clamp);
+
+        let terminal = vte4::Terminal::new();
+
+        // Create a container for the terminal with a reload button overlay
+        let terminal_overlay = gtk::Overlay::new();
+        terminal_overlay.set_child(Some(&terminal));
+        
+        let reload_button = gtk::Button::from_icon_name("view-refresh-symbolic");
+        reload_button.set_tooltip_text(Some("Reload Terminal"));
+        reload_button.add_css_class("circular");
+        reload_button.add_css_class("suggested-action");
+        reload_button.set_halign(gtk::Align::Center);
+        reload_button.set_valign(gtk::Align::Center);
+        reload_button.set_visible(false);
+        terminal_overlay.add_overlay(&reload_button);
+
+        // Add the two pages to the view stack
+        view_stack.add_titled(&clamp, Some("overview"), "Overview");
+        view_stack.add_titled(&terminal_overlay, Some("terminal"), "Terminal");
+
+        // Track whether terminal process is running
+        let terminal_pid = std::rc::Rc::new(std::cell::RefCell::new(None::<glib::Pid>));
+        let container_name = container.name().to_string();
+        let root_store = self.root_store();
+        
+        // Function to spawn the terminal
+        let spawn_terminal = clone!(
+            #[strong]
+            terminal,
+            #[strong]
+            terminal_pid,
+            #[strong]
+            reload_button,
+            #[strong]
+            root_store,
+            #[strong]
+            container_name,
+            move || {
+                reload_button.set_visible(false);
+                
+                // Prepare the shell command
+                let shell = root_store.command_runner().wrap_command(
+                    Command::new("distrobox")
+                        .arg("enter")
+                        .arg(&container_name)
+                        .clone(),
+                ).to_vec();
+                
+                let fut = terminal.spawn_future(
+                    vte4::PtyFlags::DEFAULT,
+                    None,
+                    &shell.iter().map(|s| s.to_str().unwrap()).collect::<Vec<_>>(),
+                    &[],
+                    glib::SpawnFlags::DEFAULT,
+                    || {},
+                    10,
+                );
+
+                glib::MainContext::default().spawn_local(clone!(
+                    #[strong]
+                    terminal_pid,
+                    #[strong]
+                    reload_button,
+                    async move {
+                        match fut.await {
+                            Ok(pid) => {
+                                *terminal_pid.borrow_mut() = Some(pid);
+                            },
+                            Err(err) => {
+                                eprintln!("Failed to spawn terminal: {}", err);
+                                reload_button.set_visible(true);
+                            }
+                        }
+                    }
+                ));
+            }
+        );
+        
+        // Connect to terminal child-exited signal to show reload button
+        terminal.connect_child_exited(clone!(
+            #[weak]
+            reload_button,
+            #[strong]
+            terminal_pid,
+            move |_, _status| {
+                *terminal_pid.borrow_mut() = None;
+                reload_button.set_visible(true);
+            }
+        ));
+        
+        // Reload button click handler
+        reload_button.connect_clicked(clone!(
+            #[strong]
+            spawn_terminal,
+            move |_| {
+                spawn_terminal();
+            }
+        ));
+        
+        // Spawn terminal when view becomes visible
+        view_stack.connect_visible_child_notify(clone!(
+            #[strong]
+            spawn_terminal,
+            #[strong]
+            terminal_pid,
+            move |stack| {
+                if stack.visible_child_name().as_deref() == Some("terminal") {
+                    // Spawn if not already running
+                    if terminal_pid.borrow().is_none() {
+                        spawn_terminal();
+                    }
+                }
+            }
+        ));
+
+        // Add a small top padding for the view stack
+        view_stack.set_margin_start(0);
+        view_stack.set_margin_end(0);
+
+        // The toolbar view content is the stack itself
+        content.append(&view_stack);
         toolbar_view.set_content(Some(&content));
 
         self.imp().content_page.set_child(Some(&toolbar_view));

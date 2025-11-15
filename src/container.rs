@@ -158,6 +158,10 @@ impl Container {
         self.set_status_detail(status_detail);
     }
 
+    pub fn is_running(&self) -> bool {
+        self.status_tag() == "up"
+    }
+
     pub fn apps(&self) -> Query<TypedListStore<BoxedAnyObject>> {
         self.imp().apps.clone()
     }
