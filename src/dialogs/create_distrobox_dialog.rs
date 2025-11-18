@@ -12,7 +12,7 @@ use crate::sidebar_row::SidebarRow;
 use std::path::PathBuf;
 use std::{cell::RefCell, rc::Rc};
 
-use crate::distro_combo_row_item;
+use crate::image_row_item;
 use glib::clone;
 use gtk::glib::{derived_properties, Properties};
 
@@ -29,10 +29,13 @@ mod imp {
         #[property(get, set)]
         pub root_store: RefCell<RootStore>,
         pub dialog: adw::Dialog,
+        pub navigation_view: adw::NavigationView,
         pub toolbar_view: adw::ToolbarView,
         pub content: gtk::Box,
         pub name_row: adw::EntryRow,
-        pub image_row: adw::ComboRow,
+        pub image_row: adw::ActionRow,
+        pub images_model: gtk::StringList,
+        pub selected_image: RefCell<String>,
         pub home_row_expander: adw::ExpanderRow,
         #[property(get, set, nullable)]
         pub home_folder: RefCell<Option<String>>,
@@ -93,7 +96,8 @@ mod imp {
             self.obj().set_title("Create a Distrobox");
             self.obj().set_content_width(480);
 
-            let toolbar_view = adw::ToolbarView::new();
+            let navigation_view = &self.navigation_view;
+            let toolbar_view = &self.toolbar_view;
             let header = adw::HeaderBar::new();
 
             // Create view switcher and stack
@@ -136,35 +140,20 @@ mod imp {
             preferences_group.set_title("Settings");
             self.name_row.set_title("Name");
 
-            self.image_row
-                .set_expression(Some(&gtk::PropertyExpression::new(
-                    gtk::StringObject::static_type(),
-                    None::<gtk::Expression>,
-                    "string",
-                )));
-            let item_factory = gtk::SignalListItemFactory::new();
-            item_factory.connect_setup(|_, item| {
-                let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-                item.set_child(Some(&distro_combo_row_item::DistroComboRowItem::new()));
-            });
-            item_factory.connect_bind(|_, item| {
-                let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-                let image = item
-                    .item()
-                    .and_downcast::<gtk::StringObject>()
-                    .unwrap()
-                    .string();
-                let child = item.child();
-                let child: &distro_combo_row_item::DistroComboRowItem =
-                    child.and_downcast_ref().unwrap();
-                child.set_image(&image);
-            });
-            self.image_row.set_factory(Some(&item_factory));
-            self.image_row.set_enable_search(true);
-            self.image_row
-                .set_search_match_mode(gtk::StringFilterMatchMode::Substring);
             self.image_row.set_title("Base Image");
-            self.image_row.set_use_subtitle(true);
+            self.image_row.set_subtitle("Select an image...");
+            self.image_row.set_activatable(true);
+            self.image_row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+            
+            let obj = self.obj().clone();
+            self.image_row.connect_activated(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    let picker = obj.build_image_picker_view();
+                    obj.imp().navigation_view.push(&picker);
+                }
+            ));
 
             let obj = self.obj().clone();
             let home_row = self.obj().build_file_row(
@@ -365,7 +354,9 @@ mod imp {
             toolbar_view.set_vexpand(true);
             toolbar_view.set_content(Some(&scrolled_window));
 
-            self.obj().set_child(Some(&toolbar_view));
+            let page = adw::NavigationPage::new(toolbar_view, "main");
+            navigation_view.add(&page);
+            self.obj().set_child(Some(navigation_view));
         }
     }
 
@@ -397,11 +388,10 @@ impl CreateDistroboxDialog {
             #[weak]
             this,
             move |images| {
-                let string_list = gtk::StringList::new(&[]);
-                for image in images {
-                    string_list.append(&image);
-                }
-                this.imp().image_row.set_model(Some(&string_list));
+                let string_list = &this.imp().images_model;
+                string_list.splice(0, string_list.n_items(), &[]);
+                let new_items: Vec<&str> = images.iter().map(|s| s.as_str()).collect();
+                string_list.splice(0, 0, &new_items);
             }
         ));
         this.root_store().images_query().refetch();
@@ -485,15 +475,155 @@ impl CreateDistroboxDialog {
         row
     }
 
+    pub fn build_image_picker_view(&self) -> adw::NavigationPage {
+        let view = adw::ToolbarView::new();
+        
+        let header = adw::HeaderBar::new();
+        view.add_top_bar(&header);
+
+        let search_entry = gtk::SearchEntry::new();
+        search_entry.set_placeholder_text(Some("Search image..."));
+        search_entry.set_hexpand(true);
+        
+        header.set_title_widget(Some(&search_entry));
+
+        let model = self.imp().images_model.clone();
+        let expression = gtk::PropertyExpression::new(
+            gtk::StringObject::static_type(),
+            None::<gtk::Expression>,
+            "string",
+        );
+        let filter = gtk::StringFilter::builder()
+            .expression(&expression)
+            .match_mode(gtk::StringFilterMatchMode::Substring)
+            .ignore_case(true)
+            .build();
+            
+        search_entry.bind_property("text", &filter, "search").sync_create().build();
+        
+        let filter_model = gtk::FilterListModel::new(Some(model), Some(filter));
+        let selection_model = gtk::SingleSelection::new(Some(filter_model.clone()));
+        
+        let factory = gtk::SignalListItemFactory::new();
+        factory.connect_setup(|_, item| {
+            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
+            let row = image_row_item::ImageRowItem::new();
+            item.set_child(Some(&row));
+        });
+        factory.connect_bind(|_, item| {
+            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
+            let image = item
+                .item()
+                .and_downcast::<gtk::StringObject>()
+                .unwrap()
+                .string();
+            let child = item.child();
+            let child: &image_row_item::ImageRowItem =
+                child.and_downcast_ref().unwrap();
+            child.set_image(&image);
+        });
+
+        let list_view = gtk::ListView::new(Some(selection_model), Some(factory));
+        list_view.add_css_class("navigation-sidebar");
+        list_view.set_single_click_activate(true);
+        
+        let scrolled_window = gtk::ScrolledWindow::new();
+        scrolled_window.set_child(Some(&list_view));
+        scrolled_window.set_vexpand(true);
+        
+        let stack = gtk::Stack::new();
+        stack.add_named(&scrolled_window, Some("list"));
+
+        let empty_page = adw::StatusPage::new();
+        empty_page.set_title("No images found");
+        empty_page.set_description(Some("You can use a custom image"));
+        empty_page.set_icon_name(Some("system-search-symbolic"));
+
+        let custom_image_btn = gtk::Button::with_label("Use custom image");
+        custom_image_btn.add_css_class("pill");
+        custom_image_btn.add_css_class("suggested-action");
+        custom_image_btn.set_halign(gtk::Align::Center);
+        
+        empty_page.set_child(Some(&custom_image_btn));
+        stack.add_named(&empty_page, Some("empty"));
+
+        view.set_content(Some(&stack));
+
+        // Handle empty state
+        let stack_clone = stack.clone();
+        filter_model.connect_items_changed(move |model, _, _, _| {
+            if model.n_items() > 0 {
+                stack_clone.set_visible_child_name("list");
+            } else {
+                stack_clone.set_visible_child_name("empty");
+            }
+        });
+        
+        // Initial state check
+        if filter_model.n_items() == 0 {
+             stack.set_visible_child_name("empty");
+        }
+
+        // Update button label
+        search_entry.connect_search_changed(clone!(
+            #[weak]
+            custom_image_btn,
+            move |entry| {
+                let text = entry.text();
+                if text.is_empty() {
+                     custom_image_btn.set_label("Use custom image");
+                     custom_image_btn.set_sensitive(false);
+                } else {
+                     custom_image_btn.set_label(&format!("Use '{}'", text));
+                     custom_image_btn.set_sensitive(true);
+                }
+            }
+        ));
+        // Initial button state
+        if search_entry.text().is_empty() {
+             custom_image_btn.set_sensitive(false);
+        }
+
+        // Handle custom image selection
+        custom_image_btn.connect_clicked(clone!(
+            #[weak(rename_to=this)]
+            self,
+            #[weak]
+            search_entry,
+            move |_| {
+                let image = search_entry.text();
+                if !image.is_empty() {
+                    this.imp().selected_image.replace(image.to_string());
+                    this.imp().image_row.set_subtitle(&image);
+                    this.imp().navigation_view.pop();
+                }
+            }
+        ));
+        
+        // Handle selection
+        list_view.connect_activate(clone!(
+            #[weak(rename_to=this)]
+            self,
+            move |list_view, position| {
+                let model = list_view.model().unwrap(); // SingleSelection
+                let item = model.item(position).unwrap().downcast::<gtk::StringObject>().unwrap();
+                let image = item.string();
+                
+                this.imp().selected_image.replace(image.to_string());
+                this.imp().image_row.set_subtitle(&image);
+                this.imp().navigation_view.pop();
+            }
+        ));
+
+        adw::NavigationPage::new(&view, "image-picker")
+    }
+
     pub async fn extract_create_args(&self) -> Result<CreateArgs, Error> {
         let imp = self.imp();
-        let image = imp
-            .image_row
-            .selected_item()
-            .unwrap()
-            .downcast_ref::<gtk::StringObject>()
-            .unwrap()
-            .string();
+        let image = imp.selected_image.borrow().clone();
+        if image.is_empty() {
+             return Err(Error::InvalidField("image".into(), "No image selected".into()));
+        }
         let volumes = imp
             .volume_rows
             .borrow()

@@ -7,13 +7,15 @@ use std::cell::RefCell;
 use crate::{distro_icon, known_distros::known_distro_by_image};
 
 mod imp {
+    use gtk::pango;
+
     use crate::known_distros::KnownDistro;
 
     use super::*;
 
     #[derive(Properties, Default)]
-    #[properties(wrapper_type = super::DistroComboRowItem)]
-    pub struct DistroComboRowItem {
+    #[properties(wrapper_type = super::ImageRowItem)]
+    pub struct ImageRowItem {
         #[property(get, construct_only)]
         pub image: RefCell<Option<String>>,
         pub distro: RefCell<Option<KnownDistro>>,
@@ -22,13 +24,17 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for DistroComboRowItem {
+    impl ObjectImpl for ImageRowItem {
         fn constructed(&self) {
             distro_icon::setup(&self.icon);
 
             self.label.set_xalign(0.0);
+            self.label.set_ellipsize(pango::EllipsizeMode::Middle);
+            self.label.set_has_tooltip(true);
+            
 
             let obj = self.obj();
+            obj.add_css_class("distro-row-item");
             obj.set_spacing(6);
             obj.append(&self.icon);
             obj.append(&self.label);
@@ -36,22 +42,22 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for DistroComboRowItem {
-        const NAME: &'static str = "DistroComboRowItem";
-        type Type = super::DistroComboRowItem;
+    impl ObjectSubclass for ImageRowItem {
+        const NAME: &'static str = "ImageRowItem";
+        type Type = super::ImageRowItem;
         type ParentType = gtk::Box;
     }
 
-    impl WidgetImpl for DistroComboRowItem {}
-    impl BoxImpl for DistroComboRowItem {}
+    impl WidgetImpl for ImageRowItem {}
+    impl BoxImpl for ImageRowItem {}
 }
 
 glib::wrapper! {
-    pub struct DistroComboRowItem(ObjectSubclass<imp::DistroComboRowItem>)
+    pub struct ImageRowItem(ObjectSubclass<imp::ImageRowItem>)
     @extends gtk::Box, gtk::Widget,
     @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
-impl DistroComboRowItem {
+impl ImageRowItem {
     pub fn new() -> Self {
         let this: Self = glib::Object::builder().build();
         this
@@ -65,10 +71,11 @@ impl DistroComboRowItem {
         imp.distro.replace(distro);
 
         imp.label.set_label(image);
+        imp.label.set_tooltip_text(Some(image));
     }
 }
 
-impl Default for DistroComboRowItem {
+impl Default for ImageRowItem {
     fn default() -> Self {
         Self::new()
     }

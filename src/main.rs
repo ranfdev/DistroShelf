@@ -22,7 +22,7 @@ mod application;
 mod config;
 mod container;
 mod dialogs;
-mod distro_combo_row_item;
+mod image_row_item;
 mod distro_icon;
 mod distrobox;
 mod distrobox_task;

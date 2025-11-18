@@ -112,6 +112,11 @@ mod imp {
                     padding: 12px;
                 }}
 
+                .distro-row-item {{
+                    padding: 6px;
+                    border-radius: 6px;
+                }}
+
                 .output {{
                     border-radius: 12px;
                     border: 1px solid @borders;
