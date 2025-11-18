@@ -7,6 +7,10 @@ pub fn setup(image_widget: &gtk::Image) {
     image_widget.add_css_class("distro-color-fg");
 }
 
+pub fn remove_color(image_widget: &gtk::Image) {
+    image_widget.remove_css_class("distro-color-fg");
+}
+
 pub fn set_image(image_widget: &gtk::Image, container_image: &str) {
     let distro = known_distro_by_image(container_image);
     if let Some(distro) = &distro {
@@ -21,7 +25,7 @@ pub fn set_image(image_widget: &gtk::Image, container_image: &str) {
         );
 
         image_widget.set_paintable(Some(&icon));
-        image_widget.add_css_class(&distro.name());
+        image_widget.add_css_class(format!("distro-{}", &distro.name()).as_str());
     } else {
         image_widget.set_icon_name(Some(KnownDistro::default_icon_name()));
     }

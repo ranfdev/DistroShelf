@@ -12,7 +12,7 @@ use crate::sidebar_row::SidebarRow;
 use std::path::PathBuf;
 use std::{cell::RefCell, rc::Rc};
 
-use crate::image_row_item;
+use crate::{distro_icon, image_row_item};
 use glib::clone;
 use gtk::glib::{derived_properties, Properties};
 
@@ -534,17 +534,18 @@ impl CreateDistroboxDialog {
         let stack = gtk::Stack::new();
         stack.add_named(&scrolled_window, Some("list"));
 
-        let empty_page = adw::StatusPage::new();
-        empty_page.set_title("No images found");
-        empty_page.set_description(Some("You can use a custom image"));
-        empty_page.set_icon_name(Some("system-search-symbolic"));
-
-        let custom_image_btn = gtk::Button::with_label("Use custom image");
-        custom_image_btn.add_css_class("pill");
-        custom_image_btn.add_css_class("suggested-action");
-        custom_image_btn.set_halign(gtk::Align::Center);
+        let empty_page = gtk::Box::new(gtk::Orientation::Vertical, 4);
         
-        empty_page.set_child(Some(&custom_image_btn));
+        let custom_list = gtk::ListBox::new();
+        custom_list.add_css_class("navigation-sidebar");
+        custom_list.set_selection_mode(gtk::SelectionMode::None);
+        
+        let custom_row_item = image_row_item::ImageRowItem::new();
+        distro_icon::remove_color(&custom_row_item.imp().icon);
+        
+        custom_list.append(&custom_row_item);
+        
+        empty_page.append(&custom_list);
         stack.add_named(&empty_page, Some("empty"));
 
         view.set_content(Some(&stack));
@@ -564,33 +565,34 @@ impl CreateDistroboxDialog {
              stack.set_visible_child_name("empty");
         }
 
-        // Update button label
+        // Update custom row
         search_entry.connect_search_changed(clone!(
             #[weak]
-            custom_image_btn,
+            custom_row_item,
+            #[weak]
+            custom_list,
             move |entry| {
                 let text = entry.text();
                 if text.is_empty() {
-                     custom_image_btn.set_label("Use custom image");
-                     custom_image_btn.set_sensitive(false);
+                     custom_list.set_sensitive(false);
                 } else {
-                     custom_image_btn.set_label(&format!("Use '{}'", text));
-                     custom_image_btn.set_sensitive(true);
+                     custom_list.set_sensitive(true);
+                     custom_row_item.set_image(&text);
                 }
             }
         ));
         // Initial button state
         if search_entry.text().is_empty() {
-             custom_image_btn.set_sensitive(false);
+             custom_list.set_sensitive(false);
         }
 
         // Handle custom image selection
-        custom_image_btn.connect_clicked(clone!(
+        custom_list.connect_row_activated(clone!(
             #[weak(rename_to=this)]
             self,
             #[weak]
             search_entry,
-            move |_| {
+            move |_, _| {
                 let image = search_entry.text();
                 if !image.is_empty() {
                     this.imp().selected_image.replace(image.to_string());

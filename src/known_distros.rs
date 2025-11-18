@@ -105,7 +105,7 @@ pub fn generate_css() -> String {
         let name = distro.name();
         let color = distro.color();
         out.push_str(&format!(
-            ".{name} {{
+            ".distro-{name} {{
     --distro-color: {color};
 }}"
         ))

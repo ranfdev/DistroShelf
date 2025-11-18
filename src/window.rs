@@ -395,7 +395,7 @@ impl DistroShelfWindow {
         header_box.append(&text_box);
 
         if let Some(distro) = container.distro() {
-            header_box.add_css_class(&distro.name());
+            header_box.add_css_class(format!("distro-{}", &distro.name()).as_str());
             icon.set_icon_name(Some(&distro.name()));
         }
 
