@@ -2,7 +2,7 @@ use crate::tagged_object::TaggedObject;
 use crate::{distrobox_task::DistroboxTask, root_store::RootStore};
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::glib::{derived_properties, Properties};
+use gtk::glib::{Properties, derived_properties};
 use gtk::{
     self,
     glib::{self},

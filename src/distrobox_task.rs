@@ -1,9 +1,9 @@
 // You can copy/paste this file every time you need a simple GObject
 // to hold some data
 
-use futures::{io::BufReader, AsyncBufReadExt, StreamExt};
-use glib::subclass::prelude::*;
+use futures::{AsyncBufReadExt, StreamExt, io::BufReader};
 use glib::Properties;
+use glib::subclass::prelude::*;
 use gtk::glib;
 use gtk::prelude::*;
 use std::cell::Ref;

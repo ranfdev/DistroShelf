@@ -1,8 +1,8 @@
 use glib::subclass::prelude::*;
 use gtk::glib;
+use gtk::glib::Properties;
 use gtk::glib::derived_properties;
 use gtk::glib::prelude::*;
-use gtk::glib::Properties;
 use std::cell::LazyCell;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -10,46 +10,43 @@ use std::path::Path;
 
 use crate::fakers::Command;
 
-
-pub const DISTROS: LazyCell<
-    HashMap<String, KnownDistro>,
-    fn() -> HashMap<String, KnownDistro>,
-> = LazyCell::new(|| {
-    [
-        ("alma", "#dadada", PackageManager::Dnf),
-        ("alpine", "#2147ea", PackageManager::Unknown),
-        ("amazon", "#de5412", PackageManager::Dnf),
-        ("arch", "#12aaff", PackageManager::Unknown),
-        ("centos", "#ff6600", PackageManager::Dnf),
-        ("clearlinux", "#56bbff", PackageManager::Unknown),
-        ("crystal", "#8839ef", PackageManager::Unknown),
-        ("debian", "#da5555", PackageManager::Apt),
-        ("deepin", "#0050ff", PackageManager::Apt),
-        ("fedora", "#3b6db3", PackageManager::Dnf),
-        ("gentoo", "#daaada", PackageManager::Unknown),
-        ("kali", "#000000", PackageManager::Apt),
-        ("mageia", "#b612b6", PackageManager::Dnf),
-        ("mint", "#6fbd20", PackageManager::Apt),
-        ("neon", "#27ae60", PackageManager::Apt),
-        ("opensuse", "#daff00", PackageManager::Dnf),
-        ("oracle", "#ff0000", PackageManager::Dnf),
-        ("redhat", "#ff6662", PackageManager::Dnf),
-        ("rhel", "#ff6662", PackageManager::Dnf),
-        ("rocky", "#91ff91", PackageManager::Dnf),
-        ("slackware", "#6145a7", PackageManager::Unknown),
-        ("ubuntu", "#FF4400", PackageManager::Apt),
-        ("vanilla", "#7f11e0", PackageManager::Unknown),
-        ("void", "#abff12", PackageManager::Unknown),
-    ]
-    .iter()
-    .map(|(name, color, package_manager)| {
-        (
-            name.to_string(),
-            KnownDistro::new(name, color, *package_manager),
-        )
-    })
-    .collect()
-});
+pub const DISTROS: LazyCell<HashMap<String, KnownDistro>, fn() -> HashMap<String, KnownDistro>> =
+    LazyCell::new(|| {
+        [
+            ("alma", "#dadada", PackageManager::Dnf),
+            ("alpine", "#2147ea", PackageManager::Unknown),
+            ("amazon", "#de5412", PackageManager::Dnf),
+            ("arch", "#12aaff", PackageManager::Unknown),
+            ("centos", "#ff6600", PackageManager::Dnf),
+            ("clearlinux", "#56bbff", PackageManager::Unknown),
+            ("crystal", "#8839ef", PackageManager::Unknown),
+            ("debian", "#da5555", PackageManager::Apt),
+            ("deepin", "#0050ff", PackageManager::Apt),
+            ("fedora", "#3b6db3", PackageManager::Dnf),
+            ("gentoo", "#daaada", PackageManager::Unknown),
+            ("kali", "#000000", PackageManager::Apt),
+            ("mageia", "#b612b6", PackageManager::Dnf),
+            ("mint", "#6fbd20", PackageManager::Apt),
+            ("neon", "#27ae60", PackageManager::Apt),
+            ("opensuse", "#daff00", PackageManager::Dnf),
+            ("oracle", "#ff0000", PackageManager::Dnf),
+            ("redhat", "#ff6662", PackageManager::Dnf),
+            ("rhel", "#ff6662", PackageManager::Dnf),
+            ("rocky", "#91ff91", PackageManager::Dnf),
+            ("slackware", "#6145a7", PackageManager::Unknown),
+            ("ubuntu", "#FF4400", PackageManager::Apt),
+            ("vanilla", "#7f11e0", PackageManager::Unknown),
+            ("void", "#abff12", PackageManager::Unknown),
+        ]
+        .iter()
+        .map(|(name, color, package_manager)| {
+            (
+                name.to_string(),
+                KnownDistro::new(name, color, *package_manager),
+            )
+        })
+        .collect()
+    });
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
 #[enum_type(name = "DbxPackageManager")]

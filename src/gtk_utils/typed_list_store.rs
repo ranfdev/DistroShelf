@@ -7,15 +7,15 @@ use std::marker::PhantomData;
 /// # Example
 /// ```ignore
 /// use gtk_utils::TypedListStore;
-/// 
+///
 /// let store = TypedListStore::<Container>::new();
 /// store.append(&container);
-/// 
+///
 /// // Iterate with type safety
 /// for container in store.iter() {
 ///     println!("{}", container.name());
 /// }
-/// 
+///
 /// // Get item by index without manual downcasting
 /// if let Some(first) = store.get(0) {
 ///     println!("First: {}", first.name());
@@ -37,7 +37,7 @@ impl<T: IsA<glib::Object>> TypedListStore<T> {
     }
 
     /// Creates a `TypedListStore` from an existing `gio::ListStore`.
-    /// 
+    ///
     /// # Safety
     /// The caller must ensure that the `ListStore` only contains items of type `T`.
     pub fn from_list_store(list_store: gio::ListStore) -> Self {
@@ -279,7 +279,7 @@ mod tests {
     #[test]
     fn test_typed_list_store() {
         gtk::init().unwrap();
-        
+
         let store = TypedListStore::<gtk::StringObject>::new();
         assert_eq!(store.len(), 0);
         assert!(store.is_empty());
@@ -309,7 +309,7 @@ mod tests {
     #[test]
     fn test_retain() {
         gtk::init().unwrap();
-        
+
         let store = TypedListStore::<gtk::StringObject>::new();
         store.append(&gtk::StringObject::new("keep1"));
         store.append(&gtk::StringObject::new("remove"));
@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn test_find_with() {
         gtk::init().unwrap();
-        
+
         let store = TypedListStore::<gtk::StringObject>::new();
         store.append(&gtk::StringObject::new("first"));
         store.append(&gtk::StringObject::new("second"));
@@ -334,7 +334,7 @@ mod tests {
         let (pos, item) = store
             .find_with(|item| item.string().contains("sec"))
             .unwrap();
-        
+
         assert_eq!(pos, 1);
         assert_eq!(item.string(), "second");
     }

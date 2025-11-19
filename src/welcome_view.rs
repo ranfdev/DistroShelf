@@ -63,13 +63,17 @@ mod imp {
         fn continue_to_terminal_page(&self, _: &gtk::Button) {
             let obj = self.obj();
             let obj_clone = obj.clone();
-            obj.root_store().distrobox_version()
+            obj.root_store()
+                .distrobox_version()
                 .connect_success(move |_version| {
-                    obj_clone.imp().carousel
+                    obj_clone
+                        .imp()
+                        .carousel
                         .scroll_to(&*obj_clone.imp().terminal_preferences_page, true);
                 });
             let obj_clone = obj.clone();
-            obj.root_store().distrobox_version()
+            obj.root_store()
+                .distrobox_version()
                 .connect_error(move |error| {
                     obj_clone.set_distrobox_error(Some(error.to_string()));
                 });

@@ -4,9 +4,9 @@ use gtk::gio::File;
 use gtk::{gio, glib};
 use tracing::error;
 
+use crate::container::Container;
 use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
 use crate::root_store::RootStore;
-use crate::container::Container;
 use crate::sidebar_row::SidebarRow;
 
 use std::path::PathBuf;
@@ -14,7 +14,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{distro_icon, image_row_item};
 use glib::clone;
-use gtk::glib::{derived_properties, Properties};
+use gtk::glib::{Properties, derived_properties};
 
 pub enum FileRowSelection {
     File,
@@ -73,7 +73,7 @@ mod imp {
                 // insert at the top of the cloning_content box
                 self.cloning_content.append(&sidebar_row);
                 self.clone_sidebar.replace(Some(sidebar_row));
-                
+
                 // Show warning if container is running
                 if container.is_running() {
                     self.clone_warning_banner.set_revealed(true);
@@ -110,9 +110,9 @@ mod imp {
             self.content.set_spacing(12);
             self.content.set_orientation(gtk::Orientation::Vertical);
 
-
             // Create cloning_content box with header and sidebar
-            self.cloning_content.set_orientation(gtk::Orientation::Vertical);
+            self.cloning_content
+                .set_orientation(gtk::Orientation::Vertical);
             self.cloning_content.set_spacing(12);
             self.cloning_content.set_visible(false);
 
@@ -128,12 +128,13 @@ mod imp {
             cloning_header.append(&cloning_label);
 
             self.cloning_content.append(&cloning_header);
-            
+
             // Add warning banner for running containers
-            self.clone_warning_banner.set_title("Cloning the container requires stopping it first");
+            self.clone_warning_banner
+                .set_title("Cloning the container requires stopping it first");
             self.clone_warning_banner.set_revealed(false);
             self.cloning_content.append(&self.clone_warning_banner);
-            
+
             self.content.append(&self.cloning_content);
 
             let preferences_group = adw::PreferencesGroup::new();
@@ -143,8 +144,9 @@ mod imp {
             self.image_row.set_title("Base Image");
             self.image_row.set_subtitle("Select an image...");
             self.image_row.set_activatable(true);
-            self.image_row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
-            
+            self.image_row
+                .add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+
             let obj = self.obj().clone();
             self.image_row.connect_activated(clone!(
                 #[weak]
@@ -209,8 +211,7 @@ mod imp {
                             // If cloning from a source, delegate to clone_container, otherwise create normally
                             if let Some(src) = obj.clone_src() {
                                 src.stop();
-                                obj.root_store()
-                                    .clone_container(&src.name(), create_args);
+                                obj.root_store().clone_container(&src.name(), create_args);
                             } else {
                                 obj.root_store().create_container(create_args);
                             }
@@ -331,7 +332,6 @@ mod imp {
             view_stack.add_titled(&assemble_page, Some("assemble-file"), "From File");
             view_stack.add_titled(&url_page, Some("assemble-url"), "From URL");
 
-
             // Create a box to hold the view switcher and content
             let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
@@ -382,9 +382,7 @@ impl CreateDistroboxDialog {
             .property("root-store", root_store)
             .build();
 
-        this.root_store()
-            .images_query()
-            .connect_success(clone!(
+        this.root_store().images_query().connect_success(clone!(
             #[weak]
             this,
             move |images| {
@@ -477,14 +475,14 @@ impl CreateDistroboxDialog {
 
     pub fn build_image_picker_view(&self) -> adw::NavigationPage {
         let view = adw::ToolbarView::new();
-        
+
         let header = adw::HeaderBar::new();
         view.add_top_bar(&header);
 
         let search_entry = gtk::SearchEntry::new();
         search_entry.set_placeholder_text(Some("Search image..."));
         search_entry.set_hexpand(true);
-        
+
         header.set_title_widget(Some(&search_entry));
 
         let model = self.imp().images_model.clone();
@@ -498,12 +496,15 @@ impl CreateDistroboxDialog {
             .match_mode(gtk::StringFilterMatchMode::Substring)
             .ignore_case(true)
             .build();
-            
-        search_entry.bind_property("text", &filter, "search").sync_create().build();
-        
+
+        search_entry
+            .bind_property("text", &filter, "search")
+            .sync_create()
+            .build();
+
         let filter_model = gtk::FilterListModel::new(Some(model), Some(filter));
         let selection_model = gtk::SingleSelection::new(Some(filter_model.clone()));
-        
+
         let factory = gtk::SignalListItemFactory::new();
         factory.connect_setup(|_, item| {
             let item = item.downcast_ref::<gtk::ListItem>().unwrap();
@@ -518,33 +519,32 @@ impl CreateDistroboxDialog {
                 .unwrap()
                 .string();
             let child = item.child();
-            let child: &image_row_item::ImageRowItem =
-                child.and_downcast_ref().unwrap();
+            let child: &image_row_item::ImageRowItem = child.and_downcast_ref().unwrap();
             child.set_image(&image);
         });
 
         let list_view = gtk::ListView::new(Some(selection_model), Some(factory));
         list_view.add_css_class("navigation-sidebar");
         list_view.set_single_click_activate(true);
-        
+
         let scrolled_window = gtk::ScrolledWindow::new();
         scrolled_window.set_child(Some(&list_view));
         scrolled_window.set_vexpand(true);
-        
+
         let stack = gtk::Stack::new();
         stack.add_named(&scrolled_window, Some("list"));
 
         let empty_page = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        
+
         let custom_list = gtk::ListBox::new();
         custom_list.add_css_class("navigation-sidebar");
         custom_list.set_selection_mode(gtk::SelectionMode::None);
-        
+
         let custom_row_item = image_row_item::ImageRowItem::new();
         distro_icon::remove_color(&custom_row_item.imp().icon);
-        
+
         custom_list.append(&custom_row_item);
-        
+
         empty_page.append(&custom_list);
         stack.add_named(&empty_page, Some("empty"));
 
@@ -559,10 +559,10 @@ impl CreateDistroboxDialog {
                 stack_clone.set_visible_child_name("empty");
             }
         });
-        
+
         // Initial state check
         if filter_model.n_items() == 0 {
-             stack.set_visible_child_name("empty");
+            stack.set_visible_child_name("empty");
         }
 
         // Update custom row
@@ -574,16 +574,16 @@ impl CreateDistroboxDialog {
             move |entry| {
                 let text = entry.text();
                 if text.is_empty() {
-                     custom_list.set_sensitive(false);
+                    custom_list.set_sensitive(false);
                 } else {
-                     custom_list.set_sensitive(true);
-                     custom_row_item.set_image(&text);
+                    custom_list.set_sensitive(true);
+                    custom_row_item.set_image(&text);
                 }
             }
         ));
         // Initial button state
         if search_entry.text().is_empty() {
-             custom_list.set_sensitive(false);
+            custom_list.set_sensitive(false);
         }
 
         // Handle custom image selection
@@ -601,16 +601,20 @@ impl CreateDistroboxDialog {
                 }
             }
         ));
-        
+
         // Handle selection
         list_view.connect_activate(clone!(
             #[weak(rename_to=this)]
             self,
             move |list_view, position| {
                 let model = list_view.model().unwrap(); // SingleSelection
-                let item = model.item(position).unwrap().downcast::<gtk::StringObject>().unwrap();
+                let item = model
+                    .item(position)
+                    .unwrap()
+                    .downcast::<gtk::StringObject>()
+                    .unwrap();
                 let image = item.string();
-                
+
                 this.imp().selected_image.replace(image.to_string());
                 this.imp().image_row.set_subtitle(&image);
                 this.imp().navigation_view.pop();
@@ -624,7 +628,10 @@ impl CreateDistroboxDialog {
         let imp = self.imp();
         let image = imp.selected_image.borrow().clone();
         if image.is_empty() {
-             return Err(Error::InvalidField("image".into(), "No image selected".into()));
+            return Err(Error::InvalidField(
+                "image".into(),
+                "No image selected".into(),
+            ));
         }
         let volumes = imp
             .volume_rows

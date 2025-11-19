@@ -22,15 +22,15 @@ use crate::distrobox::Distrobox;
 use crate::distrobox::Status;
 use crate::distrobox_task::DistroboxTask;
 use crate::fakers::{Child, Command, CommandRunner, FdMode};
-use crate::gtk_utils::{reconcile_list_by_key, TypedListStore};
+use crate::gtk_utils::{TypedListStore, reconcile_list_by_key};
 use crate::query::Query;
 use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
 
-use std::pin::Pin;
-use std::task::{Context as TaskContext, Poll};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::pin::Pin;
+use std::task::{Context as TaskContext, Poll};
 
 /// Podman event structure
 #[derive(Debug, Clone, Deserialize)]
@@ -66,7 +66,9 @@ impl PodmanEvent {
 
 /// Stream wrapper for podman events
 pub struct PodmanEventsStream {
-    lines: Option<futures::io::Lines<futures::io::BufReader<Box<dyn futures::io::AsyncRead + Send + Unpin>>>>,
+    lines: Option<
+        futures::io::Lines<futures::io::BufReader<Box<dyn futures::io::AsyncRead + Send + Unpin>>>,
+    >,
     _child: Option<Box<dyn Child + Send>>,
 }
 
@@ -100,9 +102,9 @@ pub fn listen_podman_events(
     let mut child = command_runner.spawn(cmd)?;
 
     // Get stdout and create a buffered reader
-    let stdout = child.take_stdout().ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::Other, "No stdout available")
-    })?;
+    let stdout = child
+        .take_stdout()
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "No stdout available"))?;
 
     let bufread = BufReader::new(stdout);
     let lines = bufread.lines();
@@ -249,7 +251,7 @@ impl RootStore {
         let this_clone = this.clone();
         this.containers_query().connect_success(move |containers| {
             let this = this_clone.clone();
-            
+
             reconcile_list_by_key(
                 this.containers(),
                 &containers[..],
@@ -317,12 +319,15 @@ impl RootStore {
         if position == gtk::INVALID_LIST_POSITION {
             None
         } else {
-            model.selected_item().and_then(|obj| obj.downcast::<Container>().ok())
+            model
+                .selected_item()
+                .and_then(|obj| obj.downcast::<Container>().ok())
         }
     }
 
     pub fn load_containers(&self) {
-        self.containers_query().refetch_if_stale(Duration::from_secs(1));
+        self.containers_query()
+            .refetch_if_stale(Duration::from_secs(1));
     }
 
     /// Start listening to podman events and auto-refresh container list for distrobox events
@@ -332,7 +337,7 @@ impl RootStore {
 
         glib::MainContext::ref_thread_default().spawn_local(async move {
             info!("Starting podman events listener");
-            
+
             let stream = match listen_podman_events(command_runner) {
                 Ok(stream) => stream,
                 Err(e) => {
@@ -406,9 +411,7 @@ impl RootStore {
     }
 
     pub fn clear_ended_tasks(&self) {
-        self.tasks().retain(|task| {
-            !task.ended()
-        });
+        self.tasks().retain(|task| !task.ended());
     }
 
     pub fn create_container(&self, create_args: CreateArgs) {

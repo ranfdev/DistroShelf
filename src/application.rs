@@ -25,11 +25,11 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
+use crate::DistroShelfWindow;
 use crate::config;
 use crate::distrobox::{Distrobox, DistroboxCommandRunnerResponse, FlatpakCommandRunner};
 use crate::fakers::{CommandRunner, RealCommandRunner};
 use crate::root_store::RootStore;
-use crate::DistroShelfWindow;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
 #[enum_type(name = "DistroboxStoreTy")]

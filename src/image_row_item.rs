@@ -31,7 +31,6 @@ mod imp {
             self.label.set_xalign(0.0);
             self.label.set_ellipsize(pango::EllipsizeMode::Middle);
             self.label.set_has_tooltip(true);
-            
 
             let obj = self.obj();
             obj.add_css_class("distro-row-item");

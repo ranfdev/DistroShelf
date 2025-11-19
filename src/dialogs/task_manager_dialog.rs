@@ -7,7 +7,7 @@ use crate::distrobox_task::DistroboxTask;
 use crate::gtk_utils::reaction;
 use crate::root_store::RootStore;
 
-use gtk::glib::{derived_properties, Properties};
+use gtk::glib::{Properties, derived_properties};
 use std::cell::RefCell;
 
 mod imp {
@@ -108,7 +108,8 @@ mod imp {
                 this.imp().stack.set_visible_child_name("list");
             }
             root_store
-                .tasks().inner()
+                .tasks()
+                .inner()
                 .connect_items_changed(move |tasks, _, _, _| {
                     dbg!(tasks.n_items());
                     if tasks.n_items() == 0 {

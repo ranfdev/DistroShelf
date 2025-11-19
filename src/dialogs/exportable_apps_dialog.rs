@@ -1,17 +1,17 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::glib::{clone, BoxedAnyObject};
+use gtk::glib::{BoxedAnyObject, clone};
 use gtk::{gio, glib, pango};
 
 use crate::container::Container;
 use crate::distrobox::{ExportableApp, ExportableBinary};
-use crate::gtk_utils::{reaction, TypedListStore};
 use crate::fakers::Command;
+use crate::gtk_utils::{TypedListStore, reaction};
 
 use std::cell::RefCell;
 
 use glib::VariantTy;
-use gtk::glib::{derived_properties, Properties};
+use gtk::glib::{Properties, derived_properties};
 
 mod imp {
     use super::*;
@@ -73,25 +73,27 @@ mod imp {
             self.export_apps_group.set_margin_top(12);
             self.export_apps_group.set_margin_bottom(12);
             self.export_apps_group.set_title("Exportable Apps");
-            self.export_apps_group.set_description(Some("No exportable apps found"));
+            self.export_apps_group
+                .set_description(Some("No exportable apps found"));
             self.export_apps_group.add(&self.list_box);
 
             // Setup binary export input
             self.binary_name_entry.set_title("Export New Binary");
             self.binary_name_entry.set_show_apply_button(true);
-            self.binary_name_entry
-                .add_css_class("add-binary-entry-row");
+            self.binary_name_entry.add_css_class("add-binary-entry-row");
 
             self.binaries_list_box.add_css_class("boxed-list");
-            self.binaries_list_box.set_selection_mode(gtk::SelectionMode::None);
+            self.binaries_list_box
+                .set_selection_mode(gtk::SelectionMode::None);
             self.binaries_list_box.set_margin_top(12);
-            
+
             self.export_binaries_group.set_margin_start(12);
             self.export_binaries_group.set_margin_end(12);
             self.export_binaries_group.set_margin_top(0);
             self.export_binaries_group.set_margin_bottom(12);
             self.export_binaries_group.set_title("Exported Binaries");
-            self.export_binaries_group.set_description(Some("No exported binaries"));
+            self.export_binaries_group
+                .set_description(Some("No exported binaries"));
             self.export_binaries_group.add(&self.binary_name_entry);
             self.export_binaries_group.add(&self.binaries_list_box);
 
@@ -172,10 +174,10 @@ impl ExportableAppsDialog {
             } else {
                 binary_name_or_path.to_string()
             };
-            
+
             let mut cmd = Command::new("test");
             cmd.args(["-e", &expanded_path]);
-            
+
             let command_runner = container.root_store().command_runner();
             if let Ok(output) = command_runner.output(cmd).await {
                 output.status.success()
@@ -186,7 +188,7 @@ impl ExportableAppsDialog {
             // It's a binary name, check using 'which' on the host
             let mut cmd = Command::new("which");
             cmd.arg(binary_name_or_path);
-            
+
             let command_runner = container.root_store().command_runner();
             if let Ok(output) = command_runner.output(cmd).await {
                 output.status.success()
@@ -195,7 +197,7 @@ impl ExportableAppsDialog {
             }
         }
     }
-    
+
     pub fn new(container: &Container) -> Self {
         let this: Self = glib::Object::builder()
             .property("container", container)
@@ -226,14 +228,17 @@ impl ExportableAppsDialog {
             this_inner.imp().error_label.set_label(&error.to_string());
             this_inner.imp().stack.set_visible_child_name("error");
         });
-        
+
         let this_clone = this.clone();
         let render_apps = move |apps_data: &TypedListStore<BoxedAnyObject>| {
             let n_apps = apps_data.len();
 
             // Update description based on whether there are apps
             if n_apps == 0 {
-                this_clone.imp().export_apps_group.set_description(Some("No exportable apps found"));
+                this_clone
+                    .imp()
+                    .export_apps_group
+                    .set_description(Some("No exportable apps found"));
             } else {
                 this_clone.imp().export_apps_group.set_description(None);
             }
@@ -251,30 +256,33 @@ impl ExportableAppsDialog {
                     this.build_row(&app).upcast()
                 });
         };
-        
+
         let this_clone = this.clone();
         let render_binaries = move |binaries_data: &TypedListStore<BoxedAnyObject>| {
             let n_binaries = binaries_data.len();
 
             // Update description based on whether there are binaries
             if n_binaries == 0 {
-                this_clone.imp().export_binaries_group.set_description(Some("No exported binaries"));
+                this_clone
+                    .imp()
+                    .export_binaries_group
+                    .set_description(Some("No exported binaries"));
             } else {
                 this_clone.imp().export_binaries_group.set_description(None);
             }
 
             this_clone.imp().stack.set_visible_child_name("apps");
             let this = this_clone.clone();
-            this_clone
-                .imp()
-                .binaries_list_box
-                .bind_model(Some(binaries_data.inner()), move |obj| {
+            this_clone.imp().binaries_list_box.bind_model(
+                Some(binaries_data.inner()),
+                move |obj| {
                     let binary = obj
                         .downcast_ref::<BoxedAnyObject>()
                         .map(|obj| obj.borrow::<ExportableBinary>())
                         .unwrap();
                     this.build_binary_row(&binary).upcast()
-                });
+                },
+            );
         };
 
         let apps = this.container().apps();
@@ -288,7 +296,6 @@ impl ExportableAppsDialog {
             render_binaries_closure(binaries_data);
         });
 
-        
         // Connect the binary name entry apply signal
         let this_clone = this.clone();
         this.imp()
@@ -299,11 +306,11 @@ impl ExportableAppsDialog {
                     let this = this_clone.clone();
                     let binary_name_clone = binary_name.clone();
                     let container = this_clone.container();
-                    
+
                     // Check if binary exists on host and show confirmation dialog if needed
                     glib::spawn_future_local(async move {
                         let exists = Self::binary_exists_on_host(&container, &binary_name).await;
-                        
+
                         if exists {
                             // Show confirmation dialog
                             let dialog = adw::AlertDialog::new(
@@ -318,7 +325,7 @@ impl ExportableAppsDialog {
                             dialog.set_response_appearance("export", adw::ResponseAppearance::Destructive);
                             dialog.set_default_response(Some("cancel"));
                             dialog.set_close_response("cancel");
-                            
+
                             let this_inner = this.clone();
                             let binary_name_inner = binary_name_clone.clone();
                             dialog.connect_response(None, move |_dialog, response| {
@@ -326,14 +333,14 @@ impl ExportableAppsDialog {
                                     this_inner.do_export_binary(&binary_name_inner);
                                 }
                             });
-                            
+
                             dialog.present(Some(&this));
                         } else {
                             // No conflict, export directly
                             this.do_export_binary(&binary_name_clone);
                         }
                     });
-                    
+
                     entry.set_text("");
                 }
             });
@@ -343,11 +350,11 @@ impl ExportableAppsDialog {
 
         this
     }
-    
+
     /// Helper method to perform the actual export of a binary
     fn do_export_binary(&self, binary_name: &str) {
         let task = self.container().export_binary(binary_name);
-        
+
         // Monitor task status to show error toasts
         let this = self.clone();
         let binary_name_clone = binary_name.to_string();
@@ -368,7 +375,7 @@ impl ExportableAppsDialog {
             }
         });
     }
-    
+
     pub fn build_row(&self, app: &ExportableApp) -> adw::ActionRow {
         // Create the action row
         let row = adw::ActionRow::new();
@@ -420,7 +427,7 @@ impl ExportableAppsDialog {
 
         row
     }
-    
+
     pub fn build_binary_row(&self, binary: &ExportableBinary) -> adw::ActionRow {
         // Create the action row
         let row = adw::ActionRow::new();

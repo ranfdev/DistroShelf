@@ -20,10 +20,7 @@
 
 use crate::container::Container;
 use crate::dialogs::{
-    CreateDistroboxDialog,
-    ExportableAppsDialog,
-    PreferencesDialog,
-    TaskManagerDialog,
+    CreateDistroboxDialog, ExportableAppsDialog, PreferencesDialog, TaskManagerDialog,
 };
 use crate::fakers::Command;
 use crate::gtk_utils::reaction;
@@ -151,7 +148,7 @@ mod imp {
 
 glib::wrapper! {
     pub struct DistroShelfWindow(ObjectSubclass<imp::DistroShelfWindow>)
-        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow, gtk::ShortcutManager, gtk::Root, gtk::Native,  
+        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow, gtk::ShortcutManager, gtk::Root, gtk::Native,
         @implements gio::ActionGroup, gio::ActionMap, gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 
@@ -173,11 +170,17 @@ impl DistroShelfWindow {
         this.root_store()
             .selected_container_model()
             .connect_selected_notify(move |model| {
-                if let Some(container) = model.selected_item().and_then(|obj| obj.downcast::<Container>().ok()) {
+                if let Some(container) = model
+                    .selected_item()
+                    .and_then(|obj| obj.downcast::<Container>().ok())
+                {
                     this_clone.build_main_content(&container);
                     this_clone.imp().split_view.set_show_content(true);
                 } else {
-                    this_clone.imp().content_page.set_child(None::<&gtk::Widget>);
+                    this_clone
+                        .imp()
+                        .content_page
+                        .set_child(None::<&gtk::Widget>);
                 }
             });
         let this_clone = this.clone();
@@ -253,10 +256,9 @@ impl DistroShelfWindow {
                     },
                 );
             }),
-            a("create-distrobox")
-                .activate(|this, _, _| {
-                    this.root_store()
-                        .set_current_dialog(TaggedObject::new("create-distrobox"));
+            a("create-distrobox").activate(|this, _, _| {
+                this.root_store()
+                    .set_current_dialog(TaggedObject::new("create-distrobox"));
             }),
             a("command-log").activate(|this, _, _| {
                 this.root_store()
@@ -295,27 +297,29 @@ impl DistroShelfWindow {
         let imp = self.imp();
 
         let selection_model = self.root_store().selected_container_model();
-        
+
         // Create a factory for creating and binding sidebar rows
         let factory = gtk::SignalListItemFactory::new();
-        
+
         factory.connect_setup(|_factory, item| {
             let list_item = item.downcast_ref::<gtk::ListItem>().unwrap();
             let sidebar_row = SidebarRow::new(&Container::default());
             list_item.set_child(Some(&sidebar_row));
         });
-        
+
         factory.connect_bind(|_factory, item| {
             let list_item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let container = list_item.item()
+            let container = list_item
+                .item()
                 .and_then(|obj| obj.downcast::<Container>().ok())
                 .unwrap();
-            let sidebar_row = list_item.child()
+            let sidebar_row = list_item
+                .child()
                 .and_then(|child| child.downcast::<SidebarRow>().ok())
                 .unwrap();
             sidebar_row.set_container(&container);
         });
-        
+
         imp.sidebar_list_view.set_factory(Some(&factory));
         imp.sidebar_list_view.set_model(Some(&selection_model));
         let this = self.clone();
@@ -534,7 +538,7 @@ impl DistroShelfWindow {
         // Create a container for the terminal with a reload button overlay
         let terminal_overlay = gtk::Overlay::new();
         terminal_overlay.set_child(Some(&terminal));
-        
+
         let reload_button = gtk::Button::from_icon_name("view-refresh-symbolic");
         reload_button.set_tooltip_text(Some("Reload Terminal"));
         reload_button.add_css_class("circular");
@@ -552,7 +556,7 @@ impl DistroShelfWindow {
         let terminal_pid = std::rc::Rc::new(std::cell::RefCell::new(None::<glib::Pid>));
         let container_name = container.name().to_string();
         let root_store = self.root_store();
-        
+
         // Function to spawn the terminal
         let spawn_terminal = clone!(
             #[strong]
@@ -567,19 +571,25 @@ impl DistroShelfWindow {
             container_name,
             move || {
                 reload_button.set_visible(false);
-                
+
                 // Prepare the shell command
-                let shell = root_store.command_runner().wrap_command(
-                    Command::new("distrobox")
-                        .arg("enter")
-                        .arg(&container_name)
-                        .clone(),
-                ).to_vec();
-                
+                let shell = root_store
+                    .command_runner()
+                    .wrap_command(
+                        Command::new("distrobox")
+                            .arg("enter")
+                            .arg(&container_name)
+                            .clone(),
+                    )
+                    .to_vec();
+
                 let fut = terminal.spawn_future(
                     vte4::PtyFlags::DEFAULT,
                     None,
-                    &shell.iter().map(|s| s.to_str().unwrap()).collect::<Vec<_>>(),
+                    &shell
+                        .iter()
+                        .map(|s| s.to_str().unwrap())
+                        .collect::<Vec<_>>(),
                     &[],
                     glib::SpawnFlags::DEFAULT,
                     || {},
@@ -595,7 +605,7 @@ impl DistroShelfWindow {
                         match fut.await {
                             Ok(pid) => {
                                 *terminal_pid.borrow_mut() = Some(pid);
-                            },
+                            }
                             Err(err) => {
                                 eprintln!("Failed to spawn terminal: {}", err);
                                 reload_button.set_visible(true);
@@ -605,7 +615,7 @@ impl DistroShelfWindow {
                 ));
             }
         );
-        
+
         // Connect to terminal child-exited signal to show reload button
         terminal.connect_child_exited(clone!(
             #[weak]
@@ -617,7 +627,7 @@ impl DistroShelfWindow {
                 reload_button.set_visible(true);
             }
         ));
-        
+
         // Reload button click handler
         reload_button.connect_clicked(clone!(
             #[strong]
@@ -626,7 +636,7 @@ impl DistroShelfWindow {
                 spawn_terminal();
             }
         ));
-        
+
         // Spawn terminal when view becomes visible
         view_stack.connect_visible_child_notify(clone!(
             #[strong]
@@ -701,7 +711,9 @@ impl DistroShelfWindow {
                 self,
                 move |dialog, _| {
                     this.root_store().selected_container().unwrap().delete();
-                    this.root_store().selected_container_model().set_selected(gtk::INVALID_LIST_POSITION);
+                    this.root_store()
+                        .selected_container_model()
+                        .set_selected(gtk::INVALID_LIST_POSITION);
                     dialog.close();
                 }
             ),

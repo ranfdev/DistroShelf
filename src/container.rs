@@ -1,17 +1,15 @@
 use crate::{
-    distrobox::{ContainerInfo, CreateArgs, CreateArgName, ExportableApp, Status},
+    distrobox::{ContainerInfo, CreateArgName, CreateArgs, ExportableApp, Status},
     distrobox_task::DistroboxTask,
+    fakers::Command,
     fakers::CommandRunner,
     gtk_utils::TypedListStore,
-    known_distros::{known_distro_by_image, KnownDistro},
+    known_distros::{KnownDistro, known_distro_by_image},
     query::Query,
     root_store::RootStore,
-    fakers::Command
 };
 
-use gtk::{
-    glib::{derived_properties, BoxedAnyObject, Properties},
-};
+use gtk::glib::{BoxedAnyObject, Properties, derived_properties};
 
 use adw::prelude::*;
 use glib::subclass::prelude::*;
@@ -54,26 +52,26 @@ mod imp {
                 image: RefCell::new(String::new()),
                 distro: RefCell::new(None),
 
-                // Fetching apps often fails when the container is not running and distrobox has to start it, 
+                // Fetching apps often fails when the container is not running and distrobox has to start it,
                 // so we add retries
-                apps: Query::new("apps".into(), || async {
-                    Ok(TypedListStore::new())
-                })
-                .with_timeout(Duration::from_secs(1))
-                .with_retry_strategy(|n|  if n < 3 {
-                    Some(Duration::from_secs(n as u64))
-                } else {
-                    None
-                }),
-                binaries: Query::new("binaries".into(), || async {
-                    Ok(TypedListStore::new())
-                })
-                .with_timeout(Duration::from_secs(1))
-                .with_retry_strategy(|n|  if n < 3 {
-                    Some(Duration::from_secs(n as u64))
-                } else {
-                    None
-                }),
+                apps: Query::new("apps".into(), || async { Ok(TypedListStore::new()) })
+                    .with_timeout(Duration::from_secs(1))
+                    .with_retry_strategy(|n| {
+                        if n < 3 {
+                            Some(Duration::from_secs(n as u64))
+                        } else {
+                            None
+                        }
+                    }),
+                binaries: Query::new("binaries".into(), || async { Ok(TypedListStore::new()) })
+                    .with_timeout(Duration::from_secs(1))
+                    .with_retry_strategy(|n| {
+                        if n < 3 {
+                            Some(Duration::from_secs(n as u64))
+                        } else {
+                            None
+                        }
+                    }),
             }
         }
     }
@@ -112,7 +110,8 @@ impl Container {
                     .list_apps(&this.name())
                     .await?;
 
-                let apps_list: TypedListStore<BoxedAnyObject> = TypedListStore::from_iter(apps.into_iter().map(BoxedAnyObject::new));
+                let apps_list: TypedListStore<BoxedAnyObject> =
+                    TypedListStore::from_iter(apps.into_iter().map(BoxedAnyObject::new));
 
                 // Listing the apps starts the container, we need to update its status
                 this.root_store().load_containers();
@@ -130,7 +129,8 @@ impl Container {
                     .get_exported_binaries(&this.name())
                     .await?;
 
-                let binaries_list: TypedListStore<BoxedAnyObject> = TypedListStore::from_iter(binaries.into_iter().map(BoxedAnyObject::new));
+                let binaries_list: TypedListStore<BoxedAnyObject> =
+                    TypedListStore::from_iter(binaries.into_iter().map(BoxedAnyObject::new));
 
                 // Listing the binaries starts the container, we need to update its status
                 this.root_store().load_containers();

@@ -1,9 +1,9 @@
 // You can copy/paste this file every time you need a simple GObject
 // to hold some data
 
+use glib::Properties;
 use glib::prelude::*;
 use glib::subclass::prelude::*;
-use glib::Properties;
 use gtk::glib;
 use std::cell::RefCell;
 

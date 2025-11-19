@@ -34,7 +34,7 @@ impl InnerCommandRunner for FlatpakCommandRunner {
     fn wrap_command(&self, mut command: Command) -> Command {
         let mut args = vec!["--host".into(), command.program];
         args.extend(command.args);
-        
+
         command.args = args;
         command.program = "flatpak-spawn".into();
         command
