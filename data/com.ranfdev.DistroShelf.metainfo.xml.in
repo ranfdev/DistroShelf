@@ -71,6 +71,19 @@
   </screenshots>
 
   <releases>
+    <release version="1.1.0" date="2025-11-19">
+      <description translate="no">
+        <ul>
+          <li>Show container resource usage (CPU and Memory)</li>
+          <li>New image picker view with custom image support</li>
+          <li>Indicate already downloaded images in the picker</li>
+          <li>Add UI for cloning containers</li>
+          <li>Add integrated VTE terminal</li>
+          <li>Listen to podman events for real-time updates</li>
+          <li>Fix issues with loading apps by adding timeouts and retries</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.15" date="2025-10-22">
       <description translate="no">
         <ul>
