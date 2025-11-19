@@ -539,18 +539,10 @@ impl CreateDistroboxDialog {
             child.set_is_downloaded(is_downloaded);
         });
 
-        let list_view = gtk::ListView::new(Some(selection_model), Some(factory));
+        let list_view = gtk::ListView::new(Some(selection_model.clone()), Some(factory));
         list_view.add_css_class("navigation-sidebar");
         list_view.set_single_click_activate(true);
 
-        let scrolled_window = gtk::ScrolledWindow::new();
-        scrolled_window.set_child(Some(&list_view));
-        scrolled_window.set_vexpand(true);
-
-        let stack = gtk::Stack::new();
-        stack.add_named(&scrolled_window, Some("list"));
-
-        let empty_page = gtk::Box::new(gtk::Orientation::Vertical, 4);
 
         let custom_list = gtk::ListBox::new();
         custom_list.add_css_class("navigation-sidebar");
@@ -561,25 +553,23 @@ impl CreateDistroboxDialog {
 
         custom_list.append(&custom_row_item);
 
-        empty_page.append(&custom_list);
-        stack.add_named(&empty_page, Some("empty"));
+        let custom_label = gtk::Label::new(Some("Custom"));
+        custom_label.add_css_class("heading");
+        custom_label.set_halign(gtk::Align::Start);
+        custom_label.set_margin_start(12);
+        custom_label.set_margin_top(12);
 
-        view.set_content(Some(&stack));
+        // Create a box to hold both the list view and custom list
+        let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        content_box.append(&list_view);
+        content_box.append(&custom_label);
+        content_box.append(&custom_list);
 
-        // Handle empty state
-        let stack_clone = stack.clone();
-        filter_model.connect_items_changed(move |model, _, _, _| {
-            if model.n_items() > 0 {
-                stack_clone.set_visible_child_name("list");
-            } else {
-                stack_clone.set_visible_child_name("empty");
-            }
-        });
+        let scrolled_window = gtk::ScrolledWindow::new();
+        scrolled_window.set_child(Some(&content_box));
+        scrolled_window.set_vexpand(true);
 
-        // Initial state check
-        if filter_model.n_items() == 0 {
-            stack.set_visible_child_name("empty");
-        }
+        view.set_content(Some(&scrolled_window));
 
         // Update custom row
         search_entry.connect_search_changed(clone!(
@@ -602,26 +592,69 @@ impl CreateDistroboxDialog {
             custom_list.set_sensitive(false);
         }
 
-        // Handle custom image selection
-        custom_list.connect_row_activated(clone!(
+        let handle_image_selected = clone!(
             #[weak(rename_to=this)]
             self,
+            move |image: &str| {
+                this.imp().selected_image.replace(image.to_string());
+                this.imp().image_row.set_subtitle(image);
+                this.imp().navigation_view.pop();
+            }
+        );
+
+        // Handle Enter key on search_entry to select first filtered image
+        search_entry.connect_activate(clone!(
+            #[strong]
+            handle_image_selected,
+            #[weak]
+            list_view,
+            #[weak]
+            selection_model,
+            move |entry| {
+                let text = entry.text();
+                if text.is_empty() {
+                    return;
+                }
+                if selection_model.n_items() > 0 {
+                    list_view.activate_action("list.activate-item", Some(&glib::Variant::from(0u32))).unwrap();
+                } else {
+                    handle_image_selected(&entry.text());
+                }
+            }
+        ));
+
+        // Handle Escape key to close the image selector
+        let escape_key_controller = gtk::EventControllerKey::new();
+        escape_key_controller.connect_key_pressed(clone!(
+            #[weak(rename_to=this)]
+            self,
+            #[upgrade_or]
+            glib::signal::Propagation::Stop,
+            move |_, key, _, _| {
+                match key {
+                    gtk::gdk::Key::Escape => {
+                        this.imp().navigation_view.pop();
+                        glib::signal::Propagation::Stop
+                    }
+                    _ => glib::signal::Propagation::Proceed,
+                }
+            }
+        ));
+        search_entry.add_controller(escape_key_controller);
+
+        // Handle custom image selection
+        custom_list.connect_row_activated(clone!(
             #[weak]
             search_entry,
+            #[strong]
+            handle_image_selected,
             move |_, _| {
-                let image = search_entry.text();
-                if !image.is_empty() {
-                    this.imp().selected_image.replace(image.to_string());
-                    this.imp().image_row.set_subtitle(&image);
-                    this.imp().navigation_view.pop();
-                }
+                handle_image_selected(&search_entry.text());
             }
         ));
 
         // Handle selection
         list_view.connect_activate(clone!(
-            #[weak(rename_to=this)]
-            self,
             move |list_view, position| {
                 let model = list_view.model().unwrap(); // SingleSelection
                 let item = model
@@ -631,9 +664,7 @@ impl CreateDistroboxDialog {
                     .unwrap();
                 let image = item.string();
 
-                this.imp().selected_image.replace(image.to_string());
-                this.imp().image_row.set_subtitle(&image);
-                this.imp().navigation_view.pop();
+                handle_image_selected(&image);
             }
         ));
 
