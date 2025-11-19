@@ -22,7 +22,6 @@ jobs:
       - name: Install Flatpak & Builder
         run: |
           sudo apt-get update
-          sudo apt-get install libvte-2.91-gtk4-0 libvte-2.91-gtk4-dev
           sudo apt-get install -y flatpak flatpak-builder
 
       - name: Add Flathub remote

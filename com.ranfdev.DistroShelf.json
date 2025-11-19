@@ -47,7 +47,10 @@
             "name": "vte",
             "buildsystem": "meson",
             "config-opts": [
-            "-Ddocs=false"
+                "-Ddocs=false",
+                "-Dgtk3=false",
+                "-Dgtk4=true",
+                "--libdir=lib"
             ],
             "sources": [
             {
