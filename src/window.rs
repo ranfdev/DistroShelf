@@ -553,6 +553,38 @@ impl DistroShelfWindow {
 
         let terminal = vte4::Terminal::new();
 
+        // Create context menu actions
+        let action_group = gio::SimpleActionGroup::new();
+
+        let copy_action = gio::SimpleAction::new("copy", None);
+        copy_action.connect_activate(clone!(
+            #[weak]
+            terminal,
+            move |_, _| {
+                terminal.copy_clipboard_format(vte4::Format::Text);
+            }
+        ));
+        action_group.add_action(&copy_action);
+
+        let paste_action = gio::SimpleAction::new("paste", None);
+        paste_action.connect_activate(clone!(
+            #[weak]
+            terminal,
+            move |_, _| {
+                terminal.paste_clipboard();
+            }
+        ));
+        action_group.add_action(&paste_action);
+
+        terminal.insert_action_group("terminal", Some(&action_group));
+
+        // Create context menu
+        let menu_model = gio::Menu::new();
+        menu_model.append(Some("Copy"), Some("terminal.copy"));
+        menu_model.append(Some("Paste"), Some("terminal.paste"));
+
+        terminal.set_context_menu_model(Some(&menu_model));
+
         // Create a container for the terminal with a reload button overlay
         let terminal_overlay = gtk::Overlay::new();
         terminal_overlay.set_child(Some(&terminal));
