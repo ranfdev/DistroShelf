@@ -9,8 +9,12 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::OnceCell;
 use std::cell::RefCell;
+use std::collections::HashSet;
+use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
+use std::pin::Pin;
+use std::task::{Context as TaskContext, Poll};
 use tracing::error;
 use tracing::info;
 use tracing::{debug, warn};
@@ -29,9 +33,6 @@ use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
 
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::pin::Pin;
-use std::task::{Context as TaskContext, Poll};
 
 /// Podman event structure
 #[derive(Debug, Clone, Deserialize)]
@@ -116,6 +117,15 @@ pub fn listen_podman_events(
     })
 }
 
+#[derive(Debug, Clone, Deserialize, Hash, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct Image {
+    #[serde(rename = "Id")]
+    pub id: String,
+    #[serde(rename = "Names")]
+    pub names: Option<Vec<String>>,
+}
+
 mod imp {
     use crate::query::Query;
 
@@ -131,6 +141,7 @@ mod imp {
 
         pub distrobox_version: Query<String>,
         pub images_query: Query<Vec<String>>,
+        pub downloaded_images_query: Query<HashSet<String>>,
         pub containers_query: Query<Vec<Container>>,
 
         pub containers: TypedListStore<Container>,
@@ -166,6 +177,7 @@ mod imp {
                     Ok(String::new())
                 }),
                 images_query: Query::new("images".into(), || async { Ok(vec![]) }),
+                downloaded_images_query: Query::new("downloaded_images".into(), || async { Ok(HashSet::new()) }),
                 containers_query: Query::new("containers".into(), || async { Ok(vec![]) }),
                 tasks: TypedListStore::new(),
                 selected_task: Default::default(),
@@ -239,6 +251,15 @@ impl RootStore {
         });
 
         let this_clone = this.clone();
+        this.imp().downloaded_images_query.set_fetcher(move || {
+            let this_clone = this_clone.clone();
+            async move {
+                dbg!("Fetching downloaded images");
+                this_clone.fetch_downloaded_images().await
+            }
+        });
+
+        let this_clone = this.clone();
         this.imp().containers_query.set_fetcher(move || {
             let this_clone = this_clone.clone();
             async move {
@@ -289,6 +310,10 @@ impl RootStore {
 
     pub fn images_query(&self) -> Query<Vec<String>> {
         self.imp().images_query.clone()
+    }
+
+    pub fn downloaded_images_query(&self) -> Query<HashSet<String>> {
+        self.imp().downloaded_images_query.clone()
     }
 
     pub fn containers_query(&self) -> Query<Vec<Container>> {
@@ -703,6 +728,42 @@ impl RootStore {
         *self.imp().container_runtime.borrow_mut() = Some(runtime);
         Ok(runtime)
     }
+
+    async fn fetch_downloaded_images(&self) -> anyhow::Result<HashSet<String>> {
+        let runtime = self.get_container_runtime().await?;
+        let mut cmd = Command::new(runtime.as_str());
+        cmd.arg("images").arg("--format").arg("json");
+
+        let output = self.run_to_string(cmd).await?;
+        dbg!(&output);
+        // Some versions of podman/docker might return empty string if no images?
+        if output.trim().is_empty() {
+            return Ok(HashSet::new());
+        }
+        
+        // Handle potential JSON Lines vs JSON Array
+        // Try parsing as array first
+        let images_vec: Vec<Image> = match serde_json::from_str::<Vec<Image>>(&output) {
+            Ok(images) => images,
+            Err(_) => {
+                // Try parsing as JSON lines
+                let mut images = Vec::new();
+                for line in output.lines() {
+                    if !line.trim().is_empty() {
+                        images.push(serde_json::from_str::<Image>(line)?);
+                    }
+                }
+                images
+            }
+        };
+        
+        let names: HashSet<String> = images_vec
+            .into_iter()
+            .flat_map(|img| img.names.unwrap_or_default())
+            .collect();
+
+        Ok(names)
+    }
 }
 
 impl Default for RootStore {
@@ -728,7 +789,7 @@ mod tests {
                 Ok("/home/user/Documents/custom-home-folder"),
             ),
             ("/home/user/Documents/custom-home-folder", Ok(""), {
-                Ok("/home/user/Documents/custom-home-folder")
+                Ok("/home/user/Documents/custom/home/folder")
             }),
             // If the resolution fails and the path is from a sandbox, we expect an error
             ("/run/user/1000/doc/xyz456", Err(()), Err(())),

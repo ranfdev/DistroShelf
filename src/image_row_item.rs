@@ -21,6 +21,9 @@ mod imp {
         pub distro: RefCell<Option<KnownDistro>>,
         pub icon: gtk::Image,
         pub label: gtk::Label,
+        #[property(get, set = Self::set_is_downloaded)]
+        pub is_downloaded: std::cell::Cell<bool>,
+        pub downloaded_icon: gtk::Image,
     }
 
     #[glib::derived_properties]
@@ -31,12 +34,25 @@ mod imp {
             self.label.set_xalign(0.0);
             self.label.set_ellipsize(pango::EllipsizeMode::Middle);
             self.label.set_has_tooltip(true);
+            self.label.set_hexpand(true);
+
+            self.downloaded_icon.set_icon_name(Some("drive-harddisk-symbolic"));
+            self.downloaded_icon.set_visible(false);
+            self.downloaded_icon.set_tooltip_text(Some("Image already downloaded"));
 
             let obj = self.obj();
             obj.add_css_class("distro-row-item");
             obj.set_spacing(6);
             obj.append(&self.icon);
             obj.append(&self.label);
+            obj.append(&self.downloaded_icon);
+        }
+    }
+
+    impl ImageRowItem {
+        fn set_is_downloaded(&self, is_downloaded: bool) {
+            self.is_downloaded.set(is_downloaded);
+            self.downloaded_icon.set_visible(is_downloaded);
         }
     }
 

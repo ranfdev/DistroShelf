@@ -9,6 +9,7 @@ use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
 use crate::root_store::RootStore;
 use crate::sidebar_row::SidebarRow;
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::{cell::RefCell, rc::Rc};
 
@@ -54,6 +55,7 @@ mod imp {
         pub cloning_content: gtk::Box,
         pub view_switcher: adw::InlineViewSwitcher,
         pub clone_warning_banner: adw::Banner,
+        pub downloaded_tags: RefCell<HashSet<String>>,
     }
 
     impl CreateDistroboxDialog {
@@ -403,6 +405,16 @@ impl CreateDistroboxDialog {
             }
         ));
 
+        let this_clone = this.clone();
+        this
+            .root_store()
+            .downloaded_images_query()
+            .connect_success(move |images| {
+                *this_clone.imp().downloaded_tags.borrow_mut() = images.clone();
+            });
+
+        this.root_store().downloaded_images_query().refetch();
+
         this
     }
 
@@ -511,7 +523,8 @@ impl CreateDistroboxDialog {
             let row = image_row_item::ImageRowItem::new();
             item.set_child(Some(&row));
         });
-        factory.connect_bind(|_, item| {
+        let obj = self.clone();
+        factory.connect_bind(move |_, item| {
             let item = item.downcast_ref::<gtk::ListItem>().unwrap();
             let image = item
                 .item()
@@ -521,6 +534,9 @@ impl CreateDistroboxDialog {
             let child = item.child();
             let child: &image_row_item::ImageRowItem = child.and_downcast_ref().unwrap();
             child.set_image(&image);
+
+            let is_downloaded = obj.imp().downloaded_tags.borrow().contains(image.as_str());
+            child.set_is_downloaded(is_downloaded);
         });
 
         let list_view = gtk::ListView::new(Some(selection_model), Some(factory));
