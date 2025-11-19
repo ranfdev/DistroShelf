@@ -916,7 +916,6 @@ impl Distrobox {
     ) -> Result<Box<dyn Child + Send>, Error> {
         let mut cmd = Self::create_cmd(args);
         cmd.remove_flag_value_arg("--image");
-        cmd.remove_flag_arg("--yes");
         cmd.arg("--clone").arg(source_name);
         self.cmd_spawn(cmd)
     }

@@ -254,7 +254,6 @@ impl RootStore {
         this.imp().downloaded_images_query.set_fetcher(move || {
             let this_clone = this_clone.clone();
             async move {
-                dbg!("Fetching downloaded images");
                 this_clone.fetch_downloaded_images().await
             }
         });
@@ -735,7 +734,6 @@ impl RootStore {
         cmd.arg("images").arg("--format").arg("json");
 
         let output = self.run_to_string(cmd).await?;
-        dbg!(&output);
         // Some versions of podman/docker might return empty string if no images?
         if output.trim().is_empty() {
             return Ok(HashSet::new());

@@ -674,7 +674,7 @@ impl CreateDistroboxDialog {
     pub async fn extract_create_args(&self) -> Result<CreateArgs, Error> {
         let imp = self.imp();
         let image = imp.selected_image.borrow().clone();
-        if image.is_empty() {
+        if image.is_empty() && imp.clone_src.borrow().is_none() {
             return Err(Error::InvalidField(
                 "image".into(),
                 "No image selected".into(),
