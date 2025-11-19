@@ -16,6 +16,7 @@ use tracing::info;
 use tracing::{debug, warn};
 
 use crate::container::Container;
+use crate::container_stats::ContainerRuntime;
 use crate::distrobox;
 use crate::distrobox::CreateArgs;
 use crate::distrobox::Distrobox;
@@ -126,6 +127,7 @@ mod imp {
         pub distrobox: OnceCell<crate::distrobox::Distrobox>,
         pub terminal_repository: RefCell<TerminalRepository>,
         pub command_runner: OnceCell<CommandRunner>,
+        pub container_runtime: RefCell<Option<ContainerRuntime>>,
 
         pub distrobox_version: Query<String>,
         pub images_query: Query<Vec<String>>,
@@ -152,6 +154,7 @@ mod imp {
             Self {
                 containers: TypedListStore::new(),
                 command_runner: OnceCell::new(),
+                container_runtime: RefCell::new(None),
                 terminal_repository: RefCell::new(TerminalRepository::new(
                     CommandRunner::new_null(),
                 )),
@@ -667,6 +670,38 @@ impl RootStore {
                 Err(e)
             }
         }
+    }
+
+    pub async fn get_container_runtime(&self) -> anyhow::Result<ContainerRuntime> {
+        if let Some(runtime) = *self.imp().container_runtime.borrow() {
+            return Ok(runtime);
+        }
+
+        let runner = self.imp().command_runner.get().unwrap();
+        let mut cmd = Command::new("podman");
+        cmd.arg("--version");
+        cmd.stdout = FdMode::Pipe;
+        cmd.stderr = FdMode::Pipe;
+
+        let podman_check = runner.output(cmd).await;
+
+        let runtime = if podman_check.is_ok() && podman_check.unwrap().status.success() {
+            ContainerRuntime::Podman
+        } else {
+            let mut cmd = Command::new("docker");
+            cmd.arg("--version");
+            cmd.stdout = FdMode::Pipe;
+            cmd.stderr = FdMode::Pipe;
+            let docker_check = runner.output(cmd).await;
+            if docker_check.is_ok() && docker_check.unwrap().status.success() {
+                ContainerRuntime::Docker
+            } else {
+                ContainerRuntime::Podman
+            }
+        };
+
+        *self.imp().container_runtime.borrow_mut() = Some(runtime);
+        Ok(runtime)
     }
 }
 

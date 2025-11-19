@@ -1,4 +1,5 @@
 use crate::{
+    container_stats::Usage,
     distrobox::{ContainerInfo, CreateArgName, CreateArgs, ExportableApp, Status},
     distrobox_task::DistroboxTask,
     fakers::Command,
@@ -40,6 +41,7 @@ mod imp {
         pub distro: RefCell<Option<KnownDistro>>,
         pub apps: Query<TypedListStore<glib::BoxedAnyObject>>,
         pub binaries: Query<TypedListStore<glib::BoxedAnyObject>>,
+        pub usage: Query<Usage>,
     }
 
     impl Default for Container {
@@ -72,6 +74,7 @@ mod imp {
                             None
                         }
                     }),
+                usage: Query::new("usage".into(), || async { Ok(Usage::default()) }),
             }
         }
     }
@@ -138,6 +141,35 @@ impl Container {
             }
         });
 
+        let this_clone = this.clone();
+        this.usage().set_fetcher(move || {
+            let this = this_clone.clone();
+            async move {
+                let root_store = this.root_store();
+                let runtime = root_store.get_container_runtime().await?;
+                let runner = root_store.imp().command_runner.get().unwrap();
+
+                let mut cmd = Command::new(runtime.as_str());
+                cmd.arg("stats");
+                cmd.arg("--no-stream");
+                cmd.arg("--format");
+                cmd.arg("json");
+                cmd.arg(this.name());
+                cmd.stdout = crate::fakers::FdMode::Pipe;
+                cmd.stderr = crate::fakers::FdMode::Pipe;
+
+                let output = runner.output(cmd).await?;
+                if !output.status.success() {
+                    return Err(anyhow::anyhow!("Failed to get stats"));
+                }
+
+                let stdout = String::from_utf8(output.stdout)?;
+                let usages: Vec<Usage> = serde_json::from_str(&stdout)?;
+
+                usages.into_iter().next().ok_or_else(|| anyhow::anyhow!("No stats found"))
+            }
+        });
+
         this
     }
 
@@ -168,6 +200,10 @@ impl Container {
 
     pub fn binaries(&self) -> Query<TypedListStore<BoxedAnyObject>> {
         self.imp().binaries.clone()
+    }
+
+    pub fn usage(&self) -> Query<Usage> {
+        self.imp().usage.clone()
     }
 
     pub fn upgrade(&self) -> DistroboxTask {

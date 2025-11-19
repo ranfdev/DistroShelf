@@ -459,12 +459,30 @@ impl DistroShelfWindow {
         status_row.add_suffix(&status_child);
         status_group.add(&status_row);
 
+        // Usage stats row
+        let usage_row = adw::ActionRow::new();
+        usage_row.set_title("Resources");
+        usage_row.set_subtitle(&format!("CPU: 0.0% • Mem: 0 (0%)"));
+        status_group.add(&usage_row);
+
+
+        let usage_query = container.usage();
+        usage_query.connect_success(clone!(
+            #[weak] usage_row,
+            move |usage| {
+                usage_row.set_subtitle(&format!("CPU: {} • Mem: {} ({})", usage.cpu_perc, usage.mem_usage, usage.mem_perc));
+            }
+        ));
+
         reaction! {
             (container.status_detail(), container.status_tag()),
             move |(detail, tag): (String, String)| {
                 let text = format!("{tag}: {detail}");
                 status_row.set_subtitle(&text);
                 stop_btn.set_visible(tag == "up");
+                if tag == "up" {
+                    usage_query.fetch();
+                }
             }
         };
 
