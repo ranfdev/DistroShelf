@@ -1,11 +1,15 @@
 use crate::fakers::{
     Child, Command, CommandRunner, FdMode, InnerCommandRunner, NullCommandRunnerBuilder,
 };
+use serde::{Deserialize, Deserializer};
 use std::{
     cell::LazyCell,
     collections::BTreeMap,
+    env,
+    ffi::OsString,
     future::Future,
     io,
+    os::unix::ffi::OsStringExt,
     path::{Path, PathBuf},
     pin::Pin,
     process::Output,
@@ -18,7 +22,110 @@ mod desktop_file;
 
 pub use desktop_file::*;
 
-const POSIX_FIND_AND_CONCAT_DESKTOP_FILES: &str = "grep -L '^[[:space:]]*NoDisplay[[:space:]]*=[[:space:]]*true[[:space:]]*$' /usr/share/applications/*.desktop 2>/dev/null | while IFS= read -r file; do printf '# START FILE %s\n' \"$file\"; cat \"$file\"; done";
+const POSIX_FIND_AND_CONCAT_DESKTOP_FILES: &str = r#"
+set -o pipefail >/dev/null 2>&1 # TODO: Join with the following (without piping), as it is part of POSIX 2022, but Debian 13 Trixie and Ubuntu 24.10 Oracular Oriole are the first releases with a `dash` version (>=0.5.12-7) supporting this flag. See also https://github.com/koalaman/shellcheck/issues/2555 and https://metadata.ftp-master.debian.org/changelogs/main/d/dash/stable_changelog
+set -eu
+
+base16FunctionDefinition="$(cat <<'EOF'
+base16() {
+  if [ "$#" -eq 0 ]; then
+    cat
+  else
+    printf '%s' "$1"
+  fi | od -vt x1 -A n | tr -d '[[:space:]]'
+}
+EOF
+)"
+
+eval "$base16FunctionDefinition"
+
+dumpDesktopFiles() {
+  if ! [ -d "$1" ]; then
+    return
+  fi
+
+  find "$1" -name '*.desktop' -not -exec grep -q '^[[:space:]]*NoDisplay[[:space:]]*=[[:space:]]*true[[:space:]]*$' '{}' \; -exec sh -c "$(set +o);$base16FunctionDefinition;"'printf '\''"%s"="%s"\n'\'' "$(base16 "$1")" "$(base16 <"$1")"' - '{}' \;
+}
+
+printf 'home_dir="%s"\n' "$(base16 "$HOME")"
+
+printf '[system]\n'
+dumpDesktopFiles /usr/share/applications
+
+printf '[user]\n'
+dumpDesktopFiles "$HOME/.local/share/applications"
+"#;
+
+#[derive(Deserialize, Debug)]
+struct DesktopFiles {
+    #[serde(deserialize_with = "DesktopFiles::deserialize_path")]
+    home_dir: PathBuf,
+    #[serde(deserialize_with = "DesktopFiles::deserialize_desktop_files")]
+    system: BTreeMap<PathBuf, String>,
+    #[serde(deserialize_with = "DesktopFiles::deserialize_desktop_files")]
+    user: BTreeMap<PathBuf, String>,
+}
+
+impl DesktopFiles {
+    fn decode_hex<E: serde::de::Error>(hex_str: &str) -> Result<Vec<u8>, E> {
+        if hex_str.len() % 2 != 0 {
+            return Err(E::invalid_length(
+                hex_str.len(),
+                &"hex string to have an even lenght",
+            ));
+        }
+
+        (0..hex_str.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&hex_str[i..=i + 1], 16))
+            .collect::<Result<_, _>>()
+            .map_err(|e| {
+                E::custom(format_args!(
+                    "hex string contains non hex characters: {e:?}"
+                ))
+            })
+    }
+
+    fn decode_utf8_from_hex<E: serde::de::Error>(hex_str: &str) -> Result<String, E> {
+        String::from_utf8(Self::decode_hex(hex_str)?).map_err(|e| {
+            E::custom(format_args!(
+                "decoded hex string does not represent valid UTF-8: {e:?}"
+            ))
+        })
+    }
+
+    fn decode_path_from_hex<E: serde::de::Error>(hex_str: &str) -> Result<PathBuf, E> {
+        Ok(PathBuf::from(OsString::from_vec(Self::decode_hex(
+            hex_str,
+        )?)))
+    }
+
+    fn deserialize_path<'de, D: Deserializer<'de>>(deserializer: D) -> Result<PathBuf, D::Error> {
+        Self::decode_path_from_hex(&String::deserialize(deserializer)?)
+    }
+
+    fn deserialize_desktop_files<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<BTreeMap<PathBuf, String>, D::Error> {
+        BTreeMap::<String, String>::deserialize(deserializer)?
+            .into_iter()
+            .map(|(path, content)| {
+                Ok((
+                    Self::decode_path_from_hex(&path)?,
+                    Self::decode_utf8_from_hex(&content)?,
+                ))
+            })
+            .collect()
+    }
+
+    fn into_map(self) -> BTreeMap<PathBuf, String> {
+        let mut desktop_files = self.system;
+        if env::home_dir() != Some(self.home_dir) {
+            desktop_files.extend(self.user)
+        }
+        desktop_files
+    }
+}
 
 #[derive(Clone)]
 pub struct FlatpakCommandRunner {
@@ -623,20 +730,15 @@ impl Distrobox {
             "-c",
             POSIX_FIND_AND_CONCAT_DESKTOP_FILES,
         ]);
-        let concatenated_files = self.cmd_output_string(cmd).await?;
-        debug!(concatenated_files = concatenated_files);
-        let res = concatenated_files
-            .split("# START FILE ")
-            .skip(1)
-            .map(|file_content| {
-                let file_path = file_content.lines().next().map(|name| name.trim_start());
-                (
-                    file_path.unwrap_or_default().to_string(),
-                    file_content.to_string(),
-                )
-            })
-            .collect();
-        Ok(res)
+        let desktop_files: DesktopFiles = toml::from_str(&self.cmd_output_string(cmd).await?)
+            .map_err(|e| Error::ParseOutput(format!("{e:?}")))?;
+        debug!(desktop_files = format_args!("{desktop_files:#?}"));
+
+        Ok(desktop_files
+            .into_map()
+            .into_iter()
+            .map(|(path, content)| (path.to_string_lossy().into_owned(), content))
+            .collect::<Vec<_>>())
     }
 
     pub async fn list_apps(&self, box_name: &str) -> Result<Vec<ExportableApp>, Error> {
