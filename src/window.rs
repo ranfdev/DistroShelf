@@ -410,14 +410,13 @@ impl DistroShelfWindow {
         let header_bar = adw::HeaderBar::new();
         toolbar_view.add_top_bar(&header_bar);
 
-        // Create view stack and inline view switcher, wire them together and add the switcher to the header
+        // Create view stack and view switcher, wire them together and add the switcher to the header
         let view_stack = adw::ViewStack::new();
-        let inline_view_switcher = adw::InlineViewSwitcher::new();
-        inline_view_switcher.set_stack(Some(&view_stack));
-        inline_view_switcher.set_margin_start(6);
-        inline_view_switcher.set_margin_end(6);
+        let view_switcher = adw::ViewSwitcher::new();
+        view_switcher.set_stack(Some(&view_stack));
+        view_switcher.set_policy(adw::ViewSwitcherPolicy::Wide);
         // Put the switcher in the header bar (acts as title widget)
-        header_bar.set_title_widget(Some(&inline_view_switcher));
+        header_bar.set_title_widget(Some(&view_switcher));
 
         // The content container will be taking the view stack
         let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -547,9 +546,9 @@ impl DistroShelfWindow {
         main_box.append(&actions_group);
         main_box.append(&danger_group);
 
-        // Finish layout: the Overview page is the existing content inside a Clamp + ScrolledWindow
-        scrolled_window.set_child(Some(&main_box));
-        clamp.set_child(Some(&scrolled_window));
+        // Finish layout: the Overview page with Clamp inside ScrolledWindow
+        clamp.set_child(Some(&main_box));
+        scrolled_window.set_child(Some(&clamp));
 
         let terminal = vte4::Terminal::new();
 
@@ -599,8 +598,28 @@ impl DistroShelfWindow {
         terminal_overlay.add_overlay(&reload_button);
 
         // Add the two pages to the view stack
-        view_stack.add_titled(&clamp, Some("overview"), "Overview");
-        view_stack.add_titled(&terminal_overlay, Some("terminal"), "Terminal");
+        let overview_page = view_stack.add_titled(&scrolled_window, Some("overview"), "Overview");
+        overview_page.set_icon_name(Some("container-symbolic"));
+        
+        let terminal_page = view_stack.add_titled(&terminal_overlay, Some("terminal"), "Terminal");
+        terminal_page.set_icon_name(Some("terminal-symbolic"));
+
+        // Create bottom view switcher bar for small screens
+        let view_switcher_bar = adw::ViewSwitcherBar::new();
+        view_switcher_bar.set_stack(Some(&view_stack));
+
+        // Create breakpoint bin for responsive layout
+        let breakpoint_bin = adw::BreakpointBin::new();
+        breakpoint_bin.set_width_request(360);
+        breakpoint_bin.set_height_request(200);
+        let breakpoint_condition = adw::BreakpointCondition::parse("max-width: 550sp").unwrap();
+        let breakpoint = adw::Breakpoint::new(breakpoint_condition);
+        
+        // On small screens: hide header switcher, show bottom bar
+        breakpoint.add_setter(&view_switcher, "visible", Some(&false.to_value()));
+        breakpoint.add_setter(&view_switcher_bar, "reveal", Some(&true.to_value()));
+        
+        breakpoint_bin.add_breakpoint(breakpoint);
 
         // Track whether terminal process is running
         let terminal_pid = std::rc::Rc::new(std::cell::RefCell::new(None::<glib::Pid>));
@@ -707,9 +726,12 @@ impl DistroShelfWindow {
         view_stack.set_margin_start(0);
         view_stack.set_margin_end(0);
 
-        // The toolbar view content is the stack itself
+        // The toolbar view content is the stack and bottom switcher bar
         content.append(&view_stack);
-        toolbar_view.set_content(Some(&content));
+        content.append(&view_switcher_bar);
+        
+        breakpoint_bin.set_child(Some(&content));
+        toolbar_view.set_content(Some(&breakpoint_bin));
 
         self.imp().content_page.set_child(Some(&toolbar_view));
     }

@@ -8,6 +8,7 @@
   <gresource prefix="/com/ranfdev/DistroShelf/icons/scalable/actions/">
     <file preprocess="xml-stripblanks" alias="terminal-symbolic.svg">icons/terminal-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="package-symbolic.svg">icons/package-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="container-symbolic.svg">icons/container-symbolic.svg</file>
     
     <file preprocess="xml-stripblanks" alias="alma-symbolic.svg">icons/alma.svg</file>
     <file preprocess="xml-stripblanks" alias="arch-symbolic.svg">icons/arch.svg</file>
