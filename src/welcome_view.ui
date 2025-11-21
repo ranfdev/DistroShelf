@@ -45,6 +45,15 @@
                           </object>
                         </child>
                         <child>
+                          <object class="GtkButton" id="use_bundled_btn">
+                            <style>
+                              <class name="pill"/>
+                            </style>
+                            <property name="label" translatable="yes">Use Bundled Version</property>
+                            <signal name="clicked" swapped="true" handler="use_bundled_version"/>
+                          </object>
+                        </child>
+                        <child>
                           <object class="GtkLabel" id="distrobox_command_missing_label">
                             <property name="wrap">true</property>
                             <style>

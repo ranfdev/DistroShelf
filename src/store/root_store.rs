@@ -187,7 +187,37 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for RootStore {}
+    impl ObjectImpl for RootStore {
+        fn constructed(&self) {
+            self.parent_constructed();
+            let obj = self.obj();
+
+            // Watch settings
+            let settings = obj.settings();
+            settings.connect_changed(
+                Some("distrobox-executable"),
+                glib::clone!(
+                    #[weak]
+                    obj,
+                    move |settings, _key| {
+                        let val = settings.string("distrobox-executable");
+                        if val == "bundled" {
+                            // Check if bundled version exists
+                            let path = crate::distrobox_downloader::get_bundled_distrobox_path();
+                            if !path.exists() {
+                                obj.download_distrobox();
+                            } else {
+                                // Just refetch version to update UI
+                                obj.distrobox_version().refetch();
+                            }
+                        } else {
+                            obj.distrobox_version().refetch();
+                        }
+                    }
+                ),
+            );
+        }
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for RootStore {
@@ -215,7 +245,7 @@ impl RootStore {
 
         this.imp()
             .distrobox
-            .set(Distrobox::new(command_runner.clone()))
+            .set(Distrobox::new(command_runner.clone(), this.settings()))
             .or(Err("distrobox already set"))
             .unwrap();
 
@@ -355,6 +385,13 @@ impl RootStore {
     pub fn load_containers(&self) {
         self.containers_query()
             .refetch_if_stale(Duration::from_secs(1));
+    }
+
+    pub fn download_distrobox(&self) -> crate::distrobox_task::DistroboxTask {
+        let task = crate::distrobox_downloader::download_distrobox(self);
+        self.tasks().append(&task);
+        self.set_selected_task(Some(task.clone()));
+        task
     }
 
     /// Start listening to podman events and auto-refresh container list for distrobox events

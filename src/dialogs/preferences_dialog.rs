@@ -1,10 +1,10 @@
-use crate::root_store::RootStore;
+use crate::store::root_store::RootStore;
 use crate::supported_terminals;
 use crate::terminal_combo_row::TerminalComboRow;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{Properties, clone, derived_properties};
-use gtk::glib;
+use gtk::{gio, glib};
 use std::cell::RefCell;
 use tracing::error;
 
@@ -115,6 +115,92 @@ mod imp {
             terminal_group.add(&button_box);
 
             page.add(&terminal_group);
+
+            // Distrobox Settings Group
+            let distrobox_group = adw::PreferencesGroup::new();
+            distrobox_group.set_title("Distrobox Settings");
+
+            let distrobox_source_row = adw::ComboRow::new();
+            distrobox_source_row.set_title("Distrobox Source");
+            let model = gtk::StringList::new(&["System (host)", "Bundled Version"]);
+            distrobox_source_row.set_model(Some(&model));
+
+            // Bind to settings
+            let settings = gio::Settings::new("com.ranfdev.DistroShelf");
+            // We need to map string to index and vice versa
+            // 0 -> host, 1 -> bundled
+
+            if settings.string("distrobox-executable") == "bundled" {
+                distrobox_source_row.set_selected(1);
+            } else {
+                distrobox_source_row.set_selected(0);
+            }
+
+            distrobox_source_row.connect_selected_notify(move |row| {
+                let settings = gio::Settings::new("com.ranfdev.DistroShelf");
+                if row.selected() == 1 {
+                    let _ = settings.set_string("distrobox-executable", "bundled");
+                } else {
+                    let _ = settings.set_string("distrobox-executable", "host");
+                }
+            });
+
+            distrobox_group.add(&distrobox_source_row);
+
+            // Add version row
+            let version_row = adw::ActionRow::new();
+            version_row.set_title("Distrobox Version");
+            
+            let version_label = gtk::Label::new(None);
+            version_label.add_css_class("dim-label");
+            version_row.add_suffix(&version_label);
+            
+            // Bind to distrobox_version query
+            obj.root_store().distrobox_version().connect_success(clone!(
+                #[weak]
+                version_label,
+                move |version| {
+                    version_label.set_text(&version);
+                }
+            ));
+            obj.root_store().distrobox_version().connect_error(clone!(
+                #[weak]
+                version_label,
+                move |_| {
+                    version_label.set_text("Not available");
+                }
+            ));
+            
+            // Set initial value if already loaded
+            if let Some(version) = obj.root_store().distrobox_version().data() {
+                version_label.set_text(&version);
+            } else {
+                version_label.set_text("—");
+            }
+            
+            distrobox_group.add(&version_row);
+
+            // Add "Re-download Bundled Version" button
+            let redownload_btn = gtk::Button::new();
+            redownload_btn.set_label("Re-download Bundled");
+            redownload_btn.add_css_class("pill");
+            redownload_btn.set_halign(gtk::Align::Center);
+            redownload_btn.set_margin_top(12);
+            redownload_btn.set_margin_bottom(12);
+
+            redownload_btn.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    // Trigger download and open task manager
+                    obj.root_store().download_distrobox();
+                    obj.root_store().set_current_dialog(crate::tagged_object::TaggedObject::new("task-manager"));
+                }
+            ));
+
+            distrobox_group.add(&redownload_btn);
+
+            page.add(&distrobox_group);
             obj.add(&page);
         }
     }

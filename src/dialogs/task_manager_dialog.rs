@@ -181,6 +181,15 @@ impl TaskManagerDialog {
         let row = adw::ActionRow::new();
         row.set_title(&format!("{}: {}", task.target(), task.name()));
         row.set_subtitle(&task.status());
+        
+        task.connect_status_notify(clone!(
+            #[weak]
+            row,
+            move |task| {
+                row.set_subtitle(&task.status());
+            }
+        ));
+
         row.set_activatable(true);
         row.connect_activated(clone!(
             #[strong]
@@ -216,22 +225,39 @@ impl TaskManagerDialog {
             content.append(&label);
         }
 
-        task.connect_status_notify(clone!(
+        // Error label
+        let error_label = gtk::Label::new(None);
+        error_label.set_xalign(0.0);
+        error_label.set_wrap(true);
+        error_label.add_css_class("error");
+        content.append(&error_label);
+
+        let update_status_ui = clone!(
             #[weak]
             status_label,
-            move |task| {
+            #[weak]
+            error_label,
+            move |task: &DistroboxTask| {
                 status_label.set_text(&format!("Status: {}", task.status()));
+                if task.is_failed() {
+                    if let Some(error) = task.error_message() {
+                        error_label.set_text(&format!("Error: {}", error));
+                        error_label.set_visible(true);
+                    } else {
+                        error_label.set_visible(false);
+                    }
+                } else {
+                    error_label.set_visible(false);
+                }
             }
-        ));
+        );
 
-        if task.is_failed() {
-            if let Some(error) = task.take_error() {
-                tracing::error!(task = %task.name(), "Task failed: {}", error);
-                let error_label = gtk::Label::new(Some(&format!("Error: {}", error)));
-                error_label.set_xalign(0.0);
-                content.append(&error_label);
-            }
-        }
+        // Initial update
+        update_status_ui(task);
+
+        task.connect_status_notify(move |task| {
+            update_status_ui(task);
+        });
 
         let text_view = gtk::TextView::builder()
             .buffer(&task.output())

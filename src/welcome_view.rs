@@ -3,8 +3,9 @@
 
 use adw::subclass::prelude::*;
 use glib::Properties;
-use gtk::{glib, prelude::*};
+use gtk::{gio, glib, prelude::*};
 use std::cell::RefCell;
+use glib::clone;
 
 mod imp {
     use crate::{
@@ -33,6 +34,8 @@ mod imp {
         distrobox_page: TemplateChild<adw::Clamp>,
         #[template_child]
         terminal_combo_row: TemplateChild<TerminalComboRow>,
+        #[template_child]
+        pub use_bundled_btn: TemplateChild<gtk::Button>,
     }
 
     #[glib::derived_properties]
@@ -95,6 +98,47 @@ mod imp {
                     }
                 });
             }
+        }
+        #[template_callback]
+        fn use_bundled_version(&self, btn: &gtk::Button) {
+            let obj = self.obj();
+            
+            // Show spinner in button
+            let spinner = gtk::Spinner::new();
+            spinner.start();
+            btn.set_child(Some(&spinner));
+            btn.set_sensitive(false);
+
+            // Directly trigger the download and get the task
+            let task = obj.root_store().download_distrobox();
+            
+            // Connect to the task status changes
+            task.connect_status_notify(clone!(
+                #[weak]
+                obj,
+                #[strong]
+                btn,
+                move |task| {
+                    if task.status() == "successful" {
+                        obj.imp()
+                            .carousel
+                            .scroll_to(&*obj.imp().terminal_preferences_page, true);
+                    } else if task.status() == "failed" {
+                        btn.set_child(Some(&gtk::Label::new(Some("Use Bundled Version"))));
+                        btn.set_sensitive(true);
+                        obj.set_distrobox_error(Some(
+                            "Download failed. Check the task manager for details.".to_string()
+                        ));
+                    }
+                }
+            ));
+            
+            // Open task manager dialog from welcome view
+            obj.root_store().set_current_dialog(crate::tagged_object::TaggedObject::new("task-manager"));
+
+            // Set the preference for future launches
+            let settings = gio::Settings::new("com.ranfdev.DistroShelf");
+            let _ = settings.set_string("distrobox-executable", "bundled");
         }
     }
 }

@@ -16,5 +16,10 @@
 			<summary>Window height</summary>
 			<description>The height of the main window when last closed.</description>
 		</key>
+		<key name="distrobox-executable" type="s">
+			<default>'host'</default>
+			<summary>Distrobox executable source</summary>
+			<description>The source of the distrobox executable. Can be 'host' or 'bundled'.</description>
+		</key>
 	</schema>
 </schemalist>

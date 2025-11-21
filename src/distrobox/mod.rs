@@ -1,6 +1,7 @@
 use crate::fakers::{
     Child, Command, CommandRunner, FdMode, InnerCommandRunner, NullCommandRunnerBuilder,
 };
+use gtk::prelude::*;
 use std::{
     cell::LazyCell,
     collections::BTreeMap,
@@ -52,6 +53,7 @@ impl InnerCommandRunner for FlatpakCommandRunner {
 
 pub struct Distrobox {
     cmd_runner: CommandRunner,
+    settings: gtk::gio::Settings,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash)]
@@ -281,9 +283,7 @@ pub enum Error {
     ResolveHostPath(String),
 }
 
-fn dbcmd() -> Command {
-    Command::new("distrobox")
-}
+use crate::distrobox_downloader::get_bundled_distrobox_path;
 
 #[derive(Clone)]
 pub enum DistroboxCommandRunnerResponse {
@@ -492,8 +492,18 @@ impl DistroboxCommandRunnerResponse {
 }
 
 impl Distrobox {
-    pub fn new(cmd_runner: CommandRunner) -> Self {
-        Self { cmd_runner }
+    pub fn new(cmd_runner: CommandRunner, settings: gtk::gio::Settings) -> Self {
+        Self { cmd_runner, settings }
+    }
+
+    fn dbcmd(&self) -> Command {
+        let distrobox_executable = self.settings.string("distrobox-executable");
+        if distrobox_executable == "bundled" {
+            let bundled_path = get_bundled_distrobox_path();
+            Command::new(bundled_path)
+        } else {
+            Command::new("distrobox")
+        }
     }
 
     pub fn null_command_runner(responses: &[DistroboxCommandRunnerResponse]) -> CommandRunner {
@@ -504,6 +514,14 @@ impl Distrobox {
             }
         }
         builder.build()
+    }
+
+    #[cfg(test)]
+    fn new_for_test(cmd_runner: CommandRunner) -> Self {
+        // Create a temporary settings instance for tests
+        // Use the default schema path
+        let settings = gtk::gio::Settings::new("com.ranfdev.DistroShelf");
+        Self::new(cmd_runner, settings)
     }
 
     pub fn cmd_spawn(&self, mut cmd: Command) -> Result<Box<dyn Child + Send>, Error> {
@@ -614,7 +632,7 @@ impl Distrobox {
     }
 
     async fn get_desktop_files(&self, box_name: &str) -> Result<Vec<(String, String)>, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.args([
             "enter",
             box_name,
@@ -675,7 +693,7 @@ impl Distrobox {
         &self,
         box_name: &str,
     ) -> Result<Vec<ExportableBinary>, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.args([
             "enter",
             box_name,
@@ -730,7 +748,7 @@ impl Distrobox {
         container: &str,
         app: &ExportableApp,
     ) -> Result<Box<dyn Child + Send>, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("enter").arg("--name").arg(container).arg("--");
         let to_be_replaced = [" %f", " %u", " %F", " %U"];
         let cleaned_exec = to_be_replaced
@@ -745,7 +763,7 @@ impl Distrobox {
         container: &str,
         desktop_file_path: &str,
     ) -> Result<String, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.args(["enter", "--name", container]).extend(
             "--",
             &Command::new_with_args("distrobox-export", ["--app", desktop_file_path]),
@@ -758,7 +776,7 @@ impl Distrobox {
         container: &str,
         desktop_file_path: &str,
     ) -> Result<String, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.args(["enter", "--name", container]).extend(
             "--",
             &Command::new_with_args("distrobox-export", ["-d", "--app", desktop_file_path]),
@@ -782,7 +800,7 @@ impl Distrobox {
             binary_name_or_path.to_string()
         };
 
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.args(["enter", "--name", container]).extend(
             "--",
             &Command::new_with_args("distrobox-export", ["--bin", &resolved_path]),
@@ -797,7 +815,7 @@ impl Distrobox {
         container: &str,
         binary_name: &str,
     ) -> Result<String, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.args(["enter", "--name", container, "--", "which", binary_name]);
 
         let output = self.cmd_output_string(cmd).await?;
@@ -819,7 +837,7 @@ impl Distrobox {
         container: &str,
         binary_path: &str,
     ) -> Result<String, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.args(["enter", "--name", container]).extend(
             "--",
             &Command::new_with_args("distrobox-export", ["-d", "--bin", binary_path]),
@@ -836,7 +854,7 @@ impl Distrobox {
                 "File path cannot be empty".into(),
             ));
         }
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("assemble")
             .arg("create")
             .arg("--file")
@@ -851,12 +869,12 @@ impl Distrobox {
                 "URL cannot be empty".into(),
             ));
         }
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("assemble").arg("create").arg("--file").arg(url);
         self.cmd_spawn(cmd)
     }
-    fn create_cmd(args: CreateArgs) -> Command {
-        let mut cmd = dbcmd();
+    fn create_cmd(&self, args: CreateArgs) -> Command {
+        let mut cmd = self.dbcmd();
         cmd.arg("create").arg("--yes");
         if !args.image.is_empty() {
             cmd.arg("--image").arg(args.image);
@@ -882,12 +900,12 @@ impl Distrobox {
     }
     // create
     pub async fn create(&self, args: CreateArgs) -> Result<Box<dyn Child + Send>, Error> {
-        let cmd = Self::create_cmd(args);
+        let cmd = self.create_cmd(args);
         self.cmd_spawn(cmd)
     }
     // create --compatibility
     pub async fn list_images(&self) -> Result<Vec<String>, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("create").arg("--compatibility");
         let text = self.cmd_output_string(cmd).await?;
         let lines = text
@@ -904,7 +922,7 @@ impl Distrobox {
     }
     // enter
     pub fn enter_cmd(&self, name: &str) -> Command {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("enter").arg(name);
         cmd
     }
@@ -914,14 +932,14 @@ impl Distrobox {
         source_name: &str,
         args: CreateArgs,
     ) -> Result<Box<dyn Child + Send>, Error> {
-        let mut cmd = Self::create_cmd(args);
+        let mut cmd = self.create_cmd(args);
         cmd.remove_flag_value_arg("--image");
         cmd.arg("--clone").arg(source_name);
         self.cmd_spawn(cmd)
     }
     // list | ls
     pub async fn list(&self) -> Result<BTreeMap<String, ContainerInfo>, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("ls").arg("--no-color");
         let text = self.cmd_output_string(cmd).await?;
         let lines = text.lines().skip(1);
@@ -948,30 +966,30 @@ impl Distrobox {
     }
     // rm
     pub async fn remove(&self, name: &str) -> Result<String, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("rm").arg("--force").arg(name);
         self.cmd_output_string(cmd).await
     }
     // stop
     pub async fn stop(&self, name: &str) -> Result<String, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("stop").arg("--yes").arg(name);
         self.cmd_output_string(cmd).await
     }
     pub async fn stop_all(&self) -> Result<String, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("stop").arg("--all").arg("--yes");
         self.cmd_output_string(cmd).await
     }
     // upgrade
     pub fn upgrade(&self, name: &str) -> Result<Box<dyn Child + Send>, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("upgrade").arg(name);
 
         self.cmd_spawn(cmd)
     }
     pub async fn upgrade_all(&mut self) -> Result<String, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("upgrade").arg("--all");
         self.cmd_output_string(cmd).await
     }
@@ -979,7 +997,7 @@ impl Distrobox {
     // generate-entry
     // version
     pub async fn version(&self) -> Result<String, Error> {
-        let mut cmd = dbcmd();
+        let mut cmd = self.dbcmd();
         cmd.arg("version");
         let text = self.cmd_output_string(cmd).await?;
         let mut parts = text.split(':');
@@ -1005,7 +1023,8 @@ impl Distrobox {
 
 impl Default for Distrobox {
     fn default() -> Self {
-        Self::new(CommandRunner::new_null())
+        let settings = gtk::gio::Settings::new("com.ranfdev.DistroShelf");
+        Self::new(CommandRunner::new_null(), settings)
     }
 }
 
@@ -1019,7 +1038,7 @@ mod tests {
         block_on(async {
             let output = "ID           | NAME                 | STATUS             | IMAGE                         
 d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubuntu-toolbox:latest";
-            let db = Distrobox::new(
+            let db = Distrobox::new_for_test(
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "ls", "--no-color"], output)
                     .build(),
@@ -1044,7 +1063,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
     fn version() -> Result<(), Error> {
         block_on(async {
             let output = "distrobox: 1.7.2.1";
-            let db = Distrobox::new(
+            let db = Distrobox::new_for_test(
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "version"], output)
                     .build(),
@@ -1056,7 +1075,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
 
     #[test]
     fn list_apps() -> Result<(), Error> {
-        let db = Distrobox::new(
+        let db = Distrobox::new_for_test(
             NullCommandRunnerBuilder::new()
                 .cmd(&["sh", "-c", "echo $XDG_DATA_HOME"], "")
                 .cmd(&["sh", "-c", "echo $HOME"], "/home/me")
@@ -1108,7 +1127,7 @@ Categories=Utility;Network;
     #[test]
     fn list_apps_with_space_in_filename() -> Result<(), Error> {
         // Simulate a desktop file with a space in its filename and ensure it's parsed/export-detected correctly
-        let db = Distrobox::new(
+        let db = Distrobox::new_for_test(
             NullCommandRunnerBuilder::new()
                 .cmd(&["sh", "-c", "echo $XDG_DATA_HOME"], "")
                 .cmd(&["sh", "-c", "echo $HOME"], "/home/me")
@@ -1152,7 +1171,7 @@ Categories=Utility;Security;",
     #[test]
     fn create() -> Result<(), Error> {
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();
-        let db = Distrobox::new(CommandRunner::new_null());
+        let db = Distrobox::new_for_test(CommandRunner::new_null());
         let output_tracker = db.cmd_runner.output_tracker();
         debug!("Testing container creation");
         let args = CreateArgs {
@@ -1176,7 +1195,7 @@ Categories=Utility;Security;",
     }
     #[test]
     fn assemble() -> Result<(), Error> {
-        let db = Distrobox::new(CommandRunner::new_null());
+        let db = Distrobox::new_for_test(CommandRunner::new_null());
         let output_tracker = db.cmd_runner.output_tracker();
         db.assemble("/path/to/assemble.yml")?;
         assert_eq!(
@@ -1188,7 +1207,7 @@ Categories=Utility;Security;",
 
     #[test]
     fn remove() -> Result<(), Error> {
-        let db = Distrobox::new(CommandRunner::new_null());
+        let db = Distrobox::new_for_test(CommandRunner::new_null());
         let output_tracker = db.cmd_runner.output_tracker();
         block_on(db.remove("ubuntu"))?;
         assert_eq!(

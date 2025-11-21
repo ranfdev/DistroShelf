@@ -121,10 +121,13 @@ impl DistroboxTask {
     pub fn ended(&self) -> bool {
         self.is_failed() || self.is_successful()
     }
-    pub fn error(&self) -> Ref<Option<anyhow::Error>> {
+    pub fn error(&self) -> Ref<'_, Option<anyhow::Error>> {
         self.imp().error.borrow()
     }
     pub fn take_error(&self) -> Option<anyhow::Error> {
         self.imp().error.borrow_mut().take()
+    }
+    pub fn error_message(&self) -> Option<String> {
+        self.imp().error.borrow().as_ref().map(|e| e.to_string())
     }
 }

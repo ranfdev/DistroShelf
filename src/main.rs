@@ -25,6 +25,7 @@ mod container_stats;
 mod dialogs;
 mod distro_icon;
 mod distrobox;
+mod distrobox_downloader;
 mod distrobox_task;
 mod fakers;
 mod gtk_utils;
