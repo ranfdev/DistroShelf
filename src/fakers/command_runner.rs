@@ -64,6 +64,17 @@ impl CommandRunner {
         CommandRunner::new(Rc::new(RealCommandRunner {}))
     }
 
+    pub fn map_cmd(
+        &self,
+        f: impl Fn(Command) -> Command + 'static,
+    ) -> CommandRunner {
+        let mapped_inner = Rc::new(Map {
+            inner: self.inner.clone(),
+            map_cmd: Rc::new(f),
+        });
+        CommandRunner::new(mapped_inner)
+    }
+
     pub fn output_tracker(&self) -> OutputTracker<CommandRunnerEvent> {
         self.output_tracker.enable();
         self.output_tracker.clone()
@@ -300,5 +311,33 @@ impl Child for async_process::Child {
 
     fn wait(&mut self) -> Pin<Box<dyn Future<Output = Result<ExitStatus, io::Error>>>> {
         self.status().boxed_local()
+    }
+}
+
+
+// CommandRunner Combinators
+
+/// CommandRunner that maps commands before passing them to the inner CommandRunner.
+/// Useful to implement aliases or other command transformations.
+struct Map {
+    inner: Rc<dyn InnerCommandRunner>,
+    map_cmd: Rc<dyn Fn(Command) -> Command>,
+}
+
+impl InnerCommandRunner for Map {
+    fn wrap_command(&self, command: Command) -> Command {
+        let cmd = (self.map_cmd)(command);
+        self.inner.wrap_command(cmd)
+    }
+    fn spawn(&self, command: Command) -> io::Result<Box<dyn Child + Send>> {
+        let cmd = (self.map_cmd)(command);
+        self.inner.spawn(cmd)
+    }
+    fn output(
+        &self,
+        command: Command,
+    ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
+        let cmd = (self.map_cmd)(command);
+        self.inner.output(cmd)
     }
 }
