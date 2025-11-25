@@ -150,11 +150,11 @@ mod imp {
             // Add version row
             let version_row = adw::ActionRow::new();
             version_row.set_title("Distrobox Version");
-            
+
             let version_label = gtk::Label::new(None);
             version_label.add_css_class("dim-label");
             version_row.add_suffix(&version_label);
-            
+
             // Bind to distrobox_version query
             obj.root_store().distrobox_version().connect_success(clone!(
                 #[weak]
@@ -170,14 +170,14 @@ mod imp {
                     version_label.set_text("Not available");
                 }
             ));
-            
+
             // Set initial value if already loaded
             if let Some(version) = obj.root_store().distrobox_version().data() {
                 version_label.set_text(&version);
             } else {
                 version_label.set_text("—");
             }
-            
+
             distrobox_group.add(&version_row);
 
             // Add "Re-download Bundled Version" button
@@ -194,7 +194,10 @@ mod imp {
                 move |_| {
                     // Trigger download and open task manager
                     obj.root_store().download_distrobox();
-                    obj.root_store().set_current_dialog(crate::tagged_object::TaggedObject::new("task-manager"));
+                    obj.root_store()
+                        .set_current_dialog(crate::tagged_object::TaggedObject::new(
+                            "task-manager",
+                        ));
                 }
             ));
 

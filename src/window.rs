@@ -464,12 +464,15 @@ impl DistroShelfWindow {
         usage_row.set_subtitle(&format!("CPU: 0.0% • Mem: 0 (0%)"));
         status_group.add(&usage_row);
 
-
         let usage_query = container.usage();
         usage_query.connect_success(clone!(
-            #[weak] usage_row,
+            #[weak]
+            usage_row,
             move |usage| {
-                usage_row.set_subtitle(&format!("CPU: {} • Mem: {} ({})", usage.cpu_perc, usage.mem_usage, usage.mem_perc));
+                usage_row.set_subtitle(&format!(
+                    "CPU: {} • Mem: {} ({})",
+                    usage.cpu_perc, usage.mem_usage, usage.mem_perc
+                ));
             }
         ));
 
@@ -600,7 +603,7 @@ impl DistroShelfWindow {
         // Add the two pages to the view stack
         let overview_page = view_stack.add_titled(&scrolled_window, Some("overview"), "Overview");
         overview_page.set_icon_name(Some("container-symbolic"));
-        
+
         let terminal_page = view_stack.add_titled(&terminal_overlay, Some("terminal"), "Terminal");
         terminal_page.set_icon_name(Some("terminal-symbolic"));
 
@@ -614,11 +617,11 @@ impl DistroShelfWindow {
         breakpoint_bin.set_height_request(200);
         let breakpoint_condition = adw::BreakpointCondition::parse("max-width: 550sp").unwrap();
         let breakpoint = adw::Breakpoint::new(breakpoint_condition);
-        
+
         // On small screens: hide header switcher, show bottom bar
         breakpoint.add_setter(&view_switcher, "visible", Some(&false.to_value()));
         breakpoint.add_setter(&view_switcher_bar, "reveal", Some(&true.to_value()));
-        
+
         breakpoint_bin.add_breakpoint(breakpoint);
 
         // Track whether terminal process is running
@@ -729,7 +732,7 @@ impl DistroShelfWindow {
         // The toolbar view content is the stack and bottom switcher bar
         content.append(&view_stack);
         content.append(&view_switcher_bar);
-        
+
         breakpoint_bin.set_child(Some(&content));
         toolbar_view.set_content(Some(&breakpoint_bin));
 

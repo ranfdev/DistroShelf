@@ -1,7 +1,5 @@
 use crate::{
-    backends::{
-        ContainerInfo, CreateArgName, CreateArgs, ExportableApp, Status, container_runtime::Usage,
-    },
+    backends::{ContainerInfo, ExportableApp, Status, container_runtime::Usage},
     distrobox_task::DistroboxTask,
     fakers::{Command, CommandRunner},
     gtk_utils::TypedListStore,

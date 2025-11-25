@@ -1,6 +1,6 @@
 // A container runtime is docker/podman/etc.
 
-use std::{collections::HashSet, pin::Pin, rc::Rc};
+use std::{collections::HashSet, rc::Rc};
 
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -8,10 +8,7 @@ use tracing::info;
 
 use super::docker::Docker;
 
-use crate::{
-    backends::{docker, podman::Podman},
-    fakers::{Command, CommandRunner, FdMode},
-};
+use crate::{backends::podman::Podman, fakers::CommandRunner};
 
 #[async_trait(?Send)]
 pub trait ContainerRuntime {
@@ -48,9 +45,9 @@ pub async fn get_container_runtime(
             info!(docker = ?docker_err, podman = ?podman_err, "Container runtime check results");
             return None;
         } else {
-            return Some(Rc::new(docker) as Rc<dyn ContainerRuntime>)
+            return Some(Rc::new(docker) as Rc<dyn ContainerRuntime>);
         }
     } else {
-        return Some(Rc::new(podman) as Rc<dyn ContainerRuntime>)
+        return Some(Rc::new(podman) as Rc<dyn ContainerRuntime>);
     }
 }

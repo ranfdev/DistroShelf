@@ -19,7 +19,6 @@
  */
 
 use std::path::Path;
-use std::rc::Rc;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
@@ -27,9 +26,9 @@ use gtk::{gio, glib};
 
 use crate::DistroShelfWindow;
 use crate::backends;
-use crate::config;
 use crate::backends::{Distrobox, DistroboxCommandRunnerResponse};
-use crate::fakers::{CommandRunner, RealCommandRunner};
+use crate::config;
+use crate::fakers::CommandRunner;
 use crate::root_store::RootStore;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
@@ -226,8 +225,7 @@ impl DistroShelfApplication {
                 Distrobox::null_command_runner(&[DistroboxCommandRunnerResponse::NoVersion])
             }
             _ => {
-                let command_runner = 
-                    CommandRunner::new_real();
+                let command_runner = CommandRunner::new_real();
                 if Self::get_is_in_flatpak() {
                     command_runner.map_cmd(backends::flatpak::map_flatpak_spawn_host)
                 } else {

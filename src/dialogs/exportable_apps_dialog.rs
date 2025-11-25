@@ -3,8 +3,8 @@ use adw::subclass::prelude::*;
 use gtk::glib::{BoxedAnyObject, clone};
 use gtk::{gio, glib, pango};
 
-use crate::container::Container;
 use crate::backends::{ExportableApp, ExportableBinary};
+use crate::container::Container;
 use crate::fakers::Command;
 use crate::gtk_utils::{TypedListStore, reaction};
 

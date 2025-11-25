@@ -181,7 +181,7 @@ impl TaskManagerDialog {
         let row = adw::ActionRow::new();
         row.set_title(&format!("{}: {}", task.target(), task.name()));
         row.set_subtitle(&task.status());
-        
+
         task.connect_status_notify(clone!(
             #[weak]
             row,

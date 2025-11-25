@@ -9,11 +9,9 @@ use std::{
     collections::BTreeMap,
     env,
     ffi::OsString,
-    future::Future,
     io,
     os::unix::ffi::OsStringExt,
     path::{Path, PathBuf},
-    pin::Pin,
     process::Output,
     rc::Rc,
     str::FromStr,
@@ -569,7 +567,10 @@ impl DistroboxCommandRunnerResponse {
 
 impl Distrobox {
     pub fn new(cmd_runner: CommandRunner, settings: gtk::gio::Settings) -> Self {
-        Self { cmd_runner, settings }
+        Self {
+            cmd_runner,
+            settings,
+        }
     }
 
     fn dbcmd(&self) -> Command {

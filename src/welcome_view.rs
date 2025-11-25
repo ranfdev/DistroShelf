@@ -3,9 +3,9 @@
 
 use adw::subclass::prelude::*;
 use glib::Properties;
+use glib::clone;
 use gtk::{gio, glib, prelude::*};
 use std::cell::RefCell;
-use glib::clone;
 
 mod imp {
     use crate::{
@@ -102,7 +102,7 @@ mod imp {
         #[template_callback]
         fn use_bundled_version(&self, btn: &gtk::Button) {
             let obj = self.obj();
-            
+
             // Show spinner in button
             let spinner = gtk::Spinner::new();
             spinner.start();
@@ -111,7 +111,7 @@ mod imp {
 
             // Directly trigger the download and get the task
             let task = obj.root_store().download_distrobox();
-            
+
             // Connect to the task status changes
             task.connect_status_notify(clone!(
                 #[weak]
@@ -127,14 +127,15 @@ mod imp {
                         btn.set_child(Some(&gtk::Label::new(Some("Use Bundled Version"))));
                         btn.set_sensitive(true);
                         obj.set_distrobox_error(Some(
-                            "Download failed. Check the task manager for details.".to_string()
+                            "Download failed. Check the task manager for details.".to_string(),
                         ));
                     }
                 }
             ));
-            
+
             // Open task manager dialog from welcome view
-            obj.root_store().set_current_dialog(crate::tagged_object::TaggedObject::new("task-manager"));
+            obj.root_store()
+                .set_current_dialog(crate::tagged_object::TaggedObject::new("task-manager"));
 
             // Set the preference for future launches
             let settings = gio::Settings::new("com.ranfdev.DistroShelf");

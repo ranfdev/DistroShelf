@@ -1,11 +1,10 @@
 use std::{collections::HashSet, rc::Rc};
 
 use async_trait::async_trait;
-use tracing::{debug, error, info};
 
 use crate::{
-    backends::{container_runtime::{ContainerRuntime, Usage}},
-    fakers::{Command, CommandRunner, FdMode},
+    backends::container_runtime::{ContainerRuntime, Usage},
+    fakers::{Command, CommandRunner},
     root_store::Image,
 };
 
@@ -66,10 +65,7 @@ impl ContainerRuntime for Docker {
         Ok(names)
     }
 
-    async fn usage(
-        &self,
-        container_id: &str,
-    ) -> anyhow::Result<Usage> {
+    async fn usage(&self, container_id: &str) -> anyhow::Result<Usage> {
         let mut cmd = Command::new("docker");
         cmd.arg("stats");
         cmd.arg("--no-stream");

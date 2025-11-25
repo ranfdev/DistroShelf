@@ -36,9 +36,11 @@ mod imp {
             self.label.set_has_tooltip(true);
             self.label.set_hexpand(true);
 
-            self.downloaded_icon.set_icon_name(Some("drive-harddisk-symbolic"));
+            self.downloaded_icon
+                .set_icon_name(Some("drive-harddisk-symbolic"));
             self.downloaded_icon.set_visible(false);
-            self.downloaded_icon.set_tooltip_text(Some("Image already downloaded"));
+            self.downloaded_icon
+                .set_tooltip_text(Some("Image already downloaded"));
 
             let obj = self.obj();
             obj.add_css_class("distro-row-item");

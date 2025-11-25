@@ -2,14 +2,15 @@ use crate::distrobox_task::DistroboxTask;
 use crate::fakers::Command;
 use crate::fakers::CommandRunner;
 use crate::store::root_store::RootStore;
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use gtk::glib;
 use gtk::prelude::*;
 use std::path::PathBuf;
 
 pub const DISTROBOX_VERSION: &str = "1.8.2.1";
 // SHA256 of the tar.gz file from github
-pub const DISTROBOX_SHA256: &str = "2c6b2ac9e0db04eb22edab1572b1e62284f5f651c292f536c59fb908d573d0a2";
+pub const DISTROBOX_SHA256: &str =
+    "2c6b2ac9e0db04eb22edab1572b1e62284f5f651c292f536c59fb908d573d0a2";
 
 pub fn get_bundled_distrobox_path() -> PathBuf {
     let user_data_dir = glib::user_data_dir();
@@ -44,10 +45,12 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
         );
 
         // Ensure directory exists
-        std::fs::create_dir_all(&download_dir)
-            .context("Failed to create download directory")?;
+        std::fs::create_dir_all(&download_dir).context("Failed to create download directory")?;
 
-        log(&task, &format!("Using download directory: {:?}", download_dir));
+        log(
+            &task,
+            &format!("Using download directory: {:?}", download_dir),
+        );
 
         // 1. Download
         log(&task, &format!("Downloading {}...", url));
@@ -62,7 +65,7 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
         let child = command_runner
             .spawn(curl_cmd)
             .context("Failed to run curl")?;
-        
+
         task.handle_child_output(child).await?;
 
         // 2. Verify SHA256
@@ -71,17 +74,21 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
         sha_cmd.arg(tarball_path.to_str().unwrap());
         sha_cmd.stdout = crate::fakers::FdMode::Pipe;
         sha_cmd.stderr = crate::fakers::FdMode::Pipe;
-        
+
         let output = command_runner.output(sha_cmd).await?;
         if !output.status.success() {
-                return Err(anyhow!("sha256sum failed"));
+            return Err(anyhow!("sha256sum failed"));
         }
-        
+
         let stdout = String::from_utf8_lossy(&output.stdout);
         let calculated_hash = stdout.split_whitespace().next().unwrap_or("");
-        
+
         if calculated_hash != DISTROBOX_SHA256 {
-            return Err(anyhow!("Checksum mismatch. Expected {}, got {}", DISTROBOX_SHA256, calculated_hash));
+            return Err(anyhow!(
+                "Checksum mismatch. Expected {}, got {}",
+                DISTROBOX_SHA256,
+                calculated_hash
+            ));
         }
         log(&task, "Checksum verified.");
 
@@ -95,21 +102,21 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
         tar_cmd.stdout = crate::fakers::FdMode::Pipe;
         tar_cmd.stderr = crate::fakers::FdMode::Pipe;
 
-        let child = command_runner
-            .spawn(tar_cmd)
-            .context("Failed to run tar")?;
-        
+        let child = command_runner.spawn(tar_cmd).context("Failed to run tar")?;
+
         task.handle_child_output(child).await?;
 
         // 3b. Clean up tarball
         log(&task, "Removing tarball...");
-        std::fs::remove_file(&tarball_path)
-            .context("Failed to remove tarball")?;
+        std::fs::remove_file(&tarball_path).context("Failed to remove tarball")?;
 
         // 4. Make executable (it should be already, but just in case)
         let binary_path = get_bundled_distrobox_path();
-        log(&task, &format!("Setting executable permissions on {:?}...", binary_path));
-        
+        log(
+            &task,
+            &format!("Setting executable permissions on {:?}...", binary_path),
+        );
+
         let mut chmod_cmd = Command::new("chmod");
         chmod_cmd.arg("+x");
         chmod_cmd.arg(binary_path.to_str().unwrap());
@@ -118,7 +125,7 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
 
         let output = command_runner.output(chmod_cmd).await?;
         if !output.status.success() {
-                return Err(anyhow!("chmod failed"));
+            return Err(anyhow!("chmod failed"));
         }
 
         log(&task, "Distrobox installed successfully.");

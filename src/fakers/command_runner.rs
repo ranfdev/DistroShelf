@@ -64,10 +64,7 @@ impl CommandRunner {
         CommandRunner::new(Rc::new(RealCommandRunner {}))
     }
 
-    pub fn map_cmd(
-        &self,
-        f: impl Fn(Command) -> Command + 'static,
-    ) -> CommandRunner {
+    pub fn map_cmd(&self, f: impl Fn(Command) -> Command + 'static) -> CommandRunner {
         let mapped_inner = Rc::new(Map {
             inner: self.inner.clone(),
             map_cmd: Rc::new(f),
@@ -327,7 +324,6 @@ impl Child for async_process::Child {
         self.status().boxed_local()
     }
 }
-
 
 // CommandRunner Combinators
 

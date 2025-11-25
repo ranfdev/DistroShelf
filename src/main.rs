@@ -19,11 +19,11 @@
  */
 
 mod application;
+mod backends;
 mod config;
 mod container;
 mod dialogs;
 mod distro_icon;
-mod backends;
 mod distrobox_downloader;
 mod distrobox_task;
 mod fakers;

@@ -1,4 +1,9 @@
-use std::{collections::{HashMap, HashSet}, pin::Pin, rc::Rc, task::{Context, Poll}};
+use std::{
+    collections::{HashMap, HashSet},
+    pin::Pin,
+    rc::Rc,
+    task::{Context, Poll},
+};
 
 use async_trait::async_trait;
 use futures::Stream;
@@ -15,7 +20,6 @@ pub fn map_docker_to_podman(mut command: Command) -> Command {
     }
     command
 }
-
 
 /// Podman event structure
 #[derive(Debug, Clone, Deserialize)]

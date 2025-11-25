@@ -9,12 +9,9 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::OnceCell;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
-use std::pin::Pin;
 use std::rc::Rc;
-use std::task::{Context as TaskContext, Poll};
 use std::time::Duration;
 use tracing::error;
 use tracing::info;
@@ -85,7 +82,9 @@ mod imp {
             Self {
                 containers: TypedListStore::new(),
                 command_runner: OnceCell::new(),
-                container_runtime: Query::new("container_runtime".into(), || async { anyhow::bail!("Container runtime not initialized") }),
+                container_runtime: Query::new("container_runtime".into(), || async {
+                    anyhow::bail!("Container runtime not initialized")
+                }),
                 terminal_repository: RefCell::new(TerminalRepository::new(
                     CommandRunner::new_null(),
                 )),

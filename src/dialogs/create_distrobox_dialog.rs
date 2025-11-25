@@ -4,8 +4,8 @@ use gtk::gio::File;
 use gtk::{gio, glib};
 use tracing::error;
 
-use crate::container::Container;
 use crate::backends::{self, CreateArgName, CreateArgs, Error};
+use crate::container::Container;
 use crate::root_store::RootStore;
 use crate::sidebar_row::SidebarRow;
 
@@ -406,8 +406,7 @@ impl CreateDistroboxDialog {
         ));
 
         let this_clone = this.clone();
-        this
-            .root_store()
+        this.root_store()
             .downloaded_images_query()
             .connect_success(move |images| {
                 *this_clone.imp().downloaded_tags.borrow_mut() = images.clone();
@@ -543,7 +542,6 @@ impl CreateDistroboxDialog {
         list_view.add_css_class("navigation-sidebar");
         list_view.set_single_click_activate(true);
 
-
         let custom_list = gtk::ListBox::new();
         custom_list.add_css_class("navigation-sidebar");
         custom_list.set_selection_mode(gtk::SelectionMode::None);
@@ -616,7 +614,9 @@ impl CreateDistroboxDialog {
                     return;
                 }
                 if selection_model.n_items() > 0 {
-                    list_view.activate_action("list.activate-item", Some(&glib::Variant::from(0u32))).unwrap();
+                    list_view
+                        .activate_action("list.activate-item", Some(&glib::Variant::from(0u32)))
+                        .unwrap();
                 } else {
                     handle_image_selected(&entry.text());
                 }
@@ -654,19 +654,17 @@ impl CreateDistroboxDialog {
         ));
 
         // Handle selection
-        list_view.connect_activate(clone!(
-            move |list_view, position| {
-                let model = list_view.model().unwrap(); // SingleSelection
-                let item = model
-                    .item(position)
-                    .unwrap()
-                    .downcast::<gtk::StringObject>()
-                    .unwrap();
-                let image = item.string();
+        list_view.connect_activate(clone!(move |list_view, position| {
+            let model = list_view.model().unwrap(); // SingleSelection
+            let item = model
+                .item(position)
+                .unwrap()
+                .downcast::<gtk::StringObject>()
+                .unwrap();
+            let image = item.string();
 
-                handle_image_selected(&image);
-            }
-        ));
+            handle_image_selected(&image);
+        }));
 
         adw::NavigationPage::new(&view, "image-picker")
     }
