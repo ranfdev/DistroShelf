@@ -72,7 +72,7 @@ impl DesktopFiles {
         if hex_str.len() % 2 != 0 {
             return Err(E::invalid_length(
                 hex_str.len(),
-                &"hex string to have an even lenght",
+                &"hex string to have an even length",
             ));
         }
 
