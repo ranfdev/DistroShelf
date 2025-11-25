@@ -5,7 +5,7 @@ use gtk::{gio, glib};
 use tracing::error;
 
 use crate::container::Container;
-use crate::distrobox::{self, CreateArgName, CreateArgs, Error};
+use crate::backends::{self, CreateArgName, CreateArgs, Error};
 use crate::root_store::RootStore;
 use crate::sidebar_row::SidebarRow;
 
@@ -686,7 +686,7 @@ impl CreateDistroboxDialog {
             .iter()
             .filter_map(|entry| {
                 if !entry.text().is_empty() {
-                    match entry.text().parse::<distrobox::Volume>() {
+                    match entry.text().parse::<backends::Volume>() {
                         Ok(volume) => Some(Ok(volume)),
                         Err(e) => Some(Err(e)),
                     }
@@ -760,7 +760,7 @@ impl CreateDistroboxDialog {
         volumes_group
     }
 
-    fn update_errors<T>(&self, res: &Result<T, distrobox::Error>) {
+    fn update_errors<T>(&self, res: &Result<T, backends::Error>) {
         let imp = self.imp();
         imp.name_row.remove_css_class("error");
         imp.name_row.set_tooltip_text(None);
@@ -768,7 +768,7 @@ impl CreateDistroboxDialog {
             error!(error = %e, "CreateDistroboxDialog: update_errors");
         }
         match res {
-            Err(distrobox::Error::InvalidField(field, msg)) if field == "name" => {
+            Err(backends::Error::InvalidField(field, msg)) if field == "name" => {
                 imp.name_row.add_css_class("error");
                 imp.name_row.set_tooltip_text(Some(msg));
             }

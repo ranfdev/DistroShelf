@@ -21,10 +21,9 @@ use tracing::{debug, warn};
 
 use crate::container::Container;
 use crate::container_stats::ContainerRuntime;
-use crate::distrobox;
-use crate::distrobox::CreateArgs;
-use crate::distrobox::Distrobox;
-use crate::distrobox::Status;
+use crate::backends::{self, CreateArgs};
+use crate::backends::Distrobox;
+use crate::backends::Status;
 use crate::distrobox_task::DistroboxTask;
 use crate::fakers::{Child, Command, CommandRunner, FdMode};
 use crate::gtk_utils::{TypedListStore, reconcile_list_by_key};
@@ -134,7 +133,7 @@ mod imp {
     #[derive(Properties)]
     #[properties(wrapper_type = super::RootStore)]
     pub struct RootStore {
-        pub distrobox: OnceCell<crate::distrobox::Distrobox>,
+        pub distrobox: OnceCell<crate::backends::Distrobox>,
         pub terminal_repository: RefCell<TerminalRepository>,
         pub command_runner: OnceCell<CommandRunner>,
         pub container_runtime: RefCell<Option<ContainerRuntime>>,
@@ -329,7 +328,7 @@ impl RootStore {
         this
     }
 
-    pub fn distrobox(&self) -> &crate::distrobox::Distrobox {
+    pub fn distrobox(&self) -> &crate::backends::Distrobox {
         self.imp().distrobox.get().unwrap()
     }
 
@@ -652,7 +651,7 @@ impl RootStore {
         let output = self.command_runner().output(cmd.clone()).await?;
         Ok(String::from_utf8(output.stdout).map_err(|e| {
             error!(cmd = %cmd, "Failed to parse command output");
-            distrobox::Error::ParseOutput(e.to_string())
+            backends::Error::ParseOutput(e.to_string())
         })?)
     }
 
@@ -691,7 +690,7 @@ impl RootStore {
         )
     }
 
-    pub async fn resolve_host_path(&self, path: &str) -> Result<String, distrobox::Error> {
+    pub async fn resolve_host_path(&self, path: &str) -> Result<String, backends::Error> {
         // The path could be a:
         // 1. Host path, already resolved to a real location, e.g., "/home/user/Documents/custom-home-folder".
         // 2. Path from a flatpak sandbox, e.g., "/run/user/1000/doc/abc123".
@@ -706,7 +705,7 @@ impl RootStore {
         let output = self
             .run_to_string(cmd)
             .await
-            .map_err(|e| distrobox::Error::ResolveHostPath(e.to_string()));
+            .map_err(|e| backends::Error::ResolveHostPath(e.to_string()));
 
         let is_from_sandbox = path.starts_with("/run/user");
 
@@ -841,7 +840,7 @@ mod tests {
                 .build();
             let store = RootStore::new(runner);
 
-            let resolved_path: Result<String, distrobox::Error> =
+            let resolved_path: Result<String, backends::Error> =
                 smol::block_on(store.resolve_host_path(input_path));
 
             if let Ok(expected_resolved_path) = expected_resolved_path {

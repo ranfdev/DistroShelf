@@ -2,6 +2,7 @@ use crate::fakers::{
     Child, Command, CommandRunner, FdMode, InnerCommandRunner, NullCommandRunnerBuilder,
 };
 
+use gtk::prelude::*;
 use serde::{Deserialize, Deserializer};
 use std::{
     cell::LazyCell,
@@ -19,9 +20,7 @@ use std::{
 };
 use tracing::{debug, error, info, warn};
 
-mod desktop_file;
-
-pub use desktop_file::*;
+use super::desktop_file::*;
 
 const POSIX_FIND_AND_CONCAT_DESKTOP_FILES: &str = r#"
 set -o pipefail >/dev/null 2>&1 # TODO: Join with the following (without piping), as it is part of POSIX 2022, but Debian 13 Trixie and Ubuntu 24.10 Oracular Oriole are the first releases with a `dash` version (>=0.5.12-7) supporting this flag. See also https://github.com/koalaman/shellcheck/issues/2555 and https://metadata.ftp-master.debian.org/changelogs/main/d/dash/stable_changelog

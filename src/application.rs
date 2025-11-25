@@ -27,7 +27,7 @@ use gtk::{gio, glib};
 
 use crate::DistroShelfWindow;
 use crate::config;
-use crate::distrobox::{Distrobox, DistroboxCommandRunnerResponse, FlatpakCommandRunner};
+use crate::backends::{Distrobox, DistroboxCommandRunnerResponse, FlatpakCommandRunner};
 use crate::fakers::{CommandRunner, RealCommandRunner};
 use crate::root_store::RootStore;
 

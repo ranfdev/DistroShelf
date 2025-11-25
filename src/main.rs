@@ -24,7 +24,7 @@ mod container;
 mod container_stats;
 mod dialogs;
 mod distro_icon;
-mod distrobox;
+mod backends;
 mod distrobox_downloader;
 mod distrobox_task;
 mod fakers;
