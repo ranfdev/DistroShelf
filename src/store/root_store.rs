@@ -202,11 +202,22 @@ impl RootStore {
         });
 
         let this_clone = this.clone();
-        this.imp().downloaded_images_query.set_fetcher(move || {
+        this.imp().container_runtime.set_fetcher(move || {
             let this_clone = this_clone.clone();
             async move {
                 get_container_runtime(this_clone.command_runner())
                     .await
+                    .ok_or_else(|| anyhow::anyhow!("No container runtime available"))
+            }
+        });
+        this.container_runtime().refetch();
+
+        let this_clone = this.clone();
+        this.imp().downloaded_images_query.set_fetcher(move || {
+            let this_clone = this_clone.clone();
+            async move {
+                this_clone.container_runtime()
+                    .data()
                     .ok_or_else(|| anyhow::anyhow!("No container runtime available"))?
                     .downloaded_images()
                     .await
