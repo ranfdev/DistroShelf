@@ -1,26 +1,24 @@
 use crate::{
-    container_stats::Usage,
-    backends::{ContainerInfo, CreateArgName, CreateArgs, ExportableApp, Status},
+    backends::{
+        ContainerInfo, CreateArgName, CreateArgs, ExportableApp, Status, container_runtime::Usage,
+    },
     distrobox_task::DistroboxTask,
-    fakers::Command,
-    fakers::CommandRunner,
+    fakers::{Command, CommandRunner},
     gtk_utils::TypedListStore,
     known_distros::{KnownDistro, known_distro_by_image},
     query::Query,
     root_store::RootStore,
 };
 
-use gtk::glib::{BoxedAnyObject, Properties, derived_properties};
-
 use adw::prelude::*;
 use glib::subclass::prelude::*;
 use gtk::glib;
+use gtk::glib::{BoxedAnyObject, Properties, derived_properties};
 use std::cell::RefCell;
 use std::path::Path;
+use std::time::Duration;
 
 mod imp {
-    use std::time::Duration;
-
     use super::*;
 
     // This contains all the container informations given by distrobox, plus an associated KnownDistro struct
@@ -146,27 +144,9 @@ impl Container {
             let this = this_clone.clone();
             async move {
                 let root_store = this.root_store();
-                let runtime = root_store.get_container_runtime().await?;
-                let runner = root_store.imp().command_runner.get().unwrap();
-
-                let mut cmd = Command::new(runtime.as_str());
-                cmd.arg("stats");
-                cmd.arg("--no-stream");
-                cmd.arg("--format");
-                cmd.arg("json");
-                cmd.arg(this.name());
-                cmd.stdout = crate::fakers::FdMode::Pipe;
-                cmd.stderr = crate::fakers::FdMode::Pipe;
-
-                let output = runner.output(cmd).await?;
-                if !output.status.success() {
-                    return Err(anyhow::anyhow!("Failed to get stats"));
-                }
-
-                let stdout = String::from_utf8(output.stdout)?;
-                let usages: Vec<Usage> = serde_json::from_str(&stdout)?;
-
-                usages.into_iter().next().ok_or_else(|| anyhow::anyhow!("No stats found"))
+                let runtime = root_store.container_runtime().data().unwrap();
+                let usage = runtime.usage(&this.name()).await?;
+                Ok(usage)
             }
         });
 
@@ -326,7 +306,6 @@ impl Container {
         self.root_store()
             .create_task(&self.name(), "stop", move |_task| async move {
                 this.root_store().distrobox().stop(&this.name()).await?;
-                // this.load_container_infos();
                 Ok(())
             });
     }

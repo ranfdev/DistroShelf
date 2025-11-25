@@ -9,21 +9,23 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::OnceCell;
 use std::cell::RefCell;
-use std::collections::HashSet;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::Path;
-use std::time::Duration;
 use std::pin::Pin;
+use std::rc::Rc;
 use std::task::{Context as TaskContext, Poll};
+use std::time::Duration;
 use tracing::error;
 use tracing::info;
 use tracing::{debug, warn};
 
-use crate::container::Container;
-use crate::container_stats::ContainerRuntime;
-use crate::backends::{self, CreateArgs};
 use crate::backends::Distrobox;
 use crate::backends::Status;
+use crate::backends::container_runtime::{ContainerRuntime, get_container_runtime};
+use crate::backends::podman::PodmanEvent;
+use crate::backends::{self, CreateArgs};
+use crate::container::Container;
 use crate::distrobox_task::DistroboxTask;
 use crate::fakers::{Child, Command, CommandRunner, FdMode};
 use crate::gtk_utils::{TypedListStore, reconcile_list_by_key};
@@ -32,89 +34,6 @@ use crate::supported_terminals::{Terminal, TerminalRepository};
 use crate::tagged_object::TaggedObject;
 
 use serde::Deserialize;
-
-/// Podman event structure
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct PodmanEvent {
-    #[serde(rename = "ID")]
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub status: Option<String>,
-    #[serde(rename = "Type")]
-    pub event_type: Option<String>,
-    pub attributes: Option<HashMap<String, String>>,
-}
-
-impl PodmanEvent {
-    /// Check if this event is for a distrobox container
-    pub fn is_distrobox(&self) -> bool {
-        self.attributes
-            .as_ref()
-            .and_then(|attrs| attrs.get("manager"))
-            .map(|manager| manager == "distrobox")
-            .unwrap_or(false)
-    }
-
-    /// Check if this is a container event
-    pub fn is_container_event(&self) -> bool {
-        self.event_type
-            .as_ref()
-            .map(|t| t == "container")
-            .unwrap_or(false)
-    }
-}
-
-/// Stream wrapper for podman events
-pub struct PodmanEventsStream {
-    lines: Option<
-        futures::io::Lines<futures::io::BufReader<Box<dyn futures::io::AsyncRead + Send + Unpin>>>,
-    >,
-    _child: Option<Box<dyn Child + Send>>,
-}
-
-impl Stream for PodmanEventsStream {
-    type Item = Result<String, std::io::Error>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut TaskContext<'_>) -> Poll<Option<Self::Item>> {
-        if let Some(ref mut lines) = self.lines {
-            Pin::new(lines).poll_next(cx)
-        } else {
-            Poll::Ready(None)
-        }
-    }
-}
-
-/// Listen to podman events and return a stream of event lines
-pub fn listen_podman_events(
-    command_runner: CommandRunner,
-) -> Result<PodmanEventsStream, std::io::Error> {
-    use futures::io::{AsyncBufReadExt, BufReader};
-
-    // Create the podman events command
-    let mut cmd = Command::new("podman");
-    cmd.arg("events");
-    cmd.arg("--format");
-    cmd.arg("json");
-    cmd.stdout = FdMode::Pipe;
-    cmd.stderr = FdMode::Pipe;
-
-    // Spawn the command
-    let mut child = command_runner.spawn(cmd)?;
-
-    // Get stdout and create a buffered reader
-    let stdout = child
-        .take_stdout()
-        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "No stdout available"))?;
-
-    let bufread = BufReader::new(stdout);
-    let lines = bufread.lines();
-
-    Ok(PodmanEventsStream {
-        lines: Some(lines),
-        _child: Some(child),
-    })
-}
 
 #[derive(Debug, Clone, Deserialize, Hash, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -126,7 +45,9 @@ pub struct Image {
 }
 
 mod imp {
-    use crate::query::Query;
+    use std::rc::Rc;
+
+    use crate::{backends::container_runtime::ContainerRuntime, query::Query};
 
     use super::*;
 
@@ -136,7 +57,7 @@ mod imp {
         pub distrobox: OnceCell<crate::backends::Distrobox>,
         pub terminal_repository: RefCell<TerminalRepository>,
         pub command_runner: OnceCell<CommandRunner>,
-        pub container_runtime: RefCell<Option<ContainerRuntime>>,
+        pub container_runtime: Query<Rc<dyn ContainerRuntime>>,
 
         pub distrobox_version: Query<String>,
         pub images_query: Query<Vec<String>>,
@@ -164,7 +85,7 @@ mod imp {
             Self {
                 containers: TypedListStore::new(),
                 command_runner: OnceCell::new(),
-                container_runtime: RefCell::new(None),
+                container_runtime: Query::new("container_runtime".into(), || async { anyhow::bail!("Container runtime not initialized") }),
                 terminal_repository: RefCell::new(TerminalRepository::new(
                     CommandRunner::new_null(),
                 )),
@@ -176,7 +97,9 @@ mod imp {
                     Ok(String::new())
                 }),
                 images_query: Query::new("images".into(), || async { Ok(vec![]) }),
-                downloaded_images_query: Query::new("downloaded_images".into(), || async { Ok(HashSet::new()) }),
+                downloaded_images_query: Query::new("downloaded_images".into(), || async {
+                    Ok(HashSet::new())
+                }),
                 containers_query: Query::new("containers".into(), || async { Ok(vec![]) }),
                 tasks: TypedListStore::new(),
                 selected_task: Default::default(),
@@ -283,7 +206,11 @@ impl RootStore {
         this.imp().downloaded_images_query.set_fetcher(move || {
             let this_clone = this_clone.clone();
             async move {
-                this_clone.fetch_downloaded_images().await
+                get_container_runtime(this_clone.command_runner())
+                    .await
+                    .ok_or_else(|| anyhow::anyhow!("No container runtime available"))?
+                    .downloaded_images()
+                    .await
             }
         });
 
@@ -336,6 +263,10 @@ impl RootStore {
         self.imp().distrobox_version.clone()
     }
 
+    pub fn container_runtime(&self) -> Query<Rc<dyn ContainerRuntime>> {
+        self.imp().container_runtime.clone()
+    }
+
     pub fn images_query(&self) -> Query<Vec<String>> {
         self.imp().images_query.clone()
     }
@@ -383,7 +314,7 @@ impl RootStore {
 
     pub fn load_containers(&self) {
         self.containers_query()
-            .refetch_if_stale(Duration::from_secs(1));
+            .refetch_if_stale(Duration::from_millis(300));
     }
 
     pub fn download_distrobox(&self) -> crate::distrobox_task::DistroboxTask {
@@ -400,8 +331,9 @@ impl RootStore {
 
         glib::MainContext::ref_thread_default().spawn_local(async move {
             info!("Starting podman events listener");
+            let podman = crate::backends::podman::Podman::new(Rc::new(command_runner.clone()));
 
-            let stream = match listen_podman_events(command_runner) {
+            let stream = match podman.listen_events() {
                 Ok(stream) => stream,
                 Err(e) => {
                     warn!("Failed to start podman events listener: {}", e);
@@ -730,73 +662,6 @@ impl RootStore {
                 Err(e)
             }
         }
-    }
-
-    pub async fn get_container_runtime(&self) -> anyhow::Result<ContainerRuntime> {
-        if let Some(runtime) = *self.imp().container_runtime.borrow() {
-            return Ok(runtime);
-        }
-
-        let runner = self.imp().command_runner.get().unwrap();
-        let mut cmd = Command::new("podman");
-        cmd.arg("--version");
-        cmd.stdout = FdMode::Pipe;
-        cmd.stderr = FdMode::Pipe;
-
-        let podman_check = runner.output(cmd).await;
-
-        let runtime = if podman_check.is_ok() && podman_check.unwrap().status.success() {
-            ContainerRuntime::Podman
-        } else {
-            let mut cmd = Command::new("docker");
-            cmd.arg("--version");
-            cmd.stdout = FdMode::Pipe;
-            cmd.stderr = FdMode::Pipe;
-            let docker_check = runner.output(cmd).await;
-            if docker_check.is_ok() && docker_check.unwrap().status.success() {
-                ContainerRuntime::Docker
-            } else {
-                ContainerRuntime::Podman
-            }
-        };
-
-        *self.imp().container_runtime.borrow_mut() = Some(runtime);
-        Ok(runtime)
-    }
-
-    async fn fetch_downloaded_images(&self) -> anyhow::Result<HashSet<String>> {
-        let runtime = self.get_container_runtime().await?;
-        let mut cmd = Command::new(runtime.as_str());
-        cmd.arg("images").arg("--format").arg("json");
-
-        let output = self.run_to_string(cmd).await?;
-        // Some versions of podman/docker might return empty string if no images?
-        if output.trim().is_empty() {
-            return Ok(HashSet::new());
-        }
-        
-        // Handle potential JSON Lines vs JSON Array
-        // Try parsing as array first
-        let images_vec: Vec<Image> = match serde_json::from_str::<Vec<Image>>(&output) {
-            Ok(images) => images,
-            Err(_) => {
-                // Try parsing as JSON lines
-                let mut images = Vec::new();
-                for line in output.lines() {
-                    if !line.trim().is_empty() {
-                        images.push(serde_json::from_str::<Image>(line)?);
-                    }
-                }
-                images
-            }
-        };
-        
-        let names: HashSet<String> = images_vec
-            .into_iter()
-            .flat_map(|img| img.names.unwrap_or_default())
-            .collect();
-
-        Ok(names)
     }
 }
 

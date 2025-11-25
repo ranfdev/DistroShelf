@@ -26,8 +26,9 @@ use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
 use crate::DistroShelfWindow;
+use crate::backends;
 use crate::config;
-use crate::backends::{Distrobox, DistroboxCommandRunnerResponse, FlatpakCommandRunner};
+use crate::backends::{Distrobox, DistroboxCommandRunnerResponse};
 use crate::fakers::{CommandRunner, RealCommandRunner};
 use crate::root_store::RootStore;
 
@@ -225,12 +226,12 @@ impl DistroShelfApplication {
                 Distrobox::null_command_runner(&[DistroboxCommandRunnerResponse::NoVersion])
             }
             _ => {
+                let command_runner = 
+                    CommandRunner::new_real();
                 if Self::get_is_in_flatpak() {
-                    CommandRunner::new(Rc::new(FlatpakCommandRunner::new(Rc::new(
-                        RealCommandRunner::new(),
-                    ))))
+                    command_runner.map_cmd(backends::flatpak::map_flatpak_spawn_host)
                 } else {
-                    CommandRunner::new_real()
+                    command_runner
                 }
             }
         };

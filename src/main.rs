@@ -21,7 +21,6 @@
 mod application;
 mod config;
 mod container;
-mod container_stats;
 mod dialogs;
 mod distro_icon;
 mod backends;

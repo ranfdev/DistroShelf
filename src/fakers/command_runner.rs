@@ -11,7 +11,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::fakers::{Command, OutputTracker};
+use crate::fakers::{Command, FdMode, OutputTracker};
 
 use async_process::{Command as AsyncCommand, Output};
 use futures::{
@@ -114,6 +114,20 @@ impl CommandRunner {
                 .push(CommandRunnerEvent::Output(event_id, res_summary));
             result
         })
+        .boxed_local()
+    }
+    pub fn output_string(
+        &self,
+        mut command: Command,
+    ) -> Pin<Box<dyn Future<Output = io::Result<String>>>> {
+        let this = self.clone();
+        async move {
+            command.stdout = FdMode::Pipe;
+            command.stderr = FdMode::Pipe;
+            let output = this.output(command).await?;
+            let s = String::from_utf8_lossy(&output.stdout).to_string();
+            Ok(s)
+        }
         .boxed_local()
     }
 }
