@@ -2,9 +2,10 @@
 // This file is licensed under the same terms as the project it belongs to
 
 use adw::subclass::prelude::*;
+use adw::prelude::*;
 use glib::Properties;
 use glib::clone;
-use gtk::{gio, glib, prelude::*};
+use gtk::{gio, glib};
 use std::cell::RefCell;
 
 mod imp {
@@ -31,15 +32,43 @@ mod imp {
         #[template_child]
         terminal_preferences_page: TemplateChild<adw::Clamp>,
         #[template_child]
-        distrobox_page: TemplateChild<adw::Clamp>,
-        #[template_child]
         terminal_combo_row: TemplateChild<TerminalComboRow>,
         #[template_child]
-        pub use_bundled_btn: TemplateChild<gtk::Button>,
+        container_runtime_row: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        distrobox_row: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        runtime_status_spinner: TemplateChild<gtk::Spinner>,
+        #[template_child]
+        distrobox_status_spinner: TemplateChild<gtk::Spinner>,
+        #[template_child]
+        runtime_version_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        distrobox_version_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        continue_btn: TemplateChild<gtk::Button>,
+        #[template_child]
+        refresh_btn: TemplateChild<gtk::Button>,
+        
+        runtime_status_icon: RefCell<Option<gtk::Image>>,
+        distrobox_status_icon: RefCell<Option<gtk::Image>>,
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for WelcomeView {}
+    impl ObjectImpl for WelcomeView {
+        fn constructed(&self) {
+            self.parent_constructed();
+            let obj = self.obj();
+            
+            // Initialize status checks
+            obj.connect_root_store_notify(|view| {
+                view.imp().setup_status_checks();
+            });
+
+            // Setup actions
+            self.setup_actions();
+        }
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for WelcomeView {
@@ -60,28 +89,209 @@ mod imp {
     impl WidgetImpl for WelcomeView {}
     impl BinImpl for WelcomeView {}
 
+    impl WelcomeView {
+        fn setup_status_checks(&self) {
+            let obj = self.obj();
+            let root_store = obj.root_store();
+
+            // Check container runtime
+            root_store.container_runtime().refetch();
+            root_store.container_runtime().connect_success(clone!(
+                #[weak]
+                obj,
+                move |runtime| {
+                    obj.imp().update_runtime_status(Some(runtime.as_ref()));
+                }
+            ));
+            root_store.container_runtime().connect_error(clone!(
+                #[weak]
+                obj,
+                move |_error| {
+                    obj.imp().update_runtime_status(None);
+                }
+            ));
+
+            // Check distrobox version
+            root_store.distrobox_version().refetch();
+            root_store.distrobox_version().connect_success(clone!(
+                #[weak]
+                obj,
+                move |version| {
+                    obj.imp().update_distrobox_status(Some(&version));
+                }
+            ));
+            root_store.distrobox_version().connect_error(clone!(
+                #[weak]
+                obj,
+                move |_error| {
+                    obj.imp().update_distrobox_status(None);
+                }
+            ));
+        }
+
+        fn update_runtime_status(&self, runtime: Option<&dyn crate::backends::container_runtime::ContainerRuntime>) {
+            self.runtime_status_spinner.set_spinning(false);
+            self.runtime_status_spinner.set_visible(false);
+
+            // Remove old icon if exists
+            if let Some(old_icon) = self.runtime_status_icon.take() {
+                self.container_runtime_row.remove(&old_icon);
+            }
+
+            if let Some(runtime) = runtime {
+                let icon = gtk::Image::from_icon_name("check-plain-symbolic");
+                icon.add_css_class("success");
+                self.container_runtime_row.add_prefix(&icon);
+                self.runtime_status_icon.replace(Some(icon));
+                
+                let name = runtime.name();
+                let display_name = match name {
+                    "podman" => "Podman",
+                    "docker" => "Docker",
+                    _ => name,
+                };
+                self.container_runtime_row.set_subtitle(&format!("{} available", display_name));
+                
+                // Try to get version asynchronously
+                let runtime_version_label = self.runtime_version_label.clone();
+                let runtime_clone = self.obj().root_store().container_runtime();
+                glib::MainContext::ref_thread_default().spawn_local(async move {
+                    if let Some(runtime_data) = runtime_clone.data() {
+                        if let Ok(version) = runtime_data.version().await {
+                            runtime_version_label.set_text(&version);
+                            runtime_version_label.set_visible(true);
+                        }
+                    }
+                });
+            } else {
+                let icon = gtk::Image::from_icon_name("dialog-warning-symbolic");
+                icon.add_css_class("warning");
+                self.container_runtime_row.add_prefix(&icon);
+                self.runtime_status_icon.replace(Some(icon));
+                self.container_runtime_row.set_subtitle("Not found - Please install Podman or Docker");
+            }
+            
+            self.update_continue_button();
+        }
+
+        fn update_distrobox_status(&self, version: Option<&str>) {
+            self.distrobox_status_spinner.set_spinning(false);
+            self.distrobox_status_spinner.set_visible(false);
+
+            // Remove old icon if exists
+            if let Some(old_icon) = self.distrobox_status_icon.take() {
+                self.distrobox_row.remove(&old_icon);
+            }
+
+            if let Some(version) = version {
+                let icon = gtk::Image::from_icon_name("check-plain-symbolic");
+                icon.add_css_class("success");
+                self.distrobox_row.add_prefix(&icon);
+                self.distrobox_status_icon.replace(Some(icon));
+                
+                // Check if using bundled version
+                let settings = gio::Settings::new("com.ranfdev.DistroShelf");
+                let distrobox_source = settings.string("distrobox-executable");
+                let source_label = if distrobox_source == "bundled" {
+                    "Bundled version"
+                } else {
+                    "System version"
+                };
+                
+                self.distrobox_row.set_subtitle(&format!("{} available", source_label));
+                self.distrobox_version_label.set_text(version);
+                self.distrobox_version_label.set_visible(true);
+            } else {
+                let icon = gtk::Image::from_icon_name("dialog-warning-symbolic");
+                icon.add_css_class("warning");
+                self.distrobox_row.add_prefix(&icon);
+                self.distrobox_status_icon.replace(Some(icon));
+                self.distrobox_row.set_subtitle("Not found - Install from system or use bundled version");
+            }
+            
+            self.update_continue_button();
+        }
+
+        fn update_continue_button(&self) {
+            let obj = self.obj();
+            let root_store = obj.root_store();
+            
+            // Enable continue button only if both runtime and distrobox are available
+            let has_runtime = root_store.container_runtime().data().is_some();
+            let has_distrobox = root_store.distrobox_version().data().is_some();
+            
+            self.continue_btn.set_sensitive(has_runtime && has_distrobox);
+            // Re-enable refresh button after checks complete
+            self.refresh_btn.set_sensitive(true);
+        }
+
+        fn setup_actions(&self) {
+            let obj = self.obj();
+            let action_group = gio::SimpleActionGroup::new();
+            
+            // Create the "use-bundled-distrobox" action
+            let use_bundled_action = gio::SimpleAction::new("use-bundled-distrobox", None);
+            use_bundled_action.connect_activate(clone!(
+                #[weak]
+                obj,
+                move |_, _| {
+                    // Create a temporary button to pass to the handler
+                    let button = gtk::Button::new();
+                    obj.imp().use_bundled_version(&button);
+                }
+            ));
+            action_group.add_action(&use_bundled_action);
+            
+            obj.insert_action_group("welcome", Some(&action_group));
+        }
+    }
+
     #[gtk::template_callbacks]
     impl WelcomeView {
         #[template_callback]
+        fn refresh_requirements(&self, _: &gtk::Button) {
+            let obj = self.obj();
+            let root_store = obj.root_store();
+            
+            // Show spinners
+            self.runtime_status_spinner.set_spinning(true);
+            self.runtime_status_spinner.set_visible(true);
+            self.distrobox_status_spinner.set_spinning(true);
+            self.distrobox_status_spinner.set_visible(true);
+            
+            // Clear icons
+            if let Some(old_icon) = self.runtime_status_icon.take() {
+                self.container_runtime_row.remove(&old_icon);
+            }
+            if let Some(old_icon) = self.distrobox_status_icon.take() {
+                self.distrobox_row.remove(&old_icon);
+            }
+            
+            self.container_runtime_row.set_subtitle("Checking…");
+            self.distrobox_row.set_subtitle("Checking…");
+            self.runtime_version_label.set_visible(false);
+            self.distrobox_version_label.set_visible(false);
+            
+            // Disable continue button during refresh
+            self.continue_btn.set_sensitive(false);
+            self.refresh_btn.set_sensitive(false);
+            
+            // Trigger refetch
+            root_store.container_runtime().refetch();
+            root_store.distrobox_version().refetch();
+        }
+        
+        #[template_callback]
         fn continue_to_terminal_page(&self, _: &gtk::Button) {
             let obj = self.obj();
-            let obj_clone = obj.clone();
-            obj.root_store()
-                .distrobox_version()
-                .connect_success(move |_version| {
-                    obj_clone
-                        .imp()
-                        .carousel
-                        .scroll_to(&*obj_clone.imp().terminal_preferences_page, true);
-                });
-            let obj_clone = obj.clone();
-            obj.root_store()
-                .distrobox_version()
-                .connect_error(move |error| {
-                    obj_clone.set_distrobox_error(Some(error.to_string()));
-                });
-            self.obj().root_store().distrobox_version().refetch();
-            self.obj().root_store().load_containers();
+            let root_store = obj.root_store();
+            
+            // Only proceed if both requirements are met
+            if root_store.container_runtime().data().is_some() && root_store.distrobox_version().data().is_some() {
+                // Load containers and proceed to terminal selection page
+                root_store.load_containers();
+                self.carousel.scroll_to(&*self.terminal_preferences_page, true);
+            }
         }
         #[template_callback]
         fn continue_to_app(&self, _: &gtk::Button) {
@@ -127,7 +337,7 @@ mod imp {
                         btn.set_child(Some(&gtk::Label::new(Some("Use Bundled Version"))));
                         btn.set_sensitive(true);
                         obj.set_distrobox_error(Some(
-                            "Download failed. Check the task manager for details.".to_string(),
+                            "Download failed".to_string(),
                         ));
                     }
                 }

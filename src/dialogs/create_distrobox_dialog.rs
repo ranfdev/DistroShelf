@@ -356,7 +356,7 @@ mod imp {
             toolbar_view.set_vexpand(true);
             toolbar_view.set_content(Some(&scrolled_window));
 
-            let page = adw::NavigationPage::new(toolbar_view, "main");
+            let page = adw::NavigationPage::new(toolbar_view, "Create a Distrobox");
             navigation_view.add(&page);
             self.obj().set_child(Some(navigation_view));
         }
@@ -666,7 +666,7 @@ impl CreateDistroboxDialog {
             handle_image_selected(&image);
         }));
 
-        adw::NavigationPage::new(&view, "image-picker")
+        adw::NavigationPage::new(&view, "Select Image")
     }
 
     pub async fn extract_create_args(&self) -> Result<CreateArgs, Error> {

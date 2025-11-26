@@ -13,44 +13,102 @@
             <property name="interactive">false</property>
             <property name="spacing">12</property>
             <child>
-              <object class="AdwClamp" id="distrobox_page">
-                <property name="maximum-size">500</property>
-                <property name="hexpand">true</property>
-                <property name="child">
-                  <object class="AdwStatusPage">
-                    <property name="title" translatable="yes">Welcome to DistroShelf</property>
-                    <property name="description" translatable="yes">Please install Distrobox to continue</property>
+              <object class="AdwStatusPage">
+                <property name="title" translatable="yes">System Requirements</property>
+                <property name="icon-name">emblem-system-symbolic</property>
+                <property name="vexpand">true</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">24</property>
+                    <property name="halign">center</property>
+                    <property name="valign">start</property>
+                    <child>
+                      <object class="AdwPreferencesGroup">
+                        <property name="title" translatable="yes">Status</property>
+                        <child>
+                          <object class="AdwActionRow" id="container_runtime_row">
+                            <property name="title" translatable="yes">Container Runtime</property>
+                            <property name="subtitle" translatable="yes">Checking…</property>
+                            <child type="prefix">
+                              <object class="GtkSpinner" id="runtime_status_spinner">
+                                <property name="spinning">true</property>
+                              </object>
+                            </child>
+                            <child type="suffix">
+                              <object class="GtkLabel" id="runtime_version_label">
+                                <property name="visible">false</property>
+                                <style>
+                                  <class name="dim-label"/>
+                                </style>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="AdwActionRow" id="distrobox_row">
+                            <property name="title" translatable="yes">Distrobox</property>
+                            <property name="subtitle" translatable="yes">Checking…</property>
+                            <child type="prefix">
+                              <object class="GtkSpinner" id="distrobox_status_spinner">
+                                <property name="spinning">true</property>
+                              </object>
+                            </child>
+                            <child type="suffix">
+                              <object class="GtkBox">
+                                <property name="spacing">6</property>
+                                <child>
+                                  <object class="GtkLabel" id="distrobox_version_label">
+                                    <property name="visible">false</property>
+                                    <style>
+                                      <class name="dim-label"/>
+                                    </style>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkMenuButton" id="distrobox_menu_button">
+                                    <property name="has-frame">false</property>
+                                    <property name="valign">center</property>
+                                    <property name="icon-name">dialog-information-symbolic</property>
+                                    <property name="menu-model">distrobox_menu</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
                     <child>
                       <object class="GtkBox">
                         <property name="orientation">vertical</property>
                         <property name="spacing">12</property>
                         <property name="halign">center</property>
                         <child>
-                          <object class="GtkButton">
-                            <style>
-                              <class name="pill"/>
-                            </style>
-                            <property name="label" translatable="yes">Learn More</property>
-                            <property name="action-name">win.learn-more</property>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkButton">
-                            <style>
-                              <class name="pill"/>
-                              <class name="suggested-action"/>
-                            </style>
-                            <property name="label" translatable="yes">Continue</property>
-                            <signal name="clicked" swapped="true" handler="continue_to_terminal_page"/>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="use_bundled_btn">
-                            <style>
-                              <class name="pill"/>
-                            </style>
-                            <property name="label" translatable="yes">Use Bundled Version</property>
-                            <signal name="clicked" swapped="true" handler="use_bundled_version"/>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="spacing">12</property>
+                            <property name="halign">center</property>
+                            <child>
+                              <object class="GtkButton" id="refresh_btn">
+                                <style>
+                                  <class name="pill"/>
+                                </style>
+                                <property name="label" translatable="yes">Refresh</property>
+                                <signal name="clicked" swapped="true" handler="refresh_requirements"/>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="continue_btn">
+                                <style>
+                                  <class name="pill"/>
+                                  <class name="suggested-action"/>
+                                </style>
+                                <property name="label" translatable="yes">Continue</property>
+                                <property name="sensitive">false</property>
+                                <signal name="clicked" swapped="true" handler="continue_to_terminal_page"/>
+                              </object>
+                            </child>
                           </object>
                         </child>
                         <child>
@@ -69,7 +127,7 @@
                       </object>
                     </child>
                   </object>
-                </property>
+                </child>
               </object>
             </child>
             <child>
@@ -133,4 +191,16 @@
       </object>
     </property>
   </template>
+  <menu id="distrobox_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Use Bundled Distrobox</attribute>
+        <attribute name="action">welcome.use-bundled-distrobox</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Learn More</attribute>
+        <attribute name="action">win.learn-more</attribute>
+      </item>
+    </section>
+  </menu>
 </interface>
