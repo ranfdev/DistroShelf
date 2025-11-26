@@ -24,7 +24,7 @@ use crate::backends::podman::PodmanEvent;
 use crate::backends::{self, CreateArgs};
 use crate::container::Container;
 use crate::distrobox_task::DistroboxTask;
-use crate::fakers::{Child, Command, CommandRunner, FdMode};
+use crate::fakers::{Command, CommandRunner, FdMode};
 use crate::gtk_utils::{TypedListStore, reconcile_list_by_key};
 use crate::query::Query;
 use crate::supported_terminals::{Terminal, TerminalRepository};
@@ -164,9 +164,23 @@ impl RootStore {
             .terminal_repository
             .replace(TerminalRepository::new(command_runner.clone()));
 
+        // Create a mapped command runner for Distrobox that handles the executable path
+        let settings = this.settings();
+        let distrobox_cmd_runner = command_runner.clone().map_cmd(move |mut cmd| {
+            // Only map commands that are trying to run "distrobox"
+            if cmd.program == "distrobox" {
+                let distrobox_executable = settings.string("distrobox-executable");
+                if distrobox_executable == "bundled" {
+                    let bundled_path = crate::distrobox_downloader::get_bundled_distrobox_path();
+                    cmd.program = bundled_path.into();
+                }
+            }
+            cmd
+        });
+
         this.imp()
             .distrobox
-            .set(Distrobox::new(command_runner.clone(), this.settings()))
+            .set(Distrobox::new(distrobox_cmd_runner))
             .or(Err("distrobox already set"))
             .unwrap();
 

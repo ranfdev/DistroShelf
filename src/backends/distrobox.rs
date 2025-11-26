@@ -1,8 +1,7 @@
 use crate::fakers::{
-    Child, Command, CommandRunner, FdMode, InnerCommandRunner, NullCommandRunnerBuilder,
+    Child, Command, CommandRunner, FdMode, NullCommandRunnerBuilder,
 };
 
-use gtk::prelude::*;
 use serde::{Deserialize, Deserializer};
 use std::{
     cell::LazyCell,
@@ -127,7 +126,6 @@ impl DesktopFiles {
 
 pub struct Distrobox {
     cmd_runner: CommandRunner,
-    settings: gtk::gio::Settings,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash)]
@@ -357,8 +355,6 @@ pub enum Error {
     ResolveHostPath(String),
 }
 
-use crate::distrobox_downloader::get_bundled_distrobox_path;
-
 #[derive(Clone)]
 pub enum DistroboxCommandRunnerResponse {
     Version,
@@ -566,21 +562,14 @@ impl DistroboxCommandRunnerResponse {
 }
 
 impl Distrobox {
-    pub fn new(cmd_runner: CommandRunner, settings: gtk::gio::Settings) -> Self {
+    pub fn new(cmd_runner: CommandRunner) -> Self {
         Self {
             cmd_runner,
-            settings,
         }
     }
 
     fn dbcmd(&self) -> Command {
-        let distrobox_executable = self.settings.string("distrobox-executable");
-        if distrobox_executable == "bundled" {
-            let bundled_path = get_bundled_distrobox_path();
-            Command::new(bundled_path)
-        } else {
-            Command::new("distrobox")
-        }
+        Command::new("distrobox")
     }
 
     pub fn null_command_runner(responses: &[DistroboxCommandRunnerResponse]) -> CommandRunner {
@@ -591,14 +580,6 @@ impl Distrobox {
             }
         }
         builder.build()
-    }
-
-    #[cfg(test)]
-    fn new_for_test(cmd_runner: CommandRunner) -> Self {
-        // Create a temporary settings instance for tests
-        // Use the default schema path
-        let settings = gtk::gio::Settings::new("com.ranfdev.DistroShelf");
-        Self::new(cmd_runner, settings)
     }
 
     pub fn cmd_spawn(&self, mut cmd: Command) -> Result<Box<dyn Child + Send>, Error> {
@@ -1095,8 +1076,7 @@ impl Distrobox {
 
 impl Default for Distrobox {
     fn default() -> Self {
-        let settings = gtk::gio::Settings::new("com.ranfdev.DistroShelf");
-        Self::new(CommandRunner::new_null(), settings)
+        Self::new(CommandRunner::new_null())
     }
 }
 
@@ -1110,7 +1090,7 @@ mod tests {
         block_on(async {
             let output = "ID           | NAME                 | STATUS             | IMAGE                         
 d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubuntu-toolbox:latest";
-            let db = Distrobox::new_for_test(
+            let db = Distrobox::new(
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "ls", "--no-color"], output)
                     .build(),
@@ -1135,7 +1115,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
     fn version() -> Result<(), Error> {
         block_on(async {
             let output = "distrobox: 1.7.2.1";
-            let db = Distrobox::new_for_test(
+            let db = Distrobox::new(
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "version"], output)
                     .build(),
@@ -1147,7 +1127,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
 
     #[test]
     fn list_apps() -> Result<(), Error> {
-        let db = Distrobox::new_for_test(
+        let db = Distrobox::new(
             NullCommandRunnerBuilder::new()
                 .cmd(&["sh", "-c", "echo $XDG_DATA_HOME"], "")
                 .cmd(&["sh", "-c", "echo $HOME"], "/home/me")
@@ -1199,7 +1179,7 @@ Categories=Utility;Network;
     #[test]
     fn list_apps_with_space_in_filename() -> Result<(), Error> {
         // Simulate a desktop file with a space in its filename and ensure it's parsed/export-detected correctly
-        let db = Distrobox::new_for_test(
+        let db = Distrobox::new(
             NullCommandRunnerBuilder::new()
                 .cmd(&["sh", "-c", "echo $XDG_DATA_HOME"], "")
                 .cmd(&["sh", "-c", "echo $HOME"], "/home/me")
@@ -1243,7 +1223,7 @@ Categories=Utility;Security;",
     #[test]
     fn create() -> Result<(), Error> {
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();
-        let db = Distrobox::new_for_test(CommandRunner::new_null());
+        let db = Distrobox::new(CommandRunner::new_null());
         let output_tracker = db.cmd_runner.output_tracker();
         debug!("Testing container creation");
         let args = CreateArgs {
@@ -1267,7 +1247,7 @@ Categories=Utility;Security;",
     }
     #[test]
     fn assemble() -> Result<(), Error> {
-        let db = Distrobox::new_for_test(CommandRunner::new_null());
+        let db = Distrobox::new(CommandRunner::new_null());
         let output_tracker = db.cmd_runner.output_tracker();
         db.assemble("/path/to/assemble.yml")?;
         assert_eq!(
@@ -1279,7 +1259,7 @@ Categories=Utility;Security;",
 
     #[test]
     fn remove() -> Result<(), Error> {
-        let db = Distrobox::new_for_test(CommandRunner::new_null());
+        let db = Distrobox::new(CommandRunner::new_null());
         let output_tracker = db.cmd_runner.output_tracker();
         block_on(db.remove("ubuntu"))?;
         assert_eq!(
