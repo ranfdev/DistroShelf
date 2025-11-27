@@ -101,7 +101,7 @@ mod imp {
                 "Manage Tasks",
             ));
             let this = self.obj().clone();
-            if root_store.tasks().len() == 0 {
+            if root_store.tasks().is_empty() {
                 this.imp().stack.set_visible_child_name("empty");
             } else {
                 this.imp().stack.set_visible_child_name("list");

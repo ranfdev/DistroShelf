@@ -224,7 +224,10 @@ impl Container {
                     .and_then(|n| n.to_str())
                     .map(|n| n.to_string())
                     .unwrap_or_else(|| {
-                        format!("package{}", package_manager.installable_file().unwrap_or(""))
+                        format!(
+                            "package{}",
+                            package_manager.installable_file().unwrap_or("")
+                        )
                     });
                 let tmp_path = format!("/tmp/com.ranfdev.DistroShelf.{}", filename);
                 let tmp_path = Path::new(&tmp_path);

@@ -108,7 +108,7 @@ impl ContainerOverview {
         // Usage stats row
         let usage_row = adw::ActionRow::new();
         usage_row.set_title("Resources");
-        usage_row.set_subtitle(&format!("CPU: 0.0% • Mem: 0 (0%)"));
+        usage_row.set_subtitle(&"CPU: 0.0% • Mem: 0.0MB / 0.0GB (0.0%)".to_string());
         status_group.add(&usage_row);
 
         let usage_query = container.usage();
@@ -155,16 +155,16 @@ impl ContainerOverview {
         );
         actions_group.add(&apps_row);
 
-        if let Some(distro) = container.distro() {
-            if let Some(installable_file) = distro.package_manager().installable_file() {
-                let install_package_row = self.create_button_row(
-                    &format!("Install {} Package", installable_file),
-                    "package-symbolic",
-                    "Install packages into container",
-                    "win.install-package",
-                );
-                actions_group.add(&install_package_row);
-            }
+        if let Some(distro) = container.distro()
+            && let Some(installable_file) = distro.package_manager().installable_file()
+        {
+            let install_package_row = self.create_button_row(
+                &format!("Install {} Package", installable_file),
+                "package-symbolic",
+                "Install packages into container",
+                "win.install-package",
+            );
+            actions_group.add(&install_package_row);
         }
 
         let clone_row = self.create_button_row(

@@ -40,7 +40,7 @@ impl<T> QueryInner<T> {
         timeout: Option<Duration>,
     ) -> Self {
         Self {
-            key: key,
+            key,
             data: None,
             is_loading: false,
             error: None,
@@ -245,9 +245,9 @@ where
         if let Some(interval) = options.refetch_interval {
             let weak = Rc::downgrade(&inner);
             let source_id = glib::timeout_add_seconds_local(interval, move || {
-                Self::from_weak(&weak).map(|query| {
+                if let Some(query) = Self::from_weak(&weak) {
                     query.fetch();
-                });
+                }
                 glib::ControlFlow::Continue
             });
             inner.borrow_mut().refetch_source_id = Some(source_id);

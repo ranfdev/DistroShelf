@@ -97,9 +97,9 @@ impl Command {
         self
     }
     pub fn remove_flag_arg(&mut self, name: &str) -> &mut Command {
-        self.args.iter().position(|x| x == name).map(|index| {
+        if let Some(index) = self.args.iter().position(|x| x == name) {
             self.args.remove(index);
-        });
+        }
         self
     }
 

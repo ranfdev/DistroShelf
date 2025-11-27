@@ -104,7 +104,7 @@ impl Podman {
         // Get stdout and create a buffered reader
         let stdout = child
             .take_stdout()
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "No stdout available"))?;
+            .ok_or_else(|| std::io::Error::other("No stdout available"))?;
 
         let bufread = BufReader::new(stdout);
         let lines = bufread.lines();

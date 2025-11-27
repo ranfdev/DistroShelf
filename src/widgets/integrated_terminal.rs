@@ -162,7 +162,7 @@ impl IntegratedTerminal {
             .wrap_command(
                 Command::new("distrobox")
                     .arg("enter")
-                    .arg(&self.imp().container.borrow().name())
+                    .arg(self.imp().container.borrow().name())
                     .clone(),
             )
             .to_vec();

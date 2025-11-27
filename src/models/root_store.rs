@@ -472,7 +472,7 @@ impl RootStore {
             .and_then(|s| s.to_str())
             .unwrap_or(file_path);
 
-        let task = self.create_task(&file_name, "assemble", move |task| async move {
+        let task = self.create_task(file_name, "assemble", move |task| async move {
             let child = this.distrobox().assemble(&file_path_clone)?;
             task.handle_child_output(child).await
         });

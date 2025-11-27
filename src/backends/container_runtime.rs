@@ -43,11 +43,11 @@ pub async fn get_container_runtime(
         let docker = Docker::new(Rc::new(command_runner));
         if let Err(docker_err) = docker.version().await {
             info!(docker = ?docker_err, podman = ?podman_err, "Container runtime check results");
-            return None;
+            None
         } else {
-            return Some(Rc::new(docker) as Rc<dyn ContainerRuntime>);
+            Some(Rc::new(docker) as Rc<dyn ContainerRuntime>)
         }
     } else {
-        return Some(Rc::new(podman) as Rc<dyn ContainerRuntime>);
+        Some(Rc::new(podman) as Rc<dyn ContainerRuntime>)
     }
 }

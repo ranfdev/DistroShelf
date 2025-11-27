@@ -128,10 +128,10 @@ impl<T: IsA<glib::Object>> TypedListStore<T> {
         let mut i = self.len();
         while i > 0 {
             i -= 1;
-            if let Some(item) = self.get(i) {
-                if !predicate(&item) {
-                    self.remove(i);
-                }
+            if let Some(item) = self.get(i)
+                && !predicate(&item)
+            {
+                self.remove(i);
             }
         }
     }
@@ -154,10 +154,10 @@ impl<T: IsA<glib::Object>> TypedListStore<T> {
         F: FnMut(&T) -> bool,
     {
         for i in 0..self.len() {
-            if let Some(item) = self.get(i) {
-                if predicate(&item) {
-                    return Some((i, item));
-                }
+            if let Some(item) = self.get(i)
+                && predicate(&item)
+            {
+                return Some((i, item));
             }
         }
         None

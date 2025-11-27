@@ -32,7 +32,7 @@ struct DesktopFiles {
 
 impl DesktopFiles {
     fn decode_hex<E: serde::de::Error>(hex_str: &str) -> Result<Vec<u8>, E> {
-        if hex_str.len() % 2 != 0 {
+        if !hex_str.len().is_multiple_of(2) {
             return Err(E::invalid_length(
                 hex_str.len(),
                 &"hex string to have an even length",

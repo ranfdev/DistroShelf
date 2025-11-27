@@ -319,7 +319,7 @@ mod imp {
                 obj,
                 move |_| {
                     obj.root_store()
-                        .assemble_container(&obj.assemble_url().as_ref().unwrap());
+                        .assemble_container(obj.assemble_url().as_ref().unwrap());
                     obj.close();
                 }
             ));
@@ -439,28 +439,28 @@ impl CreateDistroboxDialog {
             #[weak]
             row,
             move |res: Result<File, _>| {
-                if let Ok(file) = res {
-                    if let Some(path) = file.path() {
-                        glib::MainContext::ref_thread_default().spawn_local(async move {
-                            match this
-                                .root_store()
-                                .resolve_host_path(&path.display().to_string())
-                                .await
-                            {
-                                Ok(resolved_path) => {
-                                    row.set_subtitle(&resolved_path);
-                                    cb(PathBuf::from(resolved_path));
-                                }
-
-                                Err(e) => {
-                                    this.update_errors::<()>(&Err(Error::InvalidField(
-                                        title.to_lowercase(),
-                                        e.to_string(),
-                                    )));
-                                }
+                if let Ok(file) = res
+                    && let Some(path) = file.path()
+                {
+                    glib::MainContext::ref_thread_default().spawn_local(async move {
+                        match this
+                            .root_store()
+                            .resolve_host_path(&path.display().to_string())
+                            .await
+                        {
+                            Ok(resolved_path) => {
+                                row.set_subtitle(&resolved_path);
+                                cb(PathBuf::from(resolved_path));
                             }
-                        });
-                    }
+
+                            Err(e) => {
+                                this.update_errors::<()>(&Err(Error::InvalidField(
+                                    title.to_lowercase(),
+                                    e.to_string(),
+                                )));
+                            }
+                        }
+                    });
                 }
             }
         );

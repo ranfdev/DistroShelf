@@ -116,7 +116,7 @@ mod imp {
                 #[weak]
                 obj,
                 move |version| {
-                    obj.imp().update_distrobox_status(Some(&version));
+                    obj.imp().update_distrobox_status(Some(version));
                 }
             ));
             root_store.distrobox_version().connect_error(clone!(
@@ -159,11 +159,11 @@ mod imp {
                 let runtime_version_label = self.runtime_version_label.clone();
                 let runtime_clone = self.obj().root_store().container_runtime();
                 glib::MainContext::ref_thread_default().spawn_local(async move {
-                    if let Some(runtime_data) = runtime_clone.data() {
-                        if let Ok(version) = runtime_data.version().await {
-                            runtime_version_label.set_text(&version);
-                            runtime_version_label.set_visible(true);
-                        }
+                    if let Some(runtime_data) = runtime_clone.data()
+                        && let Ok(version) = runtime_data.version().await
+                    {
+                        runtime_version_label.set_text(&version);
+                        runtime_version_label.set_visible(true);
                     }
                 });
             } else {

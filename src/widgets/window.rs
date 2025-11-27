@@ -200,10 +200,10 @@ impl DistroShelfWindow {
         let this_clone = this.clone();
         this.root_store()
             .connect_current_dialog_notify(move |root_store| {
-                if let Some(dialog) = this_clone.current_dialog() {
-                    if dialog.parent().is_some() {
-                        dialog.close();
-                    }
+                if let Some(dialog) = this_clone.current_dialog()
+                    && dialog.parent().is_some()
+                {
+                    dialog.close();
                 }
                 // Take dialog params (consumes them, resetting to default)
                 let params = root_store.take_dialog_params();
@@ -436,13 +436,12 @@ impl DistroShelfWindow {
                     #[weak(rename_to = this)]
                     self,
                     move |res| {
-                        if let Ok(file) = res {
-                            if let Some(path) = file.path() {
+                        if let Ok(file) = res
+                            && let Some(path) = file.path() {
                                 info!(container = %container.name(), path = %path.display(), "Installing package into container");
                                 this.root_store().selected_container().unwrap()
                                     .install(&path);
                             }
-                        }
                     }
                 ),
             );

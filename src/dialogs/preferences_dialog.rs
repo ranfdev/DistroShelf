@@ -161,7 +161,7 @@ mod imp {
                 #[weak]
                 version_label,
                 move |version| {
-                    version_label.set_text(&version);
+                    version_label.set_text(version);
                 }
             ));
             obj.root_store().distrobox_version().connect_error(clone!(
@@ -236,19 +236,18 @@ impl PreferencesDialog {
         if let (Some(terminal_combo_row), Some(delete_btn)) = (
             imp.terminal_combo_row.borrow().as_ref(),
             Some(&imp.delete_btn),
-        ) {
-            if let Some(selected) = terminal_combo_row.selected_item() {
-                let selected_name = selected
-                    .downcast_ref::<gtk::StringObject>()
-                    .unwrap()
-                    .string();
-                let is_read_only = self
-                    .root_store()
-                    .terminal_repository()
-                    .is_read_only(&selected_name);
+        ) && let Some(selected) = terminal_combo_row.selected_item()
+        {
+            let selected_name = selected
+                .downcast_ref::<gtk::StringObject>()
+                .unwrap()
+                .string();
+            let is_read_only = self
+                .root_store()
+                .terminal_repository()
+                .is_read_only(&selected_name);
 
-                delete_btn.set_sensitive(!is_read_only);
-            }
+            delete_btn.set_sensitive(!is_read_only);
         }
     }
 

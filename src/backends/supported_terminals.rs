@@ -111,7 +111,7 @@ impl TerminalRepository {
             .borrow()
             .iter()
             .find(|x| x.name == name)
-            .map_or(false, |x| x.read_only)
+            .is_some_and(|x| x.read_only)
     }
 
     pub fn save_terminal(&self, terminal: Terminal) -> anyhow::Result<()> {
@@ -185,7 +185,7 @@ impl TerminalRepository {
     pub async fn default_terminal(&self) -> Option<Terminal> {
         let mut command = Command::new_with_args(
             "gsettings",
-            &[
+            [
                 "get",
                 "org.gnome.desktop.default-applications.terminal",
                 "exec",
@@ -210,7 +210,7 @@ impl TerminalRepository {
             return None;
         }
         info!("Default terminal program: {}", terminal_program);
-        self.terminal_by_program(&terminal_program).or_else(|| {
+        self.terminal_by_program(terminal_program).or_else(|| {
             error!(
                 "Terminal program {} not found in the list",
                 terminal_program
