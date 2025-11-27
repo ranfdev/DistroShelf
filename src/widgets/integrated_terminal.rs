@@ -3,11 +3,10 @@ use adw::subclass::prelude::*;
 use gtk::{
     self, gio,
     glib::{self, clone},
-    pango,
 };
 use vte4::prelude::*;
 
-use crate::{container::Container, distro_icon, fakers::Command};
+use crate::{container::Container, fakers::Command};
 
 mod imp {
     use std::cell::RefCell;
