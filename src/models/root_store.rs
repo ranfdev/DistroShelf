@@ -21,15 +21,15 @@ use crate::backends::Distrobox;
 use crate::backends::Status;
 use crate::backends::container_runtime::{ContainerRuntime, get_container_runtime};
 use crate::backends::podman::PodmanEvent;
+use crate::backends::supported_terminals::{Terminal, TerminalRepository};
 use crate::backends::{self, CreateArgs};
-use crate::models::Container;
-use crate::models::{DialogParams, DialogType};
-use crate::models::DistroboxTask;
-use crate::models::ViewType;
 use crate::fakers::{Command, CommandRunner, FdMode};
 use crate::gtk_utils::{TypedListStore, reconcile_list_by_key};
+use crate::models::Container;
+use crate::models::DistroboxTask;
+use crate::models::ViewType;
+use crate::models::{DialogParams, DialogType};
 use crate::query::Query;
-use crate::models::supported_terminals::{Terminal, TerminalRepository};
 
 use serde::Deserialize;
 

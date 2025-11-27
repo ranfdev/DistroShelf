@@ -2,7 +2,6 @@ pub mod root_store;
 pub mod container;
 pub mod dialog_type;
 pub mod distrobox_task;
-pub mod supported_terminals;
 pub mod tagged_object;
 pub mod view_type;
 pub mod known_distros;

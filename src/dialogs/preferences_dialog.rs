@@ -1,5 +1,7 @@
-use crate::models::{DialogType, RootStore, supported_terminals};
+use crate::backends::supported_terminals;
+use crate::models::{DialogType, RootStore};
 use crate::widgets::TerminalComboRow;
+
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{Properties, clone, derived_properties};
@@ -193,8 +195,7 @@ mod imp {
                 move |_| {
                     // Trigger download and open task manager
                     obj.root_store().download_distrobox();
-                    obj.root_store()
-                        .set_current_dialog(DialogType::TaskManager);
+                    obj.root_store().set_current_dialog(DialogType::TaskManager);
                 }
             ));
 
