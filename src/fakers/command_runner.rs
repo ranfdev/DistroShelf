@@ -69,7 +69,10 @@ impl CommandRunner {
             inner: self.inner.clone(),
             map_cmd: Rc::new(f),
         });
-        CommandRunner::new(mapped_inner)
+        CommandRunner {
+            inner: mapped_inner,
+            output_tracker: self.output_tracker.clone(),
+        }
     }
 
     pub fn output_tracker(&self) -> OutputTracker<CommandRunnerEvent> {
