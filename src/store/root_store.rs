@@ -230,7 +230,8 @@ impl RootStore {
         this.imp().downloaded_images_query.set_fetcher(move || {
             let this_clone = this_clone.clone();
             async move {
-                this_clone.container_runtime()
+                this_clone
+                    .container_runtime()
                     .data()
                     .ok_or_else(|| anyhow::anyhow!("No container runtime available"))?
                     .downloaded_images()

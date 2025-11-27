@@ -28,23 +28,17 @@ mod distrobox_downloader;
 mod distrobox_task;
 mod fakers;
 mod gtk_utils;
-mod image_row_item;
 mod known_distros;
-mod sidebar_row;
 mod store;
 mod supported_terminals;
 mod tagged_object;
-mod tasks_button;
-mod terminal_combo_row;
-mod welcome_view;
-mod window;
 mod widgets;
 pub use store::root_store;
 use tracing::level_filters::LevelFilter;
 pub mod query;
 
 use self::application::DistroShelfApplication;
-use window::DistroShelfWindow;
+use crate::widgets::DistroShelfWindow;
 
 use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};

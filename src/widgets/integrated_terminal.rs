@@ -155,11 +155,7 @@ impl IntegratedTerminal {
         }
 
         self.imp().reload_button.set_visible(false);
-        let root_store = self
-            .imp()
-            .container
-            .borrow()
-            .root_store();
+        let root_store = self.imp().container.borrow().root_store();
 
         // Prepare the shell command
         let shell = root_store
@@ -191,7 +187,6 @@ impl IntegratedTerminal {
             async move {
                 match fut.await {
                     Ok(pid) => {
-                        
                         this.imp().terminal_pid.replace(Some(pid));
                     }
                     Err(err) => {

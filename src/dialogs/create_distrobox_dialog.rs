@@ -7,13 +7,13 @@ use tracing::error;
 use crate::backends::{self, CreateArgName, CreateArgs, Error};
 use crate::container::Container;
 use crate::root_store::RootStore;
-use crate::sidebar_row::SidebarRow;
+use crate::widgets::{ImageRowItem, SidebarRow};
 
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{distro_icon, image_row_item};
+use crate::distro_icon;
 use glib::clone;
 use gtk::glib::{Properties, derived_properties};
 
@@ -519,7 +519,7 @@ impl CreateDistroboxDialog {
         let factory = gtk::SignalListItemFactory::new();
         factory.connect_setup(|_, item| {
             let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let row = image_row_item::ImageRowItem::new();
+            let row = ImageRowItem::new();
             item.set_child(Some(&row));
         });
         let obj = self.clone();
@@ -531,7 +531,7 @@ impl CreateDistroboxDialog {
                 .unwrap()
                 .string();
             let child = item.child();
-            let child: &image_row_item::ImageRowItem = child.and_downcast_ref().unwrap();
+            let child: &ImageRowItem = child.and_downcast_ref().unwrap();
             child.set_image(&image);
 
             let is_downloaded = obj.imp().downloaded_tags.borrow().contains(image.as_str());
@@ -546,7 +546,7 @@ impl CreateDistroboxDialog {
         custom_list.add_css_class("navigation-sidebar");
         custom_list.set_selection_mode(gtk::SelectionMode::None);
 
-        let custom_row_item = image_row_item::ImageRowItem::new();
+        let custom_row_item = ImageRowItem::new();
         distro_icon::remove_color(&custom_row_item.imp().icon);
 
         custom_list.append(&custom_row_item);

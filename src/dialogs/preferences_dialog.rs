@@ -1,6 +1,6 @@
 use crate::store::root_store::RootStore;
 use crate::supported_terminals;
-use crate::terminal_combo_row::TerminalComboRow;
+use crate::widgets::TerminalComboRow;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{Properties, clone, derived_properties};

@@ -23,9 +23,8 @@ use crate::dialogs::{
     CreateDistroboxDialog, ExportableAppsDialog, PreferencesDialog, TaskManagerDialog,
 };
 use crate::root_store::RootStore;
-use crate::sidebar_row::SidebarRow;
 use crate::tagged_object::TaggedObject;
-use crate::tasks_button::TasksButton;
+use crate::widgets::{SidebarRow, TasksButton};
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{Properties, derived_properties};
@@ -40,7 +39,7 @@ mod imp {
 
     #[derive(Default, gtk::CompositeTemplate, Properties)]
     #[properties(wrapper_type = super::DistroShelfWindow)]
-    #[template(resource = "/com/ranfdev/DistroShelf/gtk/window.ui")]
+    #[template(file = "window.ui")]
     pub struct DistroShelfWindow {
         #[property(get, set, construct)]
         pub root_store: RefCell<RootStore>,
@@ -65,7 +64,7 @@ mod imp {
         #[template_child]
         pub toast_overlay: TemplateChild<adw::ToastOverlay>,
         #[template_child]
-        pub welcome_view: TemplateChild<crate::welcome_view::WelcomeView>,
+        pub welcome_view: TemplateChild<crate::widgets::WelcomeView>,
         #[template_child]
         pub view_stack: TemplateChild<adw::ViewStack>,
         #[template_child]
@@ -355,7 +354,7 @@ impl DistroShelfWindow {
     pub fn add_toast(&self, toast: adw::Toast) {
         self.imp().toast_overlay.add_toast(toast);
     }
-    
+
     fn open_terminal(&self) {
         let task = self
             .root_store()
@@ -639,11 +638,11 @@ impl DistroShelfWindow {
 
     fn update_container(&self, container: &Container) {
         let imp = self.imp();
-        
+
         // Set container on the template widgets
         imp.container_overview.set_container(container);
         imp.integrated_terminal.set_container(container);
-        
+
         // Spawn terminal when view becomes visible
         imp.view_stack.connect_visible_child_notify(clone!(
             #[weak(rename_to = terminal)]

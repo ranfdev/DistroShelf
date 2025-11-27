@@ -1,6 +1,4 @@
-use crate::fakers::{
-    Child, Command, CommandRunner, FdMode, NullCommandRunnerBuilder,
-};
+use crate::fakers::{Child, Command, CommandRunner, FdMode, NullCommandRunnerBuilder};
 
 use serde::{Deserialize, Deserializer};
 use std::{
@@ -19,9 +17,8 @@ use tracing::{debug, error, info, warn};
 
 use crate::backends::desktop_file::*;
 
-const POSIX_FIND_AND_CONCAT_DESKTOP_FILES: &str = include_str!(
-    "POSIX_FIND_AND_CONCAT_DESKTOP_FILES.sh"
-);
+const POSIX_FIND_AND_CONCAT_DESKTOP_FILES: &str =
+    include_str!("POSIX_FIND_AND_CONCAT_DESKTOP_FILES.sh");
 
 #[derive(Deserialize, Debug)]
 struct DesktopFiles {
@@ -533,9 +530,7 @@ impl DistroboxCommandRunnerResponse {
 
 impl Distrobox {
     pub fn new(cmd_runner: CommandRunner) -> Self {
-        Self {
-            cmd_runner,
-        }
+        Self { cmd_runner }
     }
 
     fn dbcmd(&self) -> Command {

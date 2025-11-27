@@ -1,11 +1,11 @@
-use crate::window::DistroShelfWindow;
 use crate::container::Container;
+use crate::widgets::DistroShelfWindow;
 
+use crate::gtk_utils::reaction;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{self, gdk, glib, pango};
 use gtk::glib::clone;
-use crate::gtk_utils::reaction;
+use gtk::{self, gdk, glib, pango};
 use std::cell::RefCell;
 
 mod imp {
@@ -24,7 +24,8 @@ mod imp {
         fn set_container(&self, value: &Container) {
             self.container.replace(value.clone());
 
-            self.obj().set_child(Some(&self.obj().build_main_content(value)));
+            self.obj()
+                .set_child(Some(&self.obj().build_main_content(value)));
         }
     }
 
@@ -201,7 +202,6 @@ impl ContainerOverview {
 
         scrolled_window.upcast()
     }
-
 
     pub fn build_container_header(&self, container: &Container) -> gtk::Box {
         // Create labels for the title and subtitle
