@@ -127,11 +127,62 @@
                         <property name="child">
                           <object class="AdwToolbarView">
                             <child type="top">
-                              <object class="AdwHeaderBar"/>
+                              <object class="AdwHeaderBar">
+                                <property name="title-widget">
+                                  <object class="AdwViewSwitcher" id="view_switcher">
+                                    <property name="stack">view_stack</property>
+                                    <property name="policy">wide</property>
+                                  </object>
+                                </property>
+                              </object>
                             </child>
                             <property name="content">
-                              <object class="AdwBin" id="main_slot">
-                                <!-- ... -->
+                              <object class="AdwBreakpointBin" id="breakpoint_bin">
+                                <property name="width-request">360</property>
+                                <property name="height-request">200</property>
+                                <child>
+                                  <object class="AdwBreakpoint">
+                                    <condition>max-width: 550sp</condition>
+                                    <setter object="view_switcher" property="visible">False</setter>
+                                    <setter object="view_switcher_bar" property="reveal">True</setter>
+                                  </object>
+                                </child>
+                                <property name="child">
+                                  <object class="GtkBox">
+                                    <property name="orientation">vertical</property>
+                                    <child>
+                                      <object class="AdwViewStack" id="view_stack">
+                                        <child>
+                                          <object class="AdwViewStackPage">
+                                            <property name="name">overview</property>
+                                            <property name="title">Overview</property>
+                                            <property name="icon-name">container-symbolic</property>
+                                            <property name="child">
+                                              <object class="ContainerOverview" id="container_overview">
+                                              </object>
+                                            </property>
+                                          </object>
+                                        </child>
+                                        <child>
+                                          <object class="AdwViewStackPage">
+                                            <property name="name">terminal</property>
+                                            <property name="title">Terminal</property>
+                                            <property name="icon-name">terminal-symbolic</property>
+                                            <property name="child">
+                                              <object class="IntegratedTerminal" id="integrated_terminal">
+                                              </object>
+                                            </property>
+                                          </object>
+                                        </child>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="AdwViewSwitcherBar" id="view_switcher_bar">
+                                        <property name="stack">view_stack</property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </property>
                               </object>
                             </property>
                           </object>

@@ -38,6 +38,7 @@ mod tasks_button;
 mod terminal_combo_row;
 mod welcome_view;
 mod window;
+mod widgets;
 pub use store::root_store;
 use tracing::level_filters::LevelFilter;
 pub mod query;
