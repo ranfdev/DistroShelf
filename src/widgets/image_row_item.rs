@@ -4,7 +4,7 @@ use glib::Properties;
 use gtk::glib;
 use std::cell::RefCell;
 
-use crate::{distro_icon, known_distros::known_distro_by_image};
+use crate::{known_distros::known_distro_by_image, widgets::DistroIcon};
 
 mod imp {
     use gtk::pango;
@@ -19,7 +19,7 @@ mod imp {
         #[property(get, construct_only)]
         pub image: RefCell<Option<String>>,
         pub distro: RefCell<Option<KnownDistro>>,
-        pub icon: gtk::Image,
+        pub icon: DistroIcon,
         pub label: gtk::Label,
         #[property(get, set = Self::set_is_downloaded)]
         pub is_downloaded: std::cell::Cell<bool>,
@@ -29,8 +29,6 @@ mod imp {
     #[glib::derived_properties]
     impl ObjectImpl for ImageRowItem {
         fn constructed(&self) {
-            distro_icon::setup(&self.icon);
-
             self.label.set_xalign(0.0);
             self.label.set_ellipsize(pango::EllipsizeMode::Middle);
             self.label.set_has_tooltip(true);
@@ -82,7 +80,7 @@ impl ImageRowItem {
     pub fn set_image(&self, image: &str) {
         let imp = self.imp();
 
-        distro_icon::set_image(&imp.icon, image);
+        imp.icon.set_image(image);
 
         let distro = known_distro_by_image(image);
         imp.distro.replace(distro);

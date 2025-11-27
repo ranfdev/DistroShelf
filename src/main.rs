@@ -23,7 +23,6 @@ mod backends;
 mod config;
 mod container;
 mod dialogs;
-mod distro_icon;
 mod distrobox_downloader;
 mod distrobox_task;
 mod fakers;

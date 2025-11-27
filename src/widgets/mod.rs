@@ -1,4 +1,5 @@
 mod container_overview;
+mod distro_icon;
 mod image_row_item;
 mod integrated_terminal;
 mod sidebar_row;
@@ -8,6 +9,7 @@ mod welcome_view;
 mod window;
 
 pub use container_overview::ContainerOverview;
+pub use distro_icon::DistroIcon;
 pub use image_row_item::ImageRowItem;
 pub use integrated_terminal::IntegratedTerminal;
 pub use sidebar_row::SidebarRow;

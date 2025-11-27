@@ -13,7 +13,6 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::{cell::RefCell, rc::Rc};
 
-use crate::distro_icon;
 use glib::clone;
 use gtk::glib::{Properties, derived_properties};
 
@@ -547,7 +546,7 @@ impl CreateDistroboxDialog {
         custom_list.set_selection_mode(gtk::SelectionMode::None);
 
         let custom_row_item = ImageRowItem::new();
-        distro_icon::remove_color(&custom_row_item.imp().icon);
+        custom_row_item.imp().icon.set_colored(false);
 
         custom_list.append(&custom_row_item);
 

@@ -47,10 +47,10 @@ glib::wrapper! {
 ```
 
 ### Composite Template Pattern
-UI widgets use GTK composite templates (`src/window.rs`, `src/welcome_view.rs`):
+UI widgets use GTK composite templates:
 ```rust
 #[derive(gtk::CompositeTemplate)]
-#[template(resource = "/com/ranfdev/DistroShelf/gtk/window.ui")]
+#[template(file = "window.ui")]
 pub struct DistroShelfWindow {
     #[template_child]
     pub sidebar_list_view: TemplateChild<gtk::ListView>,
@@ -62,7 +62,7 @@ impl WelcomeView {
     fn continue_to_terminal_page(&self, _: &gtk::Button) { /* ... */ }
 }
 ```
-UI files in `data/gtk/*.ui` define structure; Rust handles logic.
+Widget `.ui` files live alongside their Rust implementations in `src/widgets/`. Global UI resources (help overlay, etc.) remain in `data/gtk/`.
 
 ## Key Patterns & Utilities
 
@@ -129,13 +129,29 @@ App automatically detects Flatpak environment and configures `CommandRunner`:
 - `RootStore::container_runtime` is a `Query<Rc<dyn ContainerRuntime>>`
 
 ### Desktop File Parsing
-Complex shell script in `src/backends/distrobox.rs` (`POSIX_FIND_AND_CONCAT_DESKTOP_FILES`) finds/encodes desktop files from containers for app export feature. Deserializes hex-encoded entries to avoid shell escaping issues.
+Shell script in `src/backends/distrobox/POSIX_FIND_AND_CONCAT_DESKTOP_FILES.sh` finds and encodes desktop files from containers for app export. Uses hex-encoding to avoid shell escaping issues.
 
-## Key Files Reference
+## Project Structure
+
+### `src/widgets/` - UI Components
+GTK widgets and their corresponding `.ui` template files. Main window, container overview, integrated terminal, sidebar items, and various custom widgets.
+
+### `src/backends/` - External System Integration
+Abstractions for external tools and container runtimes. Includes distrobox CLI wrapper, container runtime trait (Podman/Docker), Flatpak detection, and desktop file parsing.
+
+### `src/dialogs/` - Modal Dialogs
+Dialog implementations for container creation, application export, task management, and preferences.
+
+### `src/store/` - State Management
+Central reactive state store (`root_store.rs`) holding all app state.
+
+### `src/fakers/` - Command Execution Abstraction
+CommandRunner trait and implementations for executing shell commands in both native and Flatpak environments.
+
+## Key Files
 - `src/store/root_store.rs` - Central state store
-- `src/backends/distrobox.rs` - Distrobox CLI wrapper (1300+ lines)
+- `src/backends/distrobox/distrobox.rs` - Distrobox CLI wrapper
 - `src/fakers/command_runner.rs` - Command execution abstraction
 - `src/query/mod.rs` - Async query system
-- `src/window.rs` - Main window with actions/UI binding
-- `src/application.rs` - App initialization, store setup
-- `data/gtk/*.ui` - GTK composite templates
+- `src/widgets/window.rs` - Main window implementation
+- `src/application.rs` - App initialization and store setup

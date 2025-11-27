@@ -4,7 +4,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{self, glib, pango};
 
-use crate::{container::Container, distro_icon};
+use crate::{container::Container, widgets::DistroIcon};
 
 mod imp {
     use std::cell::RefCell;
@@ -18,7 +18,7 @@ mod imp {
     #[properties(wrapper_type=super::SidebarRow)]
     pub struct SidebarRow {
         // Widgets
-        pub icon: gtk::Image,
+        pub icon: DistroIcon,
         pub title_label: gtk::Label,
         pub subtitle_label: gtk::Label,
         pub text_box: gtk::Box,
@@ -52,7 +52,7 @@ mod imp {
         }
         fn set_image(&self, value: &str) {
             self.image.replace(value.to_string());
-            distro_icon::set_image(&self.icon, value);
+            self.icon.set_image(value);
             self.subtitle_label.set_text(value);
         }
         fn set_status_tag(&self, value: &str) {
@@ -81,7 +81,7 @@ mod imp {
 
         fn new() -> Self {
             Self {
-                icon: gtk::Image::new(),
+                icon: DistroIcon::new(),
                 title_label: gtk::Label::new(None),
                 subtitle_label: gtk::Label::new(None),
                 text_box: gtk::Box::new(gtk::Orientation::Vertical, 4),
@@ -108,9 +108,6 @@ mod imp {
             obj.set_margin_end(6);
             obj.set_margin_top(8);
             obj.set_margin_bottom(8);
-
-            // Configure the icon
-            distro_icon::setup(&self.icon);
 
             // Configure the labels
             self.title_label.set_halign(gtk::Align::Start);
