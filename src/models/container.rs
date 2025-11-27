@@ -218,10 +218,15 @@ impl Container {
                 let enter_cmd = this.root_store().distrobox().enter_cmd(&name_clone);
 
                 // the file of the package must have the correct extension (.deb for apt-get).
-                let tmp_path = format!(
-                    "/tmp/com.ranfdev.DistroShelf.user_package_{}",
-                    package_manager.installable_file().unwrap()
-                );
+                // Use original filename or generate one with proper extension
+                let filename = path_clone
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.to_string())
+                    .unwrap_or_else(|| {
+                        format!("package{}", package_manager.installable_file().unwrap_or(""))
+                    });
+                let tmp_path = format!("/tmp/com.ranfdev.DistroShelf.{}", filename);
                 let tmp_path = Path::new(&tmp_path);
                 let cp_cmd_pure = Command::new_with_args("cp", [&path_clone, tmp_path]);
                 let install_cmd_pure = package_manager.install_cmd(tmp_path).unwrap();

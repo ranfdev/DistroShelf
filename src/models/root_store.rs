@@ -1,6 +1,3 @@
-// You can copy/paste this file every time you need a simple GObject
-// to hold some data
-
 use anyhow::Context;
 use futures::prelude::*;
 use glib::Properties;
@@ -613,8 +610,17 @@ impl RootStore {
                 glib::timeout_future(Duration::from_millis(i as u64 * 300)).await;
 
                 // refresh the status of the container
-                let containers = this.distrobox().list().await.unwrap();
-                let container = containers.get(&name).unwrap();
+                let containers = match this.distrobox().list().await {
+                    Ok(c) => c,
+                    Err(e) => {
+                        warn!(error = %e, "Failed to list containers while waiting for container to start");
+                        continue;
+                    }
+                };
+                let Some(container) = containers.get(&name) else {
+                    debug!(name = %name, "Container not found while waiting for it to start");
+                    continue;
+                };
 
                 // if the container is running, we finally update the UI
                 if let Status::Up(_) = &container.status {
