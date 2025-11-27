@@ -75,6 +75,8 @@ mod imp {
         pub overview_bin: TemplateChild<adw::Bin>,
         #[template_child]
         pub terminal_bin: TemplateChild<adw::Bin>,
+
+        pub current_integrated_terminal: RefCell<Option<crate::widgets::IntegratedTerminal>>,
     }
 
     #[glib::object_subclass]
@@ -234,6 +236,17 @@ impl DistroShelfWindow {
             });
         this.build_sidebar();
         this.root_store().load_containers();
+
+        // Register terminal visibility callback once
+        let this_clone = this.clone();
+        this.imp().view_stack.connect_visible_child_notify(move |stack| {
+            if stack.visible_child_name().as_deref() == Some("terminal") {
+                if let Some(terminal) = this_clone.imp().current_integrated_terminal.borrow().as_ref()
+                {
+                    terminal.spawn_terminal();
+                }
+            }
+        });
 
         // Save window size when closing
         let this_clone = this.clone();
@@ -457,15 +470,10 @@ impl DistroShelfWindow {
         let integrated_terminal = crate::widgets::IntegratedTerminal::new(container);
         imp.terminal_bin.set_child(Some(&integrated_terminal));
 
-        // Spawn terminal when view becomes visible
-        imp.view_stack.connect_visible_child_notify(clone!(
-            #[weak]
-            integrated_terminal,
-            move |stack| {
-                if stack.visible_child_name().as_deref() == Some("terminal") {
-                    integrated_terminal.spawn_terminal();
-                }
-            }
-        ));
+        // Store the current terminal so the callback can access it
+        *imp.current_integrated_terminal.borrow_mut() = Some(integrated_terminal);
+
+        // Switch to overview page
+        imp.view_stack.set_visible_child_name("overview");
     }
 }
