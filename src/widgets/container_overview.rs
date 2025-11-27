@@ -6,7 +6,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib::clone;
 use gtk::{self, gdk, glib, pango};
-use std::cell::RefCell;
+use std::cell::OnceCell;
 
 mod imp {
     use super::*;
@@ -16,17 +16,8 @@ mod imp {
     #[derive(Default, Properties)]
     #[properties(wrapper_type=super::ContainerOverview)]
     pub struct ContainerOverview {
-        #[property(get, set=Self::set_container)]
-        pub container: RefCell<Container>,
-    }
-
-    impl ContainerOverview {
-        fn set_container(&self, value: &Container) {
-            self.container.replace(value.clone());
-
-            self.obj()
-                .set_child(Some(&self.obj().build_main_content(value)));
-        }
+        #[property(get, set, construct)]
+        pub container: OnceCell<Container>,
     }
 
     // The central trait for subclassing a GObject
@@ -35,12 +26,6 @@ mod imp {
         const NAME: &'static str = "ContainerOverview";
         type Type = super::ContainerOverview;
         type ParentType = adw::Bin;
-
-        fn new() -> Self {
-            Self {
-                container: Default::default(),
-            }
-        }
     }
 
     #[derived_properties]
@@ -62,8 +47,10 @@ glib::wrapper! {
 
 impl ContainerOverview {
     pub fn new(container: &Container) -> Self {
-        let obj: Self = glib::Object::builder().build();
-        obj.set_container(container);
+        let obj: Self = glib::Object::builder()
+            .property("container", container)
+            .build();
+        obj.set_child(Some(&obj.build_main_content(container)));
         obj
     }
 

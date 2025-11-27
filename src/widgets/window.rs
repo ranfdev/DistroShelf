@@ -72,9 +72,9 @@ mod imp {
         #[template_child]
         pub view_switcher_bar: TemplateChild<adw::ViewSwitcherBar>,
         #[template_child]
-        pub container_overview: TemplateChild<crate::widgets::ContainerOverview>,
+        pub overview_bin: TemplateChild<adw::Bin>,
         #[template_child]
-        pub integrated_terminal: TemplateChild<crate::widgets::IntegratedTerminal>,
+        pub terminal_bin: TemplateChild<adw::Bin>,
     }
 
     #[glib::object_subclass]
@@ -451,17 +451,19 @@ impl DistroShelfWindow {
     fn update_container(&self, container: &Container) {
         let imp = self.imp();
 
-        // Set container on the template widgets
-        imp.container_overview.set_container(container);
-        imp.integrated_terminal.set_container(container);
+        let container_overview = crate::widgets::ContainerOverview::new(container);
+        imp.overview_bin.set_child(Some(&container_overview));
+
+        let integrated_terminal = crate::widgets::IntegratedTerminal::new(container);
+        imp.terminal_bin.set_child(Some(&integrated_terminal));
 
         // Spawn terminal when view becomes visible
         imp.view_stack.connect_visible_child_notify(clone!(
-            #[weak(rename_to = terminal)]
-            imp.integrated_terminal,
+            #[weak]
+            integrated_terminal,
             move |stack| {
                 if stack.visible_child_name().as_deref() == Some("terminal") {
-                    terminal.spawn_terminal();
+                    integrated_terminal.spawn_terminal();
                 }
             }
         ));

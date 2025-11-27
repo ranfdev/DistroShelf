@@ -9,7 +9,7 @@ use vte4::prelude::*;
 use crate::{fakers::Command, models::Container};
 
 mod imp {
-    use std::cell::RefCell;
+    use std::cell::OnceCell;
 
     use gtk::glib::{Properties, derived_properties};
 
@@ -19,20 +19,11 @@ mod imp {
     #[derive(Default, Properties)]
     #[properties(wrapper_type=super::IntegratedTerminal)]
     pub struct IntegratedTerminal {
-        #[property(get, set=Self::set_container)]
-        pub container: RefCell<Container>,
+        #[property(get, set, construct)]
+        pub container: OnceCell<Container>,
         pub terminal: vte4::Terminal,
         pub reload_button: gtk::Button,
-        pub terminal_pid: RefCell<Option<glib::Pid>>,
-    }
-
-    impl IntegratedTerminal {
-        fn set_container(&self, value: &Container) {
-            self.container.replace(value.clone());
-
-            let child = self.obj().build_integrated_terminal();
-            self.obj().set_child(Some(&child));
-        }
+        pub terminal_pid: std::cell::Cell<Option<glib::Pid>>,
     }
 
     // The central trait for subclassing a GObject
@@ -44,10 +35,10 @@ mod imp {
 
         fn new() -> Self {
             Self {
-                container: Default::default(),
-                reload_button: Default::default(),
-                terminal_pid: Default::default(),
+                container: OnceCell::new(),
                 terminal: vte4::Terminal::new(),
+                reload_button: gtk::Button::new(),
+                terminal_pid: std::cell::Cell::new(None),
             }
         }
     }
@@ -71,15 +62,17 @@ glib::wrapper! {
 
 impl IntegratedTerminal {
     pub fn new(container: &Container) -> Self {
-        let obj: Self = glib::Object::builder().build();
-        obj.set_container(container);
+        let obj: Self = glib::Object::builder()
+            .property("container", container)
+            .build();
+        obj.build_ui();
         obj
     }
 
-    pub fn build_integrated_terminal(&self) -> gtk::Widget {
+    fn build_ui(&self) {
         let imp = self.imp();
-
-        let terminal = imp.terminal.clone();
+        let terminal = &imp.terminal;
+        let reload_button = &imp.reload_button;
 
         // Create context menu actions
         let action_group = gio::SimpleActionGroup::new();
@@ -115,24 +108,23 @@ impl IntegratedTerminal {
 
         // Create a container for the terminal with a reload button overlay
         let terminal_overlay = gtk::Overlay::new();
-        terminal_overlay.set_child(Some(&terminal));
+        terminal_overlay.set_child(Some(terminal));
 
-        let reload_button = self.imp().reload_button.clone();
         reload_button.set_icon_name("view-refresh-symbolic");
         reload_button.set_tooltip_text(Some("Reload Terminal"));
         reload_button.add_css_class("circular");
         reload_button.add_css_class("suggested-action");
         reload_button.set_halign(gtk::Align::Center);
         reload_button.set_valign(gtk::Align::Center);
-        reload_button.set_visible(false);
-        terminal_overlay.add_overlay(&reload_button);
+        reload_button.set_visible(true);
+        terminal_overlay.add_overlay(reload_button);
 
         // Connect to terminal child-exited signal to show reload button
         terminal.connect_child_exited(clone!(
             #[weak(rename_to=this)]
             self,
             move |_, _status| {
-                this.imp().terminal_pid.replace(None);
+                this.imp().terminal_pid.set(None);
                 this.imp().reload_button.set_visible(true);
             }
         ));
@@ -145,16 +137,19 @@ impl IntegratedTerminal {
                 this.spawn_terminal();
             }
         ));
-        terminal_overlay.upcast()
+
+        self.set_child(Some(&terminal_overlay));
     }
 
     pub fn spawn_terminal(&self) {
-        if self.imp().terminal_pid.borrow().is_some() {
+        let imp = self.imp();
+
+        if imp.terminal_pid.get().is_some() {
             return;
         }
 
-        self.imp().reload_button.set_visible(false);
-        let root_store = self.imp().container.borrow().root_store();
+        imp.reload_button.set_visible(false);
+        let root_store = self.container().root_store();
 
         // Prepare the shell command
         let shell = root_store
@@ -162,12 +157,12 @@ impl IntegratedTerminal {
             .wrap_command(
                 Command::new("distrobox")
                     .arg("enter")
-                    .arg(self.imp().container.borrow().name())
+                    .arg(self.container().name())
                     .clone(),
             )
             .to_vec();
 
-        let fut = self.imp().terminal.spawn_future(
+        let fut = imp.terminal.spawn_future(
             vte4::PtyFlags::DEFAULT,
             None,
             &shell
@@ -186,7 +181,7 @@ impl IntegratedTerminal {
             async move {
                 match fut.await {
                     Ok(pid) => {
-                        this.imp().terminal_pid.replace(Some(pid));
+                        this.imp().terminal_pid.set(Some(pid));
                     }
                     Err(err) => {
                         eprintln!("Failed to spawn terminal: {}", err);

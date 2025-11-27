@@ -158,7 +158,7 @@
                                             <property name="title">Overview</property>
                                             <property name="icon-name">container-symbolic</property>
                                             <property name="child">
-                                              <object class="ContainerOverview" id="container_overview">
+                                              <object class="AdwBin" id="overview_bin">
                                               </object>
                                             </property>
                                           </object>
@@ -169,7 +169,7 @@
                                             <property name="title">Terminal</property>
                                             <property name="icon-name">terminal-symbolic</property>
                                             <property name="child">
-                                              <object class="IntegratedTerminal" id="integrated_terminal">
+                                              <object class="AdwBin" id="terminal_bin">
                                               </object>
                                             </property>
                                           </object>
