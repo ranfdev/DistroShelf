@@ -22,13 +22,13 @@ use crate::backends::Status;
 use crate::backends::container_runtime::{ContainerRuntime, get_container_runtime};
 use crate::backends::podman::PodmanEvent;
 use crate::backends::{self, CreateArgs};
-use crate::container::Container;
-use crate::distrobox_task::DistroboxTask;
+use crate::models::Container;
+use crate::models::DistroboxTask;
 use crate::fakers::{Command, CommandRunner, FdMode};
 use crate::gtk_utils::{TypedListStore, reconcile_list_by_key};
 use crate::query::Query;
-use crate::supported_terminals::{Terminal, TerminalRepository};
-use crate::tagged_object::TaggedObject;
+use crate::models::supported_terminals::{Terminal, TerminalRepository};
+use crate::models::TaggedObject;
 
 use serde::Deserialize;
 
@@ -342,7 +342,7 @@ impl RootStore {
             .refetch_if_stale(Duration::from_millis(300));
     }
 
-    pub fn download_distrobox(&self) -> crate::distrobox_task::DistroboxTask {
+    pub fn download_distrobox(&self) -> DistroboxTask {
         let task = crate::distrobox_downloader::download_distrobox(self);
         self.tasks().append(&task);
         self.set_selected_task(Some(task.clone()));

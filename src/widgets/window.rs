@@ -18,12 +18,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-use crate::container::Container;
 use crate::dialogs::{
     CreateDistroboxDialog, ExportableAppsDialog, PreferencesDialog, TaskManagerDialog,
 };
+use crate::models::{Container, TaggedObject};
 use crate::root_store::RootStore;
-use crate::tagged_object::TaggedObject;
 use crate::widgets::{SidebarRow, TasksButton};
 use adw::prelude::*;
 use adw::subclass::prelude::*;

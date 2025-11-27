@@ -5,7 +5,7 @@ use gtk::{gio, glib};
 use tracing::error;
 
 use crate::backends::{self, CreateArgName, CreateArgs, Error};
-use crate::container::Container;
+use crate::models::Container;
 use crate::root_store::RootStore;
 use crate::widgets::{ImageRowItem, SidebarRow};
 

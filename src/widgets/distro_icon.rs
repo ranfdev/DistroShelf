@@ -4,7 +4,7 @@ use glib::Properties;
 use gtk::glib;
 use std::cell::RefCell;
 
-use crate::known_distros::{known_distro_by_image, KnownDistro};
+use crate::models::{known_distro_by_image, KnownDistro};
 
 mod imp {
     use super::*;

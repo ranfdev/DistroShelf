@@ -21,18 +21,13 @@
 mod application;
 mod backends;
 mod config;
-mod container;
 mod dialogs;
 mod distrobox_downloader;
-mod distrobox_task;
 mod fakers;
 mod gtk_utils;
-mod known_distros;
-mod store;
-mod supported_terminals;
-mod tagged_object;
+mod models;
 mod widgets;
-pub use store::root_store;
+pub use models::root_store;
 use tracing::level_filters::LevelFilter;
 pub mod query;
 

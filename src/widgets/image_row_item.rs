@@ -4,12 +4,12 @@ use glib::Properties;
 use gtk::glib;
 use std::cell::RefCell;
 
-use crate::{known_distros::known_distro_by_image, widgets::DistroIcon};
+use crate::{models::known_distro_by_image, widgets::DistroIcon};
 
 mod imp {
     use gtk::pango;
 
-    use crate::known_distros::KnownDistro;
+    use crate::models::KnownDistro;
 
     use super::*;
 

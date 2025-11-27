@@ -1,5 +1,4 @@
-use crate::tagged_object::TaggedObject;
-use crate::{distrobox_task::DistroboxTask, root_store::RootStore};
+use crate::models::{DistroboxTask, RootStore, TaggedObject};
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib::{Properties, derived_properties};

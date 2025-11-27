@@ -3,9 +3,8 @@ use adw::subclass::prelude::*;
 use gtk::glib;
 use gtk::glib::clone;
 
-use crate::distrobox_task::DistroboxTask;
+use crate::models::{RootStore, DistroboxTask};
 use crate::gtk_utils::reaction;
-use crate::root_store::RootStore;
 
 use gtk::glib::{Properties, derived_properties};
 use std::cell::RefCell;

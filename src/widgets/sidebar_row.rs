@@ -4,7 +4,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{self, glib, pango};
 
-use crate::{container::Container, widgets::DistroIcon};
+use crate::{models::Container, widgets::DistroIcon};
 
 mod imp {
     use std::cell::RefCell;

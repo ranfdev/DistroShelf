@@ -1,4 +1,4 @@
-use crate::container::Container;
+use crate::models::Container;
 use crate::widgets::DistroShelfWindow;
 
 use crate::gtk_utils::reaction;

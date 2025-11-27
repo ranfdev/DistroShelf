@@ -22,13 +22,16 @@ use std::path::Path;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{gio, glib};
+use glib::Properties;
+use gtk::{gio, glib, gdk};
+use std::cell::RefCell;
 
 use crate::DistroShelfWindow;
 use crate::backends;
 use crate::backends::{Distrobox, DistroboxCommandRunnerResponse};
 use crate::config;
 use crate::fakers::CommandRunner;
+use crate::models::known_distros;
 use crate::root_store::RootStore;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
@@ -42,13 +45,6 @@ pub enum DistroboxStoreTy {
 }
 
 mod imp {
-    use std::cell::RefCell;
-
-    use glib::Properties;
-    use gtk::gdk;
-
-    use crate::{known_distros, root_store::RootStore};
-
     use super::*;
 
     #[derive(Debug, Default, Properties)]
