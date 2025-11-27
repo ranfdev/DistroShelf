@@ -339,11 +339,11 @@ mod imp {
                 #[strong]
                 btn,
                 move |task| {
-                    if task.status() == "successful" {
+                    if task.is_successful() {
                         obj.imp()
                             .carousel
                             .scroll_to(&*obj.imp().terminal_preferences_page, true);
-                    } else if task.status() == "failed" {
+                    } else if task.is_failed() {
                         btn.set_child(Some(&gtk::Label::new(Some("Use Bundled Version"))));
                         btn.set_sensitive(true);
                         obj.set_distrobox_error(Some("Download failed".to_string()));

@@ -1,6 +1,3 @@
-// You can copy/paste this file every time you need a simple GObject
-// to hold some data
-
 use futures::{AsyncBufReadExt, StreamExt, io::BufReader};
 use glib::Properties;
 use glib::subclass::prelude::*;
@@ -12,6 +9,17 @@ use std::future::Future;
 use tracing::{debug, error, info, warn};
 
 use crate::fakers::Child;
+
+/// Status of a DistroboxTask
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
+#[enum_type(name = "TaskStatus")]
+pub enum TaskStatus {
+    #[default]
+    Pending,
+    Executing,
+    Successful,
+    Failed,
+}
 
 mod imp {
     use super::*;
@@ -27,9 +35,9 @@ mod imp {
         description: RefCell<String>,
         #[property(get)]
         output: gtk::TextBuffer,
-        #[property(get, set)]
-        pub status: RefCell<String>, // "pending", "executing", "successful", "failed"
-        pub error: RefCell<Option<anyhow::Error>>, // set only if status is "failed"
+        #[property(get, set, builder(TaskStatus::default()))]
+        pub status: RefCell<TaskStatus>,
+        pub error: RefCell<Option<anyhow::Error>>, // set only if status is Failed
     }
 
     #[glib::derived_properties]
@@ -54,9 +62,9 @@ impl DistroboxTask {
         let this: Self = glib::Object::builder()
             .property("target", target)
             .property("name", name)
+            .property("status", TaskStatus::Pending)
             .build();
         let this_clone = this.clone();
-        this.set_status("pending".to_string());
         glib::MainContext::ref_thread_default().spawn_local(async move {
             let this_clone_clone = this_clone.clone();
             this_clone.set_status_executing();
@@ -100,23 +108,20 @@ impl DistroboxTask {
         Ok(())
     }
     pub fn set_status_executing(&self) {
-        self.imp().status.replace("executing".to_string());
-        self.notify_status();
+        self.set_status(TaskStatus::Executing);
     }
     pub fn set_status_successful(&self) {
-        self.imp().status.replace("successful".to_string());
-        self.notify_status();
+        self.set_status(TaskStatus::Successful);
     }
     pub fn set_status_failed(&self, error: anyhow::Error) {
-        self.imp().status.replace("failed".to_string());
         self.imp().error.replace(Some(error));
-        self.notify_status();
+        self.set_status(TaskStatus::Failed);
     }
     pub fn is_failed(&self) -> bool {
-        &*self.imp().status.borrow() == "failed"
+        self.status() == TaskStatus::Failed
     }
     pub fn is_successful(&self) -> bool {
-        &*self.imp().status.borrow() == "successful"
+        self.status() == TaskStatus::Successful
     }
     pub fn ended(&self) -> bool {
         self.is_failed() || self.is_successful()

@@ -179,13 +179,13 @@ impl TaskManagerDialog {
     pub fn build_row(&self, task: &DistroboxTask) -> adw::ActionRow {
         let row = adw::ActionRow::new();
         row.set_title(&format!("{}: {}", task.target(), task.name()));
-        row.set_subtitle(&task.status());
+        row.set_subtitle(&format!("{:?}", task.status()));
 
         task.connect_status_notify(clone!(
             #[weak]
             row,
             move |task| {
-                row.set_subtitle(&task.status());
+                row.set_subtitle(&format!("{:?}", task.status()));
             }
         ));
 
@@ -212,7 +212,7 @@ impl TaskManagerDialog {
         label.set_xalign(0.0);
         content.append(&label);
 
-        let status_label = gtk::Label::new(Some(&format!("Status: {}", task.status())));
+        let status_label = gtk::Label::new(Some(&format!("Status: {:?}", task.status())));
         status_label.set_xalign(0.0);
         content.append(&status_label);
 
@@ -237,7 +237,7 @@ impl TaskManagerDialog {
             #[weak]
             error_label,
             move |task: &DistroboxTask| {
-                status_label.set_text(&format!("Status: {}", task.status()));
+                status_label.set_text(&format!("Status: {:?}", task.status()));
                 if task.is_failed() {
                     if let Some(error) = task.error_message() {
                         error_label.set_text(&format!("Error: {}", error));

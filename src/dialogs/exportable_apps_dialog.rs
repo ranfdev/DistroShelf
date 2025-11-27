@@ -358,20 +358,17 @@ impl ExportableAppsDialog {
         // Monitor task status to show error toasts
         let this = self.clone();
         let binary_name_clone = binary_name.to_string();
-        reaction!(task.status(), move |status: String| {
-            match status.as_str() {
-                "failed" => {
-                    let error_ref = task.error();
-                    let error_msg = if let Some(err) = error_ref.as_ref() {
-                        format!("Failed to export '{}': {}", binary_name_clone, err)
-                    } else {
-                        format!("Failed to export '{}'", binary_name_clone)
-                    };
-                    let toast = adw::Toast::new(&error_msg);
-                    toast.set_timeout(5);
-                    this.imp().toast_overlay.add_toast(toast);
-                }
-                _ => {}
+        reaction!(task.status(), move |status: crate::models::TaskStatus| {
+            if status == crate::models::TaskStatus::Failed {
+                let error_ref = task.error();
+                let error_msg = if let Some(err) = error_ref.as_ref() {
+                    format!("Failed to export '{}': {}", binary_name_clone, err)
+                } else {
+                    format!("Failed to export '{}'", binary_name_clone)
+                };
+                let toast = adw::Toast::new(&error_msg);
+                toast.set_timeout(5);
+                this.imp().toast_overlay.add_toast(toast);
             }
         });
     }
