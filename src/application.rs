@@ -23,7 +23,7 @@ use std::path::Path;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::Properties;
-use gtk::{gio, glib, gdk};
+use gtk::{gdk, gio, glib};
 use std::cell::RefCell;
 
 use crate::DistroShelfWindow;

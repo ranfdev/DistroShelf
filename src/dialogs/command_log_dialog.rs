@@ -115,24 +115,20 @@ impl CommandLogDialog {
         let toast_overlay = &self.imp().toast_overlay;
 
         match event {
-            CommandRunnerEvent::Spawned(id, command) => {
-                self.build_command_row(
-                    &format!("Spawned [{}]", id),
-                    &command.to_string(),
-                    "media-playback-start-symbolic",
-                    "spawned",
-                    toast_overlay,
-                )
-            }
-            CommandRunnerEvent::Started(id, command) => {
-                self.build_command_row(
-                    &format!("Started [{}]", id),
-                    &command.to_string(),
-                    "system-run-symbolic",
-                    "started",
-                    toast_overlay,
-                )
-            }
+            CommandRunnerEvent::Spawned(id, command) => self.build_command_row(
+                &format!("Spawned [{}]", id),
+                &command.to_string(),
+                "media-playback-start-symbolic",
+                "spawned",
+                toast_overlay,
+            ),
+            CommandRunnerEvent::Started(id, command) => self.build_command_row(
+                &format!("Started [{}]", id),
+                &command.to_string(),
+                "system-run-symbolic",
+                "started",
+                toast_overlay,
+            ),
             CommandRunnerEvent::Output(id, result) => {
                 let (title, icon, css_class) = match result {
                     Ok(_) => (

@@ -221,8 +221,12 @@ impl DistroShelfWindow {
                         dialog.upcast()
                     }
                     DialogType::TaskManager => TaskManagerDialog::new(root_store).upcast(),
-                    DialogType::Preferences => PreferencesDialog::new(this_clone.root_store()).upcast(),
-                    DialogType::CommandLog => CommandLogDialog::new(this_clone.root_store()).upcast(),
+                    DialogType::Preferences => {
+                        PreferencesDialog::new(this_clone.root_store()).upcast()
+                    }
+                    DialogType::CommandLog => {
+                        CommandLogDialog::new(this_clone.root_store()).upcast()
+                    }
                     DialogType::None => return,
                 };
                 this_clone.set_current_dialog(Some(&dialog));
@@ -274,8 +278,7 @@ impl DistroShelfWindow {
                     .set_current_dialog(DialogType::CreateDistrobox);
             }),
             a("command-log").activate(|this, _, _| {
-                this.root_store()
-                    .set_current_dialog(DialogType::CommandLog);
+                this.root_store().set_current_dialog(DialogType::CommandLog);
             }),
             a("clone-container").activate(|this, _, _| {
                 if let Some(src) = this.root_store().selected_container() {

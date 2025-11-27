@@ -352,8 +352,7 @@ mod imp {
             ));
 
             // Open task manager dialog from welcome view
-            obj.root_store()
-                .set_current_dialog(DialogType::TaskManager);
+            obj.root_store().set_current_dialog(DialogType::TaskManager);
 
             // Set the preference for future launches
             let settings = gio::Settings::new("com.ranfdev.DistroShelf");

@@ -4,7 +4,7 @@ use glib::Properties;
 use gtk::glib;
 use std::cell::RefCell;
 
-use crate::models::{known_distro_by_image, KnownDistro};
+use crate::models::{KnownDistro, known_distro_by_image};
 
 mod imp {
     use super::*;
@@ -22,7 +22,7 @@ mod imp {
     impl DistroIcon {
         fn set_image(&self, image: &str) {
             self.image.replace(image.to_string());
-            
+
             let distro = known_distro_by_image(image);
             if let Some(distro) = &distro {
                 let icon_theme = gtk::IconTheme::for_display(&self.icon_image.display());
@@ -36,7 +36,7 @@ mod imp {
                 );
 
                 self.icon_image.set_paintable(Some(&icon));
-                
+
                 // Remove any existing distro-specific classes (but not distro-color-fg)
                 let css_classes = self.icon_image.css_classes();
                 for i in 0..css_classes.len() {
@@ -47,16 +47,18 @@ mod imp {
                         }
                     }
                 }
-                
-                self.icon_image.add_css_class(&format!("distro-{}", distro.name()));
+
+                self.icon_image
+                    .add_css_class(&format!("distro-{}", distro.name()));
             } else {
-                self.icon_image.set_icon_name(Some(KnownDistro::default_icon_name()));
+                self.icon_image
+                    .set_icon_name(Some(KnownDistro::default_icon_name()));
             }
         }
 
         fn set_colored(&self, colored: bool) {
             self.colored.set(colored);
-            
+
             if colored {
                 self.icon_image.add_css_class("distro-color-fg");
             } else {
@@ -69,16 +71,16 @@ mod imp {
     impl ObjectImpl for DistroIcon {
         fn constructed(&self) {
             self.parent_constructed();
-            
+
             let obj = self.obj();
-            
+
             // Configure the icon image
             self.icon_image.set_icon_size(gtk::IconSize::Large);
             self.icon_image.add_css_class("distro-color-fg");
-            
+
             // Add the icon image to the box
             obj.append(&self.icon_image);
-            
+
             // Initialize colored state
             self.colored.set(true);
         }

@@ -1,8 +1,8 @@
 use crate::{
     backends::{ContainerInfo, ExportableApp, Status, container_runtime::Usage},
-    models::DistroboxTask,
     fakers::{Command, CommandRunner},
     gtk_utils::TypedListStore,
+    models::DistroboxTask,
     models::{KnownDistro, known_distro_by_image},
     query::Query,
     root_store::RootStore,

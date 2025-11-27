@@ -6,7 +6,7 @@ use gtk::{
 };
 use vte4::prelude::*;
 
-use crate::{models::Container, fakers::Command};
+use crate::{fakers::Command, models::Container};
 
 mod imp {
     use std::cell::RefCell;
