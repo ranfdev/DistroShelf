@@ -14,9 +14,9 @@ pub const DISTROS: LazyCell<HashMap<String, KnownDistro>, fn() -> HashMap<String
     LazyCell::new(|| {
         [
             ("alma", "#dadada", PackageManager::Dnf),
-            ("alpine", "#2147ea", PackageManager::Unknown),
+            ("alpine", "#2147ea", PackageManager::Apk),
             ("amazon", "#de5412", PackageManager::Dnf),
-            ("arch", "#12aaff", PackageManager::Unknown),
+            ("arch", "#12aaff", PackageManager::Pacman),
             ("centos", "#ff6600", PackageManager::Dnf),
             ("clearlinux", "#56bbff", PackageManager::Unknown),
             ("crystal", "#8839ef", PackageManager::Unknown),
@@ -28,7 +28,7 @@ pub const DISTROS: LazyCell<HashMap<String, KnownDistro>, fn() -> HashMap<String
             ("mageia", "#b612b6", PackageManager::Dnf),
             ("mint", "#6fbd20", PackageManager::Apt),
             ("neon", "#27ae60", PackageManager::Apt),
-            ("opensuse", "#daff00", PackageManager::Dnf),
+            ("opensuse", "#daff00", PackageManager::Zypper),
             ("oracle", "#ff0000", PackageManager::Dnf),
             ("redhat", "#ff6662", PackageManager::Dnf),
             ("rhel", "#ff6662", PackageManager::Dnf),
@@ -55,6 +55,9 @@ pub enum PackageManager {
     Unknown,
     Apt,
     Dnf,
+    Pacman,
+    Apk,
+    Zypper,
 }
 
 impl PackageManager {
@@ -62,6 +65,9 @@ impl PackageManager {
         match self {
             PackageManager::Apt => Some(apt_install_cmd(file)),
             PackageManager::Dnf => Some(dnf_install_cmd(file)),
+            PackageManager::Pacman => Some(pacman_install_cmd(file)),
+            PackageManager::Apk => Some(apk_install_cmd(file)),
+            PackageManager::Zypper => Some(zypper_install_cmd(file)),
             PackageManager::Unknown => None,
         }
     }
@@ -69,6 +75,9 @@ impl PackageManager {
         match self {
             PackageManager::Apt => Some(".deb"),
             PackageManager::Dnf => Some(".rpm"),
+            PackageManager::Pacman => Some(".pkg.tar.zst"),
+            PackageManager::Apk => Some(".apk"),
+            PackageManager::Zypper => Some(".rpm"),
             PackageManager::Unknown => None,
         }
     }
@@ -84,6 +93,27 @@ fn apt_install_cmd(file: &Path) -> Command {
 fn dnf_install_cmd(file: &Path) -> Command {
     let mut cmd = Command::new("sudo");
     cmd.arg("dnf");
+    cmd.arg("install").arg(file);
+    cmd
+}
+
+fn pacman_install_cmd(file: &Path) -> Command {
+    let mut cmd = Command::new("sudo");
+    cmd.arg("pacman");
+    cmd.arg("-U").arg(file);
+    cmd
+}
+
+fn apk_install_cmd(file: &Path) -> Command {
+    let mut cmd = Command::new("sudo");
+    cmd.arg("apk");
+    cmd.arg("add").arg("--allow-untrusted").arg(file);
+    cmd
+}
+
+fn zypper_install_cmd(file: &Path) -> Command {
+    let mut cmd = Command::new("sudo");
+    cmd.arg("zypper");
     cmd.arg("install").arg(file);
     cmd
 }
@@ -104,8 +134,8 @@ pub fn generate_css() -> String {
         out.push_str(&format!(
             ".distro-{name} {{
     --distro-color: {color};
-}}"
-        ))
+}}\n"
+        ));
     }
     out
 }
