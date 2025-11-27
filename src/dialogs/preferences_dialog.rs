@@ -1,4 +1,4 @@
-use crate::models::{RootStore, supported_terminals, TaggedObject};
+use crate::models::{DialogType, RootStore, supported_terminals};
 use crate::widgets::TerminalComboRow;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
@@ -194,9 +194,7 @@ mod imp {
                     // Trigger download and open task manager
                     obj.root_store().download_distrobox();
                     obj.root_store()
-                        .set_current_dialog(TaggedObject::new(
-                            "task-manager",
-                        ));
+                        .set_current_dialog(DialogType::TaskManager);
                 }
             ));
 

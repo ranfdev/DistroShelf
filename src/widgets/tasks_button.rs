@@ -1,4 +1,4 @@
-use crate::models::{DistroboxTask, RootStore, TaggedObject};
+use crate::models::{DialogType, DistroboxTask, RootStore};
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib::{Properties, derived_properties};
@@ -61,7 +61,7 @@ mod imp {
                 obj,
                 move |_| {
                     this.root_store()
-                        .set_current_dialog(TaggedObject::new("task-manager"));
+                        .set_current_dialog(DialogType::TaskManager);
                 }
             ));
 

@@ -21,7 +21,7 @@
 use crate::dialogs::{
     CreateDistroboxDialog, ExportableAppsDialog, PreferencesDialog, TaskManagerDialog,
 };
-use crate::models::{Container, TaggedObject};
+use crate::models::{Container, DialogParams, DialogType};
 use crate::root_store::RootStore;
 use crate::widgets::{SidebarRow, TasksButton};
 use adw::prelude::*;
@@ -194,7 +194,7 @@ impl DistroShelfWindow {
                 this_clone
                     .imp()
                     .main_stack
-                    .set_visible_child_name(&root_store.current_view().tag());
+                    .set_visible_child_name(root_store.current_view().as_str());
             });
         let this_clone = this.clone();
         this.root_store()
@@ -204,18 +204,25 @@ impl DistroShelfWindow {
                         dialog.close();
                     }
                 }
-                let dialog: adw::Dialog = match root_store.current_dialog().tag().as_str() {
-                    "exportable-apps" => ExportableAppsDialog::new(
+                // Take dialog params (consumes them, resetting to default)
+                let params = root_store.take_dialog_params();
+
+                let dialog: adw::Dialog = match root_store.current_dialog() {
+                    DialogType::ExportableApps => ExportableAppsDialog::new(
                         &this_clone.root_store().selected_container().unwrap(),
                     )
                     .upcast(),
-                    "create-distrobox" => {
-                        CreateDistroboxDialog::new(this_clone.root_store()).upcast()
+                    DialogType::CreateDistrobox => {
+                        let dialog = CreateDistroboxDialog::new(this_clone.root_store());
+                        if let Some(clone_src) = params.clone_source {
+                            dialog.set_clone_src(Some(clone_src));
+                        }
+                        dialog.upcast()
                     }
-                    "task-manager" => TaskManagerDialog::new(root_store).upcast(),
-                    "preferences" => this_clone.build_preferences_dialog(),
-                    "command-log" => this_clone.build_command_log_dialog(),
-                    _ => return,
+                    DialogType::TaskManager => TaskManagerDialog::new(root_store).upcast(),
+                    DialogType::Preferences => this_clone.build_preferences_dialog(),
+                    DialogType::CommandLog => this_clone.build_command_log_dialog(),
+                    DialogType::None => return,
                 };
                 this_clone.set_current_dialog(Some(&dialog));
                 dialog.present(Some(&this_clone));
@@ -248,7 +255,7 @@ impl DistroShelfWindow {
             }),
             a("preferences").activate(|this, _, _| {
                 this.root_store()
-                    .set_current_dialog(TaggedObject::new("preferences"));
+                    .set_current_dialog(DialogType::Preferences);
             }),
             a("learn-more").activate(|_, _, _| {
                 gtk::UriLauncher::new("https://distrobox.it").launch(
@@ -263,18 +270,19 @@ impl DistroShelfWindow {
             }),
             a("create-distrobox").activate(|this, _, _| {
                 this.root_store()
-                    .set_current_dialog(TaggedObject::new("create-distrobox"));
+                    .set_current_dialog(DialogType::CreateDistrobox);
             }),
             a("command-log").activate(|this, _, _| {
                 this.root_store()
-                    .set_current_dialog(TaggedObject::new("command-log"));
+                    .set_current_dialog(DialogType::CommandLog);
             }),
             a("clone-container").activate(|this, _, _| {
-                let dialog = CreateDistroboxDialog::new(this.root_store());
                 if let Some(src) = this.root_store().selected_container() {
-                    dialog.set_clone_src(Some(src));
+                    this.root_store().open_dialog(
+                        DialogType::CreateDistrobox,
+                        DialogParams::new().with_clone_source(src),
+                    );
                 }
-                dialog.present(Some(this));
             }),
             a("upgrade-container").activate(|this, _, _| {
                 let task = this.root_store().selected_container().unwrap().upgrade();
@@ -370,7 +378,7 @@ impl DistroShelfWindow {
                     this,
                     move |_| {
                         this.root_store()
-                            .set_current_dialog(TaggedObject::new("preferences"));
+                            .set_current_dialog(DialogType::Preferences);
                     }
                 ));
                 this.add_toast(toast);

@@ -132,7 +132,7 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
 
         if let Some(root_store) = root_store_weak.upgrade() {
             root_store.distrobox_version().refetch();
-            root_store.set_current_dialog(crate::models::TaggedObject::default());
+            root_store.set_current_dialog(crate::models::DialogType::None);
         }
 
         Ok(())

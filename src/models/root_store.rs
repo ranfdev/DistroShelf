@@ -23,12 +23,13 @@ use crate::backends::container_runtime::{ContainerRuntime, get_container_runtime
 use crate::backends::podman::PodmanEvent;
 use crate::backends::{self, CreateArgs};
 use crate::models::Container;
+use crate::models::{DialogParams, DialogType};
 use crate::models::DistroboxTask;
+use crate::models::ViewType;
 use crate::fakers::{Command, CommandRunner, FdMode};
 use crate::gtk_utils::{TypedListStore, reconcile_list_by_key};
 use crate::query::Query;
 use crate::models::supported_terminals::{Terminal, TerminalRepository};
-use crate::models::TaggedObject;
 
 use serde::Deserialize;
 
@@ -71,10 +72,13 @@ mod imp {
         #[property(get)]
         pub settings: gio::Settings,
 
-        #[property(get, set)]
-        current_view: RefCell<TaggedObject>,
-        #[property(get, set)]
-        current_dialog: RefCell<TaggedObject>,
+        #[property(get, set, builder(ViewType::default()))]
+        current_view: RefCell<ViewType>,
+        #[property(get, set, builder(DialogType::default()))]
+        current_dialog: RefCell<DialogType>,
+
+        /// Parameters for the current dialog (not a GObject property)
+        pub dialog_params: RefCell<DialogParams>,
     }
 
     impl Default for RootStore {
@@ -91,6 +95,7 @@ mod imp {
                 selected_container_model: OnceCell::new(),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
+                dialog_params: Default::default(),
                 distrobox: Default::default(),
                 distrobox_version: Query::new("distrobox_version".into(), || async {
                     Ok(String::new())
@@ -202,7 +207,7 @@ impl RootStore {
         });
         let this_clone = this.clone();
         this.distrobox_version().connect_error(move |_error| {
-            this_clone.set_current_view(TaggedObject::new("welcome"));
+            this_clone.set_current_view(ViewType::Welcome);
         });
         this.distrobox_version().refetch();
 
@@ -484,12 +489,30 @@ impl RootStore {
 
     pub fn view_task(&self, task: &DistroboxTask) {
         self.set_selected_task(Some(task));
-        self.set_current_dialog(TaggedObject::new("task-manager"));
+        self.set_current_dialog(DialogType::TaskManager);
     }
     pub fn view_exportable_apps(&self) {
         let this = self.clone();
-        this.set_current_dialog(TaggedObject::new("exportable-apps"));
+        this.set_current_dialog(DialogType::ExportableApps);
     }
+
+    /// Opens a dialog with the given parameters.
+    /// The parameters are stored and can be retrieved via `dialog_params()`.
+    pub fn open_dialog(&self, dialog_type: DialogType, params: DialogParams) {
+        self.imp().dialog_params.replace(params);
+        self.set_current_dialog(dialog_type);
+    }
+
+    /// Returns the current dialog parameters.
+    pub fn dialog_params(&self) -> std::cell::Ref<'_, DialogParams> {
+        self.imp().dialog_params.borrow()
+    }
+
+    /// Takes the current dialog parameters, replacing them with default.
+    pub fn take_dialog_params(&self) -> DialogParams {
+        self.imp().dialog_params.take()
+    }
+
     pub async fn spawn_terminal_cmd(
         &self,
         name: String,
