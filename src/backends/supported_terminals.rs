@@ -4,6 +4,7 @@ use std::{
 };
 
 use gtk::glib;
+use gtk::prelude::*;
 use tracing::{error, info, warn};
 
 use crate::fakers::{Command, CommandRunner, FdMode};
@@ -48,9 +49,29 @@ static SUPPORTED_TERMINALS: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
     .collect()
 });
 
+static FLATPAK_TERMINAL_CANDIDATES: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
+    [
+        ("Ptyxis (Flatpak)", "app.devsuite.Ptyxis", "--"),
+        ("Ptyxis Devel (Flatpak)", "app.devsuite.Ptyxis.Devel", "--"),
+        ("GNOME Console (Flatpak)", "org.gnome.Console", "--"),
+        ("BlackBox (Flatpak)", "com.raggesilver.BlackBox", "--"),
+        ("WezTerm (Flatpak)", "org.wezfurlong.wezterm", "start --"),
+        ("Foot (Flatpak)", "page.codeberg.dnkl.foot", "-e"),
+    ]
+    .iter()
+    .map(|(name, app_id, separator_arg)| Terminal {
+        name: name.to_string(),
+        program: format!("flatpak run {}", app_id),
+        separator_arg: separator_arg.to_string(),
+        read_only: true,
+    })
+    .collect()
+});
+
 mod imp {
     use super::*;
     use std::cell::{OnceCell, RefCell};
+    use std::sync::OnceLock;
 
     pub struct TerminalRepository {
         pub list: RefCell<Vec<Terminal>>,
@@ -68,7 +89,14 @@ mod imp {
             }
         }
     }
-    impl ObjectImpl for TerminalRepository {}
+    impl ObjectImpl for TerminalRepository {
+        fn signals() -> &'static [glib::subclass::Signal] {
+            static SIGNALS: OnceLock<Vec<glib::subclass::Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| {
+                vec![glib::subclass::Signal::builder("terminals-changed").build()]
+            })
+        }
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for TerminalRepository {
@@ -102,7 +130,48 @@ impl TerminalRepository {
 
         list.sort_by(|a, b| a.name.cmp(&b.name));
         this.imp().list.replace(list);
+
+        let this_clone = this.clone();
+        glib::MainContext::default().spawn_local(async move {
+            this_clone.discover_flatpak_terminals().await;
+        });
+
         this
+    }
+
+    pub async fn discover_flatpak_terminals(&self) {
+        let Some(runner) = self.imp().command_runner.get() else {
+            return;
+        };
+
+        // Check if flatpak is available
+        let mut check_cmd = Command::new_with_args("flatpak", ["--version"]);
+        check_cmd.stdout = FdMode::Pipe;
+        check_cmd.stderr = FdMode::Pipe;
+        if runner.output(check_cmd).await.is_err() {
+            return;
+        }
+
+        let mut found_terminals = Vec::new();
+        for terminal in FLATPAK_TERMINAL_CANDIDATES.iter() {
+            // Extract app_id from program "flatpak run <app_id>"
+            let app_id = terminal.program.split_whitespace().nth(2).unwrap();
+
+            let mut cmd = Command::new_with_args("flatpak", ["info", app_id]);
+            cmd.stdout = FdMode::Pipe;
+            cmd.stderr = FdMode::Pipe;
+            if runner.output(cmd).await.is_ok() {
+                found_terminals.push(terminal.clone());
+            }
+        }
+
+        if !found_terminals.is_empty() {
+            let mut list = self.imp().list.borrow_mut();
+            list.extend(found_terminals);
+            list.sort_by(|a, b| a.name.cmp(&b.name));
+            drop(list);
+            self.emit_by_name::<()>("terminals-changed", &[]);
+        }
     }
 
     pub fn is_read_only(&self, name: &str) -> bool {

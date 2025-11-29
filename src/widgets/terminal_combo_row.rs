@@ -3,6 +3,7 @@
 
 use crate::i18n::gettext;
 use crate::root_store::RootStore;
+use crate::backends::supported_terminals::TerminalRepository;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::Properties;
@@ -57,6 +58,18 @@ mod imp {
                 .replace(Some(signal_handler));
 
             obj.reload_terminals();
+
+            obj.root_store().terminal_repository().connect_closure(
+                "terminals-changed",
+                false,
+                glib::closure_local!(
+                    #[strong]
+                    obj,
+                    move |_: TerminalRepository| {
+                        obj.reload_terminals();
+                    }
+                ),
+            );
         }
 
         fn signals() -> &'static [Signal] {
