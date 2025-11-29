@@ -1,0 +1,651 @@
+# Japanese translations for distroshelf package.
+# Copyright (C) 2025 THE distroshelf'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the distroshelf package.
+# Automatically generated, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: distroshelf\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-29 18:14+0100\n"
+"PO-Revision-Date: 2025-11-29 18:14+0100\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:2
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/widgets/window.ui:30
+msgid "DistroShelf"
+msgstr "DistroShelf"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:8
+msgid "GTK;"
+msgstr "GTK;"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:6
+msgid "Selected terminal emulator"
+msgstr "選択されたターミナルエミュレータ"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:7
+msgid "The terminal emulator selected by the user."
+msgstr "ユーザーによって選択されたターミナルエミュレータ。"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:11
+msgid "Window width"
+msgstr "ウィンドウの幅"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:12
+msgid "The width of the main window when last closed."
+msgstr "最後に閉じたときのメインウィンドウの幅。"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:16
+msgid "Window height"
+msgstr "ウィンドウの高さ"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:17
+msgid "The height of the main window when last closed."
+msgstr "最後に閉じたときのメインウィンドウの高さ。"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:21
+msgid "Distrobox executable source"
+msgstr "Distrobox実行可能ファイルのソース"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:22
+msgid "The source of the distrobox executable. Can be 'host' or 'bundled'."
+msgstr "distrobox実行可能ファイルのソース。'host'または'bundled'を指定できます。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:8
+msgid "Graphical interface for managing Distrobox containers"
+msgstr "Distroboxコンテナを管理するためのグラフィカルインターフェース"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:10
+msgid ""
+"DistroShelf is a graphical interface for managing Distrobox containers on "
+"Linux. It provides an easy way to:"
+msgstr ""
+"DistroShelfは、Linux上でDistroboxコンテナを管理するためのグラフィカルインターフェースです。"
+"以下のことを簡単に行うことができます："
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:15
+msgid "Create and manage containers"
+msgstr "コンテナの作成と管理"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:16
+msgid "View container status and details"
+msgstr "コンテナの状態と詳細の表示"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:17
+msgid "Install packages"
+msgstr "パッケージのインストール"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:18
+msgid "Manage exported applications"
+msgstr "エクスポートされたアプリケーションの管理"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:19
+msgid "Open terminal sessions"
+msgstr "ターミナルセッションを開く"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:20
+msgid "Upgrade containers"
+msgstr "コンテナのアップグレード"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:21
+msgid "Clone and delete containers"
+msgstr "コンテナの複製と削除"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:26
+msgid "Lorenzo Miglietta"
+msgstr "Lorenzo Miglietta"
+
+#: data/gtk/help-overlay.ui:11
+msgctxt "shortcut window"
+msgid "General"
+msgstr "一般"
+
+#: data/gtk/help-overlay.ui:14
+msgctxt "shortcut window"
+msgid "Show Shortcuts"
+msgstr "ショートカットを表示"
+
+#: data/gtk/help-overlay.ui:20
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "終了"
+
+#: src/dialogs/command_log_dialog.rs:35 src/dialogs/command_log_dialog.rs:44
+msgid "Command Log"
+msgstr "コマンドログ"
+
+#: src/dialogs/command_log_dialog.rs:62
+msgid ""
+"Executing a single task (eg: listing applications) may require multiple "
+"chains of commands. For debugging purposes, this log shows all commands "
+"executed by the application."
+msgstr ""
+"単一のタスク（例：アプリケーションのリスト表示）を実行するには、複数のコマンドチェーンが必要になる場合があります。"
+"デバッグ目的のために、このログにはアプリケーションによって実行されたすべてのコマンドが表示されます。"
+
+#: src/dialogs/create_distrobox_dialog.rs:98
+msgid "Create a Distrobox"
+msgstr "Distroboxを作成"
+
+#: src/dialogs/create_distrobox_dialog.rs:125
+msgid "Cloning"
+msgstr "複製中"
+
+#: src/dialogs/create_distrobox_dialog.rs:136
+msgid "Cloning the container requires stopping it first"
+msgstr "コンテナを複製するには、まず停止する必要があります"
+
+#: src/dialogs/create_distrobox_dialog.rs:143
+msgid "Settings"
+msgstr "設定"
+
+#: src/dialogs/create_distrobox_dialog.rs:144
+msgid "Name"
+msgstr "名前"
+
+#: src/dialogs/create_distrobox_dialog.rs:146
+msgid "Base Image"
+msgstr "ベースイメージ"
+
+#: src/dialogs/create_distrobox_dialog.rs:147
+msgid "Select an image..."
+msgstr "イメージを選択..."
+
+#: src/dialogs/create_distrobox_dialog.rs:164
+msgid "Select Home Directory"
+msgstr "ホームディレクトリを選択"
+
+#: src/dialogs/create_distrobox_dialog.rs:170
+msgid "Custom Home Directory"
+msgstr "カスタムホームディレクトリ"
+
+#: src/dialogs/create_distrobox_dialog.rs:187
+msgid "NVIDIA Support"
+msgstr "NVIDIAサポート"
+
+#: src/dialogs/create_distrobox_dialog.rs:189
+msgid "Init process"
+msgstr "Initプロセス"
+
+#. Add create button for assemble file
+#. Add create button for URL
+#: src/dialogs/create_distrobox_dialog.rs:201
+#: src/dialogs/create_distrobox_dialog.rs:254
+#: src/dialogs/create_distrobox_dialog.rs:299
+msgid "Create"
+msgstr "作成"
+
+#: src/dialogs/create_distrobox_dialog.rs:239
+msgid "Assemble from File"
+msgstr "ファイルからアセンブル"
+
+#: src/dialogs/create_distrobox_dialog.rs:240
+msgid "Create a container from an assemble file"
+msgstr "アセンブルファイルからコンテナを作成"
+
+#: src/dialogs/create_distrobox_dialog.rs:244
+msgid "Select Assemble File"
+msgstr "アセンブルファイルを選択"
+
+#: src/dialogs/create_distrobox_dialog.rs:288
+msgid "From URL"
+msgstr "URLから"
+
+#: src/dialogs/create_distrobox_dialog.rs:289
+msgid "Create a container from a remote URL"
+msgstr "リモートURLからコンテナを作成"
+
+#: src/dialogs/create_distrobox_dialog.rs:292
+msgid "URL"
+msgstr "URL"
+
+#: src/dialogs/create_distrobox_dialog.rs:428
+msgid "No file selected"
+msgstr "ファイルが選択されていません"
+
+#: src/dialogs/create_distrobox_dialog.rs:494
+msgid "Search image..."
+msgstr "イメージを検索..."
+
+#: src/dialogs/create_distrobox_dialog.rs:554
+msgid "Custom"
+msgstr "カスタム"
+
+#: src/dialogs/create_distrobox_dialog.rs:714
+msgid "Volumes"
+msgstr "ボリューム"
+
+#: src/dialogs/create_distrobox_dialog.rs:716
+msgid "Specify volumes in the format 'host_path:container_path'"
+msgstr "'host_path:container_path'の形式でボリュームを指定してください"
+
+#: src/dialogs/create_distrobox_dialog.rs:719
+msgid "Add Volume"
+msgstr "ボリュームを追加"
+
+#: src/dialogs/create_distrobox_dialog.rs:727
+msgid "Volume"
+msgstr "ボリューム"
+
+#: src/dialogs/create_distrobox_dialog.rs:730
+msgid "Remove Volume"
+msgstr "ボリュームを削除"
+
+#: src/dialogs/exportable_apps_dialog.rs:43
+msgid "Manage Exports"
+msgstr "エクスポートの管理"
+
+#: src/dialogs/exportable_apps_dialog.rs:63
+msgid "Loading Exports"
+msgstr "エクスポートを読み込み中"
+
+#: src/dialogs/exportable_apps_dialog.rs:65
+msgid ""
+"Please wait while we load the list of exportable apps and binaries. This may "
+"take some time if the distrobox wasn't running"
+msgstr ""
+"エクスポート可能なアプリとバイナリのリストを読み込んでいます。お待ちください。"
+"distroboxが実行されていない場合、時間がかかることがあります"
+
+#: src/dialogs/exportable_apps_dialog.rs:76
+msgid "Exportable Apps"
+msgstr "エクスポート可能なアプリ"
+
+#: src/dialogs/exportable_apps_dialog.rs:78
+#: src/dialogs/exportable_apps_dialog.rs:242
+msgid "No exportable apps found"
+msgstr "エクスポート可能なアプリが見つかりません"
+
+#. Setup binary export input
+#: src/dialogs/exportable_apps_dialog.rs:82
+msgid "Export New Binary"
+msgstr "新しいバイナリをエクスポート"
+
+#: src/dialogs/exportable_apps_dialog.rs:95
+msgid "Exported Binaries"
+msgstr "エクスポートされたバイナリ"
+
+#: src/dialogs/exportable_apps_dialog.rs:97
+#: src/dialogs/exportable_apps_dialog.rs:270
+msgid "No exported binaries"
+msgstr "エクスポートされたバイナリはありません"
+
+#: src/dialogs/exportable_apps_dialog.rs:318
+msgid "Binary Already Exists on Host"
+msgstr "バイナリはすでにホストに存在します"
+
+#: src/dialogs/exportable_apps_dialog.rs:321
+msgid "The binary already exists on your host system. Do you want to continue?"
+msgstr "バイナリはすでにホストシステムに存在します。続行しますか？"
+
+#: src/dialogs/exportable_apps_dialog.rs:324
+#: src/dialogs/preferences_dialog.rs:274 src/dialogs/preferences_dialog.rs:369
+#: src/widgets/window.rs:420
+msgid "Cancel"
+msgstr "キャンセル"
+
+#: src/dialogs/exportable_apps_dialog.rs:325
+msgid "Export Anyway"
+msgstr "とにかくエクスポート"
+
+#: src/dialogs/preferences_dialog.rs:43 src/widgets/window.rs:393
+msgid "Preferences"
+msgstr "設定"
+
+#: src/dialogs/preferences_dialog.rs:49
+msgid "Terminal Settings"
+msgstr "端末設定"
+
+#. Initialize delete button
+#: src/dialogs/preferences_dialog.rs:57 src/dialogs/preferences_dialog.rs:275
+#: src/widgets/window.rs:421
+msgid "Delete"
+msgstr "削除"
+
+#. Initialize add terminal button
+#: src/dialogs/preferences_dialog.rs:96
+msgid "Add Custom"
+msgstr "カスタムを追加"
+
+#: src/dialogs/preferences_dialog.rs:123
+msgid "Distrobox Settings"
+msgstr "Distrobox設定"
+
+#: src/dialogs/preferences_dialog.rs:126
+msgid "Distrobox Source"
+msgstr "Distroboxソース"
+
+#: src/dialogs/preferences_dialog.rs:127
+msgid "System (host)"
+msgstr "システム (ホスト)"
+
+#: src/dialogs/preferences_dialog.rs:127
+msgid "Bundled Version"
+msgstr "バンドル版"
+
+#: src/dialogs/preferences_dialog.rs:154
+msgid "Distrobox Version"
+msgstr "Distroboxバージョン"
+
+#: src/dialogs/preferences_dialog.rs:172
+msgid "Not available"
+msgstr "利用不可"
+
+#: src/dialogs/preferences_dialog.rs:187
+msgid "Re-download Bundled"
+msgstr "バンドル版を再ダウンロード"
+
+#: src/dialogs/preferences_dialog.rs:269
+msgid "Delete this terminal?"
+msgstr "この端末を削除しますか？"
+
+#: src/dialogs/preferences_dialog.rs:270
+msgid ""
+"This terminal will be removed from the terminal list. This action cannot be "
+"undone."
+msgstr "この端末は端末リストから削除されます。この操作は取り消せません。"
+
+#: src/dialogs/preferences_dialog.rs:308
+msgid "Terminal removed successfully"
+msgstr "端末が正常に削除されました"
+
+#: src/dialogs/preferences_dialog.rs:313
+msgid "Failed to delete terminal"
+msgstr "端末の削除に失敗しました"
+
+#: src/dialogs/preferences_dialog.rs:326
+msgid "Add Custom Terminal"
+msgstr "カスタム端末を追加"
+
+#. Name entry
+#: src/dialogs/preferences_dialog.rs:340
+msgid "Terminal Name"
+msgstr "端末名"
+
+#. Program entry
+#: src/dialogs/preferences_dialog.rs:343
+msgid "Program Path"
+msgstr "プログラムパス"
+
+#. Separator argument entry
+#: src/dialogs/preferences_dialog.rs:346
+msgid "Separator Argument"
+msgstr "区切り引数"
+
+#: src/dialogs/preferences_dialog.rs:355
+msgid ""
+"The separator argument is used to pass commands to the terminal.\n"
+"Examples: '--' for GNOME Terminal, '-e' for xterm"
+msgstr ""
+"区切り引数は端末にコマンドを渡すために使用されます。\n"
+"例: GNOME Terminalの場合は '--'、xtermの場合は '-e'"
+
+#: src/dialogs/preferences_dialog.rs:372
+msgid "Save"
+msgstr "保存"
+
+#: src/dialogs/preferences_dialog.rs:410
+msgid "All fields are required"
+msgstr "すべてのフィールドが必須です"
+
+#. Show success toast
+#: src/dialogs/preferences_dialog.rs:429
+msgid "Custom terminal added successfully"
+msgstr "カスタム端末が正常に追加されました"
+
+#: src/dialogs/preferences_dialog.rs:443
+msgid "Failed to save terminal"
+msgstr "端末の保存に失敗しました"
+
+#: src/dialogs/task_manager_dialog.rs:40
+msgid "Running Tasks"
+msgstr "実行中のタスク"
+
+#: src/dialogs/task_manager_dialog.rs:56
+msgid "No Running Tasks"
+msgstr "実行中のタスクはありません"
+
+#: src/dialogs/task_manager_dialog.rs:58
+msgid "Tasks such as starting, stopping and upgrading will appear here."
+msgstr "起動、停止、アップグレードなどのタスクがここに表示されます。"
+
+#: src/dialogs/task_manager_dialog.rs:86
+msgid "Clear Ended Tasks"
+msgstr "終了したタスクをクリア"
+
+#: src/dialogs/task_manager_dialog.rs:286 src/widgets/container_overview.rs:84
+msgid "Stop"
+msgstr "停止"
+
+#: src/widgets/container_overview.rs:74
+msgid "Container Status"
+msgstr "コンテナの状態"
+
+#: src/widgets/container_overview.rs:78 src/widgets/welcome_view.ui:28
+msgid "Status"
+msgstr "状態"
+
+#: src/widgets/container_overview.rs:89
+msgid "Open Terminal"
+msgstr "端末を開く"
+
+#: src/widgets/container_overview.rs:98
+msgid "Resources"
+msgstr "リソース"
+
+#: src/widgets/container_overview.rs:128
+msgid "Quick Actions"
+msgstr "クイックアクション"
+
+#: src/widgets/container_overview.rs:131
+msgid "Upgrade Container"
+msgstr "コンテナをアップグレード"
+
+#: src/widgets/container_overview.rs:133
+msgid "Update all packages"
+msgstr "すべてのパッケージを更新"
+
+#: src/widgets/container_overview.rs:139
+msgid "Applications"
+msgstr "アプリケーション"
+
+#: src/widgets/container_overview.rs:141
+msgid "Manage exportable applications"
+msgstr "エクスポート可能なアプリケーションを管理"
+
+#: src/widgets/container_overview.rs:150
+msgid "Install Package"
+msgstr "パッケージをインストール"
+
+#: src/widgets/container_overview.rs:152
+msgid "Install packages into container"
+msgstr "コンテナにパッケージをインストール"
+
+#: src/widgets/container_overview.rs:159
+msgid "Clone Container"
+msgstr "コンテナを複製"
+
+#: src/widgets/container_overview.rs:161
+msgid "Create a copy of this container"
+msgstr "このコンテナのコピーを作成"
+
+#: src/widgets/container_overview.rs:168
+msgid "Danger Zone"
+msgstr "危険ゾーン"
+
+#: src/widgets/container_overview.rs:172
+msgid "Delete Container"
+msgstr "コンテナを削除"
+
+#: src/widgets/container_overview.rs:174
+msgid "Permanently remove this container and all its data"
+msgstr "このコンテナとそのすべてのデータを完全に削除"
+
+#: src/widgets/container_overview.rs:208
+msgid "Copy image URL"
+msgstr "イメージURLをコピー"
+
+#: src/widgets/container_overview.rs:223
+msgid "Image URL copied"
+msgstr "イメージURLがコピーされました"
+
+#: src/widgets/image_row_item.rs:42
+msgid "Image already downloaded"
+msgstr "イメージは既にダウンロードされています"
+
+#: src/widgets/integrated_terminal.rs:105
+msgid "Copy"
+msgstr "コピー"
+
+#: src/widgets/integrated_terminal.rs:106
+msgid "Paste"
+msgstr "貼り付け"
+
+#: src/widgets/integrated_terminal.rs:115
+msgid "Reload Terminal"
+msgstr "端末を再読み込み"
+
+#: src/widgets/terminal_combo_row.rs:34
+msgid "Preferred Terminal"
+msgstr "優先する端末"
+
+#: src/widgets/welcome_view.rs:157 src/widgets/welcome_view.rs:207
+msgid "available"
+msgstr "利用可能"
+
+#: src/widgets/welcome_view.rs:176
+msgid "Not found - Please install Podman or Docker"
+msgstr "見つかりません - PodmanまたはDockerをインストールしてください"
+
+#: src/widgets/welcome_view.rs:201
+msgid "Bundled version"
+msgstr "バンドル版"
+
+#: src/widgets/welcome_view.rs:203
+msgid "System version"
+msgstr "システム版"
+
+#: src/widgets/welcome_view.rs:216
+msgid "Not found - Install from system or use bundled version"
+msgstr "見つかりません - システムからインストールするか、バンドル版を使用してください"
+
+#: src/widgets/welcome_view.rs:278 src/widgets/welcome_view.rs:279
+#: src/widgets/welcome_view.ui:32 src/widgets/welcome_view.ui:51
+msgid "Checking…"
+msgstr "確認中…"
+
+#: src/widgets/welcome_view.rs:348
+msgid "Use Bundled Version"
+msgstr "バンドル版を使用"
+
+#: src/widgets/welcome_view.rs:350
+msgid "Download failed"
+msgstr "ダウンロードに失敗しました"
+
+#: src/widgets/welcome_view.ui:17
+msgid "System Requirements"
+msgstr "システム要件"
+
+#: src/widgets/welcome_view.ui:31
+msgid "Container Runtime"
+msgstr "コンテナランタイム"
+
+#: src/widgets/welcome_view.ui:50
+msgid "Distrobox"
+msgstr "Distrobox"
+
+#: src/widgets/welcome_view.ui:97
+msgid "Refresh"
+msgstr "更新"
+
+#: src/widgets/welcome_view.ui:107 src/widgets/welcome_view.ui:168
+msgid "Continue"
+msgstr "続行"
+
+#: src/widgets/welcome_view.ui:146
+msgid "Preferred terminal"
+msgstr "優先する端末"
+
+#: src/widgets/welcome_view.ui:197
+msgid "Use Bundled Distrobox"
+msgstr "バンドルされたDistroboxを使用"
+
+#: src/widgets/welcome_view.ui:201 src/widgets/window.ui:70
+msgid "Learn More"
+msgstr "詳細"
+
+#: src/widgets/window.rs:392
+msgid "Check your terminal settings."
+msgstr "端末設定を確認してください。"
+
+#: src/widgets/window.rs:409
+msgid "Delete this container?"
+msgstr "このコンテナを削除しますか？"
+
+#: src/widgets/window.rs:415
+msgid "will be deleted. This action cannot be undone."
+msgstr "は削除されます。この操作は取り消せません。"
+
+#. Show file chooser and install package using the appropriate command
+#: src/widgets/window.rs:445
+msgid "Select Package"
+msgstr "パッケージを選択"
+
+#: src/widgets/window.ui:39 src/widgets/window.ui:80
+msgid "Create Distrobox"
+msgstr "Distroboxを作成"
+
+#: src/widgets/window.ui:47
+msgid "Main Menu"
+msgstr "メインメニュー"
+
+#: src/widgets/window.ui:59
+msgid "No Distroboxes Found"
+msgstr "Distroboxが見つかりません"
+
+#: src/widgets/window.ui:60
+msgid "Distrobox lets you run any Linux distribution inside your terminal."
+msgstr "Distroboxを使用すると、端末内で任意のLinuxディストリビューションを実行できます。"
+
+#: src/widgets/window.ui:126
+msgid "Container"
+msgstr "コンテナ"
+
+#: src/widgets/window.ui:158
+msgid "Overview"
+msgstr "概要"
+
+#: src/widgets/window.ui:169
+msgid "Terminal"
+msgstr "端末"
+
+#: src/widgets/window.ui:218
+msgid "_Refresh"
+msgstr "更新(_R)"
+
+#: src/widgets/window.ui:222
+msgid "_Upgrade All"
+msgstr "すべてアップグレード(_U)"
+
+#: src/widgets/window.ui:226
+msgid "_Command Log"
+msgstr "コマンドログ(_C)"
+
+#: src/widgets/window.ui:232
+msgid "_Settings"
+msgstr "設定(_S)"
+
+#: src/widgets/window.ui:236
+msgid "_About"
+msgstr "情報(_A)"
+
+#: src/widgets/window.ui:240
+msgid "Discover _Distrobox"
+msgstr "Distroboxを発見(_D)"

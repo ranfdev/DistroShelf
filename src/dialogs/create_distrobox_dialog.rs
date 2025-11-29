@@ -5,6 +5,7 @@ use gtk::{gio, glib};
 use tracing::error;
 
 use crate::backends::{self, CreateArgName, CreateArgs, Error};
+use crate::i18n::gettext;
 use crate::models::Container;
 use crate::root_store::RootStore;
 use crate::widgets::{ImageRowItem, SidebarRow};
@@ -94,7 +95,7 @@ mod imp {
     #[derived_properties]
     impl ObjectImpl for CreateDistroboxDialog {
         fn constructed(&self) {
-            self.obj().set_title("Create a Distrobox");
+            self.obj().set_title(&gettext("Create a Distrobox"));
             self.obj().set_content_width(480);
 
             let navigation_view = &self.navigation_view;
@@ -121,7 +122,7 @@ mod imp {
             let cloning_header = gtk::Box::new(gtk::Orientation::Horizontal, 12);
             cloning_header.set_homogeneous(false);
 
-            let cloning_label = gtk::Label::new(Some("Cloning"));
+            let cloning_label = gtk::Label::new(Some(&gettext("Cloning")));
             cloning_label.set_halign(gtk::Align::Start);
             cloning_label.add_css_class("title-3");
 
@@ -132,18 +133,18 @@ mod imp {
 
             // Add warning banner for running containers
             self.clone_warning_banner
-                .set_title("Cloning the container requires stopping it first");
+                .set_title(&gettext("Cloning the container requires stopping it first"));
             self.clone_warning_banner.set_revealed(false);
             self.cloning_content.append(&self.clone_warning_banner);
 
             self.content.append(&self.cloning_content);
 
             let preferences_group = adw::PreferencesGroup::new();
-            preferences_group.set_title("Settings");
-            self.name_row.set_title("Name");
+            preferences_group.set_title(&gettext("Settings"));
+            self.name_row.set_title(&gettext("Name"));
 
-            self.image_row.set_title("Base Image");
-            self.image_row.set_subtitle("Select an image...");
+            self.image_row.set_title(&gettext("Base Image"));
+            self.image_row.set_subtitle(&gettext("Select an image..."));
             self.image_row.set_activatable(true);
             self.image_row
                 .add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
@@ -160,13 +161,13 @@ mod imp {
 
             let obj = self.obj().clone();
             let home_row = self.obj().build_file_row(
-                "Select Home Directory",
+                &gettext("Select Home Directory"),
                 FileRowSelection::Folder,
                 move |path| {
                     obj.set_home_folder(Some(path.display().to_string()));
                 },
             );
-            self.home_row_expander.set_title("Custom Home Directory");
+            self.home_row_expander.set_title(&gettext("Custom Home Directory"));
             self.home_row_expander.set_show_enable_switch(true);
             self.home_row_expander.set_enable_expansion(false);
             self.home_row_expander.add_row(&home_row);
@@ -183,9 +184,9 @@ mod imp {
                     }
                 ));
 
-            self.nvidia_row.set_title("NVIDIA Support");
+            self.nvidia_row.set_title(&gettext("NVIDIA Support"));
 
-            self.init_row.set_title("Init process");
+            self.init_row.set_title(&gettext("Init process"));
 
             preferences_group.add(&self.name_row);
             preferences_group.add(&self.image_row);
@@ -197,7 +198,7 @@ mod imp {
             self.content.append(&preferences_group);
             self.content.append(&volumes_group);
 
-            let create_btn = gtk::Button::with_label("Create");
+            let create_btn = gtk::Button::with_label(&gettext("Create"));
             create_btn.set_halign(gtk::Align::Center);
 
             let obj = self.obj();
@@ -235,12 +236,12 @@ mod imp {
             assemble_page.set_margin_bottom(12);
 
             let assemble_group = adw::PreferencesGroup::new();
-            assemble_group.set_title("Assemble from File");
-            assemble_group.set_description(Some("Create a container from an assemble file"));
+            assemble_group.set_title(&gettext("Assemble from File"));
+            assemble_group.set_description(Some(&gettext("Create a container from an assemble file")));
 
             let obj = self.obj().clone();
             let file_row = self.obj().build_file_row(
-                "Select Assemble File",
+                &gettext("Select Assemble File"),
                 FileRowSelection::File,
                 move |path| {
                     obj.set_assemble_file(Some(path.display().to_string()));
@@ -250,7 +251,7 @@ mod imp {
             assemble_page.append(&assemble_group);
 
             // Add create button for assemble file
-            let create_btn = gtk::Button::with_label("Create");
+            let create_btn = gtk::Button::with_label(&gettext("Create"));
             create_btn.set_halign(gtk::Align::Center);
             create_btn.add_css_class("suggested-action");
             create_btn.add_css_class("pill");
@@ -284,18 +285,18 @@ mod imp {
             url_page.set_margin_bottom(12);
 
             let url_group = adw::PreferencesGroup::new();
-            url_group.set_title("From URL");
-            url_group.set_description(Some("Create a container from a remote URL"));
+            url_group.set_title(&gettext("From URL"));
+            url_group.set_description(Some(&gettext("Create a container from a remote URL")));
 
             let url_row = adw::EntryRow::new();
-            url_row.set_title("URL");
+            url_row.set_title(&gettext("URL"));
             url_row.set_text("https://example.com/container.yaml");
 
             url_group.add(&url_row);
             url_page.append(&url_group);
 
             // Add create button for URL
-            let create_btn = gtk::Button::with_label("Create");
+            let create_btn = gtk::Button::with_label(&gettext("Create"));
             create_btn.set_halign(gtk::Align::Center);
             create_btn.add_css_class("suggested-action");
             create_btn.add_css_class("pill");
@@ -424,7 +425,7 @@ impl CreateDistroboxDialog {
     ) -> adw::ActionRow {
         let row = adw::ActionRow::new();
         row.set_title(title);
-        row.set_subtitle("No file selected");
+        row.set_subtitle(&gettext("No file selected"));
         row.set_activatable(true);
 
         let file_icon = gtk::Image::from_icon_name("document-open-symbolic");
@@ -490,7 +491,7 @@ impl CreateDistroboxDialog {
         view.add_top_bar(&header);
 
         let search_entry = gtk::SearchEntry::new();
-        search_entry.set_placeholder_text(Some("Search image..."));
+        search_entry.set_placeholder_text(Some(&gettext("Search image...")));
         search_entry.set_hexpand(true);
 
         header.set_title_widget(Some(&search_entry));
@@ -550,7 +551,7 @@ impl CreateDistroboxDialog {
 
         custom_list.append(&custom_row_item);
 
-        let custom_label = gtk::Label::new(Some("Custom"));
+        let custom_label = gtk::Label::new(Some(&gettext("Custom")));
         custom_label.add_css_class("heading");
         custom_label.set_halign(gtk::Align::Start);
         custom_label.set_margin_start(12);
@@ -710,12 +711,12 @@ impl CreateDistroboxDialog {
 
     pub fn build_volumes_group(&self) -> adw::PreferencesGroup {
         let volumes_group = adw::PreferencesGroup::new();
-        volumes_group.set_title("Volumes");
+        volumes_group.set_title(&gettext("Volumes"));
         volumes_group.set_description(Some(
-            "Specify volumes in the format 'host_path:container_path'",
+            &gettext("Specify volumes in the format 'host_path:container_path'"),
         ));
 
-        let add_volume_button = adw::ButtonRow::builder().title("Add Volume").build();
+        let add_volume_button = adw::ButtonRow::builder().title(&gettext("Add Volume")).build();
         add_volume_button.connect_activated(clone!(
             #[weak(rename_to=this)]
             self,
@@ -723,10 +724,10 @@ impl CreateDistroboxDialog {
             volumes_group,
             move |_| {
                 let volume_row = adw::EntryRow::new();
-                volume_row.set_title("Volume");
+                volume_row.set_title(&gettext("Volume"));
 
                 let remove_button = gtk::Button::from_icon_name("user-trash-symbolic");
-                remove_button.set_tooltip_text(Some("Remove Volume"));
+                remove_button.set_tooltip_text(Some(&gettext("Remove Volume")));
                 remove_button.add_css_class("flat");
                 remove_button.set_valign(gtk::Align::Center);
                 remove_button.add_css_class("destructive-action");

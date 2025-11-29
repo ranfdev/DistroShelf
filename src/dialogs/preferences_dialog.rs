@@ -1,4 +1,5 @@
 use crate::backends::supported_terminals;
+use crate::i18n::gettext;
 use crate::models::{DialogType, RootStore};
 use crate::widgets::TerminalComboRow;
 
@@ -39,13 +40,13 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
 
-            obj.set_title("Preferences");
+            obj.set_title(&gettext("Preferences"));
 
             let page = adw::PreferencesPage::new();
 
             // Terminal Settings Group
             let terminal_group = adw::PreferencesGroup::new();
-            terminal_group.set_title("Terminal Settings");
+            terminal_group.set_title(&gettext("Terminal Settings"));
 
             // Initialize terminal combo row
             let terminal_combo_row = TerminalComboRow::new_with_params(obj.root_store());
@@ -53,7 +54,7 @@ mod imp {
                 .replace(Some(terminal_combo_row.clone()));
 
             // Initialize delete button
-            self.delete_btn.set_label("Delete");
+            self.delete_btn.set_label(&gettext("Delete"));
             self.delete_btn.add_css_class("destructive-action");
             self.delete_btn.add_css_class("pill");
 
@@ -92,7 +93,7 @@ mod imp {
             terminal_group.add(&terminal_combo_row);
 
             // Initialize add terminal button
-            self.add_terminal_btn.set_label("Add Custom");
+            self.add_terminal_btn.set_label(&gettext("Add Custom"));
             self.add_terminal_btn.add_css_class("pill");
             self.add_terminal_btn.set_halign(gtk::Align::Start);
 
@@ -119,11 +120,11 @@ mod imp {
 
             // Distrobox Settings Group
             let distrobox_group = adw::PreferencesGroup::new();
-            distrobox_group.set_title("Distrobox Settings");
+            distrobox_group.set_title(&gettext("Distrobox Settings"));
 
             let distrobox_source_row = adw::ComboRow::new();
-            distrobox_source_row.set_title("Distrobox Source");
-            let model = gtk::StringList::new(&["System (host)", "Bundled Version"]);
+            distrobox_source_row.set_title(&gettext("Distrobox Source"));
+            let model = gtk::StringList::new(&[&gettext("System (host)"), &gettext("Bundled Version")]);
             distrobox_source_row.set_model(Some(&model));
 
             // Bind to settings
@@ -150,7 +151,7 @@ mod imp {
 
             // Add version row
             let version_row = adw::ActionRow::new();
-            version_row.set_title("Distrobox Version");
+            version_row.set_title(&gettext("Distrobox Version"));
 
             let version_label = gtk::Label::new(None);
             version_label.add_css_class("dim-label");
@@ -168,7 +169,7 @@ mod imp {
                 #[weak]
                 version_label,
                 move |_| {
-                    version_label.set_text("Not available");
+                    version_label.set_text(&gettext("Not available"));
                 }
             ));
 
@@ -183,7 +184,7 @@ mod imp {
 
             // Add "Re-download Bundled Version" button
             let redownload_btn = gtk::Button::new();
-            redownload_btn.set_label("Re-download Bundled");
+            redownload_btn.set_label(&gettext("Re-download Bundled"));
             redownload_btn.add_css_class("pill");
             redownload_btn.set_halign(gtk::Align::Center);
             redownload_btn.set_margin_top(12);
@@ -265,16 +266,13 @@ impl PreferencesDialog {
             .string();
 
         let dialog = adw::AlertDialog::builder()
-            .heading("Delete this terminal?")
-            .body(format!(
-                "{} will be removed from the terminal list.\nThis action cannot be undone.",
-                selected
-            ))
+            .heading(&gettext("Delete this terminal?"))
+            .body(&gettext("This terminal will be removed from the terminal list. This action cannot be undone."))
             .close_response("cancel")
             .default_response("cancel")
             .build();
-        dialog.add_response("cancel", "Cancel");
-        dialog.add_response("delete", "Delete");
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("delete", &gettext("Delete"));
 
         dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
         dialog.connect_response(
@@ -307,12 +305,12 @@ impl PreferencesDialog {
                                     );
                                 }
 
-                                this.add_toast(adw::Toast::new("Terminal removed successfully"));
+                                this.add_toast(adw::Toast::new(&gettext("Terminal removed successfully")));
                             });
                         }
                         Err(err) => {
                             error!(error = %err, "Failed to delete terminal");
-                            this.add_toast(adw::Toast::new("Failed to delete terminal"));
+                            this.add_toast(adw::Toast::new(&gettext("Failed to delete terminal")));
                         }
                     }
                     d.close();
@@ -325,7 +323,7 @@ impl PreferencesDialog {
 
     fn show_add_terminal_dialog(&self) {
         let custom_dialog = adw::Dialog::new();
-        custom_dialog.set_title("Add Custom Terminal");
+        custom_dialog.set_title(&gettext("Add Custom Terminal"));
 
         let toolbar_view = adw::ToolbarView::new();
         toolbar_view.add_top_bar(&adw::HeaderBar::new());
@@ -339,13 +337,13 @@ impl PreferencesDialog {
         let group = adw::PreferencesGroup::new();
 
         // Name entry
-        let name_entry = adw::EntryRow::builder().title("Terminal Name").build();
+        let name_entry = adw::EntryRow::builder().title(gettext("Terminal Name")).build();
 
         // Program entry
-        let program_entry = adw::EntryRow::builder().title("Program Path").build();
+        let program_entry = adw::EntryRow::builder().title(gettext("Program Path")).build();
 
         // Separator argument entry
-        let separator_entry = adw::EntryRow::builder().title("Separator Argument").build();
+        let separator_entry = adw::EntryRow::builder().title(gettext("Separator Argument")).build();
 
         group.add(&name_entry);
         group.add(&program_entry);
@@ -353,10 +351,9 @@ impl PreferencesDialog {
         content.append(&group);
 
         // Add note about separator
-        let info_label = gtk::Label::new(Some(
-            "The separator argument is used to pass commands to the terminal.\n\
-            Examples: '--' for GNOME Terminal, '-e' for xterm",
-        ));
+        let info_label = gtk::Label::new(Some(&gettext(
+            "The separator argument is used to pass commands to the terminal.\nExamples: '--' for GNOME Terminal, '-e' for xterm",
+        )));
         info_label.add_css_class("caption");
         info_label.add_css_class("dim-label");
         info_label.set_wrap(true);
@@ -369,10 +366,10 @@ impl PreferencesDialog {
         button_box.set_margin_top(12);
         button_box.set_homogeneous(true);
 
-        let cancel_btn = gtk::Button::with_label("Cancel");
+        let cancel_btn = gtk::Button::with_label(&gettext("Cancel"));
         cancel_btn.add_css_class("pill");
 
-        let save_btn = gtk::Button::with_label("Save");
+        let save_btn = gtk::Button::with_label(&gettext("Save"));
         save_btn.add_css_class("suggested-action");
         save_btn.add_css_class("pill");
 
@@ -410,7 +407,7 @@ impl PreferencesDialog {
 
                 // Validate inputs
                 if name.is_empty() || program.is_empty() || separator_arg.is_empty() {
-                    this.add_toast(adw::Toast::new("All fields are required"));
+                    this.add_toast(adw::Toast::new(&gettext("All fields are required")));
                     return;
                 }
 
@@ -429,7 +426,7 @@ impl PreferencesDialog {
                 {
                     Ok(_) => {
                         // Show success toast
-                        let toast = adw::Toast::new("Custom terminal added successfully");
+                        let toast = adw::Toast::new(&gettext("Custom terminal added successfully"));
 
                         if let Some(terminal_combo_row) =
                             this.imp().terminal_combo_row.borrow().as_ref()
@@ -443,7 +440,7 @@ impl PreferencesDialog {
                     }
                     Err(err) => {
                         error!(error = %err, "Failed to save terminal");
-                        this.add_toast(adw::Toast::new("Failed to save terminal"));
+                        this.add_toast(adw::Toast::new(&gettext("Failed to save terminal")));
                     }
                 }
             }

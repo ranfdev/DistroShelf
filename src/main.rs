@@ -25,6 +25,7 @@ mod dialogs;
 mod distrobox_downloader;
 mod fakers;
 mod gtk_utils;
+pub mod i18n;
 mod models;
 mod widgets;
 pub use models::root_store;

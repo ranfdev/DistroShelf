@@ -1,3 +1,4 @@
+use crate::i18n::gettext;
 use crate::models::Container;
 use crate::widgets::DistroShelfWindow;
 
@@ -70,22 +71,22 @@ impl ContainerOverview {
 
         // Status Group
         let status_group = adw::PreferencesGroup::new();
-        status_group.set_title("Container Status");
+        status_group.set_title(&gettext("Container Status"));
 
         let status_row = adw::ActionRow::new();
         status_group.add_css_class("property");
-        status_row.set_title("Status");
+        status_row.set_title(&gettext("Status"));
 
         let status_child = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         status_child.set_valign(gtk::Align::Center);
 
         let stop_btn = gtk::Button::from_icon_name("media-playback-stop-symbolic");
-        stop_btn.set_tooltip_text(Some("Stop"));
+        stop_btn.set_tooltip_text(Some(&gettext("Stop")));
         stop_btn.set_action_name(Some("win.stop-container"));
         status_child.append(&stop_btn);
 
         let terminal_btn = gtk::Button::from_icon_name("terminal-symbolic");
-        terminal_btn.set_tooltip_text(Some("Open Terminal"));
+        terminal_btn.set_tooltip_text(Some(&gettext("Open Terminal")));
         terminal_btn.set_action_name(Some("win.open-terminal"));
         status_child.append(&terminal_btn);
 
@@ -94,7 +95,7 @@ impl ContainerOverview {
 
         // Usage stats row
         let usage_row = adw::ActionRow::new();
-        usage_row.set_title("Resources");
+        usage_row.set_title(&gettext("Resources"));
         usage_row.set_subtitle(&"CPU: 0.0% • Mem: 0.0MB / 0.0GB (0.0%)".to_string());
         status_group.add(&usage_row);
 
@@ -124,53 +125,53 @@ impl ContainerOverview {
 
         // Quick Actions Group
         let actions_group = adw::PreferencesGroup::new();
-        actions_group.set_title("Quick Actions");
+        actions_group.set_title(&gettext("Quick Actions"));
 
         let upgrade_row = self.create_button_row(
-            "Upgrade Container",
+            &gettext("Upgrade Container"),
             "software-update-available-symbolic",
-            "Update all packages",
+            &gettext("Update all packages"),
             "win.upgrade-container",
         );
         actions_group.add(&upgrade_row);
 
         let apps_row = self.create_button_row(
-            "Applications",
+            &gettext("Applications"),
             "view-list-bullet-symbolic",
-            "Manage exportable applications",
+            &gettext("Manage exportable applications"),
             "win.view-exportable-apps",
         );
         actions_group.add(&apps_row);
 
         if let Some(distro) = container.distro()
-            && let Some(installable_file) = distro.package_manager().installable_file()
+            && distro.package_manager().installable_file().is_some()
         {
             let install_package_row = self.create_button_row(
-                &format!("Install {} Package", installable_file),
+                &gettext("Install Package"),
                 "package-symbolic",
-                "Install packages into container",
+                &gettext("Install packages into container"),
                 "win.install-package",
             );
             actions_group.add(&install_package_row);
         }
 
         let clone_row = self.create_button_row(
-            "Clone Container",
+            &gettext("Clone Container"),
             "edit-copy-symbolic",
-            "Create a copy of this container",
+            &gettext("Create a copy of this container"),
             "win.clone-container",
         );
         actions_group.add(&clone_row);
 
         // Danger Zone Group
         let danger_group = adw::PreferencesGroup::new();
-        danger_group.set_title("Danger Zone");
+        danger_group.set_title(&gettext("Danger Zone"));
         danger_group.add_css_class("danger-group");
 
         let delete_row = self.create_button_row(
-            "Delete Container",
+            &gettext("Delete Container"),
             "user-trash-symbolic",
-            "Permanently remove this container and all its data",
+            &gettext("Permanently remove this container and all its data"),
             "win.delete-container",
         );
         delete_row.add_css_class("error");
@@ -204,7 +205,7 @@ impl ContainerOverview {
 
         // Create a copy button next to the image URL label
         let copy_btn = gtk::Button::from_icon_name("edit-copy-symbolic");
-        copy_btn.set_tooltip_text(Some("Copy image URL"));
+        copy_btn.set_tooltip_text(Some(&gettext("Copy image URL")));
         copy_btn.add_css_class("flat");
         copy_btn.add_css_class("xs");
         // Capture a clone of the image URL for the closure
@@ -219,7 +220,7 @@ impl ContainerOverview {
                     .ancestor(DistroShelfWindow::static_type())
                     .and_then(|w| w.downcast::<DistroShelfWindow>().ok());
                 if let Some(win) = parent_window {
-                    win.add_toast(adw::Toast::new("Image URL copied"));
+                    win.add_toast(adw::Toast::new(&gettext("Image URL copied")));
                 }
             }
         });

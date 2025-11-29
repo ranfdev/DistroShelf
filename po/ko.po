@@ -1,0 +1,653 @@
+# Korean translations for distroshelf package.
+# Copyright (C) 2025 THE distroshelf'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the distroshelf package.
+# Automatically generated, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: distroshelf\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-29 18:14+0100\n"
+"PO-Revision-Date: 2025-11-29 18:14+0100\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ko\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:2
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/widgets/window.ui:30
+msgid "DistroShelf"
+msgstr "DistroShelf"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:8
+msgid "GTK;"
+msgstr "GTK;"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:6
+msgid "Selected terminal emulator"
+msgstr "선택된 터미널 에뮬레이터"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:7
+msgid "The terminal emulator selected by the user."
+msgstr "사용자가 선택한 터미널 에뮬레이터입니다."
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:11
+msgid "Window width"
+msgstr "창 너비"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:12
+msgid "The width of the main window when last closed."
+msgstr "마지막으로 닫혔을 때의 메인 창 너비입니다."
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:16
+msgid "Window height"
+msgstr "창 높이"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:17
+msgid "The height of the main window when last closed."
+msgstr "마지막으로 닫혔을 때의 메인 창 높이입니다."
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:21
+msgid "Distrobox executable source"
+msgstr "Distrobox 실행 파일 소스"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:22
+msgid "The source of the distrobox executable. Can be 'host' or 'bundled'."
+msgstr "Distrobox 실행 파일의 소스입니다. 'host' 또는 'bundled'일 수 있습니다."
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:8
+msgid "Graphical interface for managing Distrobox containers"
+msgstr "Distrobox 컨테이너 관리를 위한 그래픽 인터페이스"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:10
+msgid ""
+"DistroShelf is a graphical interface for managing Distrobox containers on "
+"Linux. It provides an easy way to:"
+msgstr ""
+"DistroShelf는 리눅스에서 Distrobox 컨테이너를 관리하기 위한 그래픽 인터페이스"
+"입니다. 다음과 같은 기능을 쉽게 제공합니다:"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:15
+msgid "Create and manage containers"
+msgstr "컨테이너 생성 및 관리"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:16
+msgid "View container status and details"
+msgstr "컨테이너 상태 및 세부 정보 보기"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:17
+msgid "Install packages"
+msgstr "패키지 설치"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:18
+msgid "Manage exported applications"
+msgstr "내보낸 애플리케이션 관리"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:19
+msgid "Open terminal sessions"
+msgstr "터미널 세션 열기"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:20
+msgid "Upgrade containers"
+msgstr "컨테이너 업그레이드"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:21
+msgid "Clone and delete containers"
+msgstr "컨테이너 복제 및 삭제"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:26
+msgid "Lorenzo Miglietta"
+msgstr "Lorenzo Miglietta"
+
+#: data/gtk/help-overlay.ui:11
+msgctxt "shortcut window"
+msgid "General"
+msgstr "일반"
+
+#: data/gtk/help-overlay.ui:14
+msgctxt "shortcut window"
+msgid "Show Shortcuts"
+msgstr "단축키 표시"
+
+#: data/gtk/help-overlay.ui:20
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "종료"
+
+#: src/dialogs/command_log_dialog.rs:35 src/dialogs/command_log_dialog.rs:44
+msgid "Command Log"
+msgstr "명령 로그"
+
+#: src/dialogs/command_log_dialog.rs:62
+msgid ""
+"Executing a single task (eg: listing applications) may require multiple "
+"chains of commands. For debugging purposes, this log shows all commands "
+"executed by the application."
+msgstr ""
+"단일 작업(예: 애플리케이션 나열)을 실행하려면 여러 명령 체인이 필요할 수 "
+"있습니다. 디버깅 목적으로 이 로그는 애플리케이션에서 실행한 모든 명령을 "
+"보여줍니다."
+
+#: src/dialogs/create_distrobox_dialog.rs:98
+msgid "Create a Distrobox"
+msgstr "Distrobox 생성"
+
+#: src/dialogs/create_distrobox_dialog.rs:125
+msgid "Cloning"
+msgstr "복제 중"
+
+#: src/dialogs/create_distrobox_dialog.rs:136
+msgid "Cloning the container requires stopping it first"
+msgstr "컨테이너를 복제하려면 먼저 중지해야 합니다"
+
+#: src/dialogs/create_distrobox_dialog.rs:143
+msgid "Settings"
+msgstr "설정"
+
+#: src/dialogs/create_distrobox_dialog.rs:144
+msgid "Name"
+msgstr "이름"
+
+#: src/dialogs/create_distrobox_dialog.rs:146
+msgid "Base Image"
+msgstr "기본 이미지"
+
+#: src/dialogs/create_distrobox_dialog.rs:147
+msgid "Select an image..."
+msgstr "이미지 선택..."
+
+#: src/dialogs/create_distrobox_dialog.rs:164
+msgid "Select Home Directory"
+msgstr "홈 디렉토리 선택"
+
+#: src/dialogs/create_distrobox_dialog.rs:170
+msgid "Custom Home Directory"
+msgstr "사용자 지정 홈 디렉토리"
+
+#: src/dialogs/create_distrobox_dialog.rs:187
+msgid "NVIDIA Support"
+msgstr "NVIDIA 지원"
+
+#: src/dialogs/create_distrobox_dialog.rs:189
+msgid "Init process"
+msgstr "Init 프로세스"
+
+#. Add create button for assemble file
+#. Add create button for URL
+#: src/dialogs/create_distrobox_dialog.rs:201
+#: src/dialogs/create_distrobox_dialog.rs:254
+#: src/dialogs/create_distrobox_dialog.rs:299
+msgid "Create"
+msgstr "생성"
+
+#: src/dialogs/create_distrobox_dialog.rs:239
+msgid "Assemble from File"
+msgstr "파일에서 조립"
+
+#: src/dialogs/create_distrobox_dialog.rs:240
+msgid "Create a container from an assemble file"
+msgstr "조립 파일에서 컨테이너 생성"
+
+#: src/dialogs/create_distrobox_dialog.rs:244
+msgid "Select Assemble File"
+msgstr "조립 파일 선택"
+
+#: src/dialogs/create_distrobox_dialog.rs:288
+msgid "From URL"
+msgstr "URL에서"
+
+#: src/dialogs/create_distrobox_dialog.rs:289
+msgid "Create a container from a remote URL"
+msgstr "원격 URL에서 컨테이너 생성"
+
+#: src/dialogs/create_distrobox_dialog.rs:292
+msgid "URL"
+msgstr "URL"
+
+#: src/dialogs/create_distrobox_dialog.rs:428
+msgid "No file selected"
+msgstr "선택된 파일 없음"
+
+#: src/dialogs/create_distrobox_dialog.rs:494
+msgid "Search image..."
+msgstr "이미지 검색..."
+
+#: src/dialogs/create_distrobox_dialog.rs:554
+msgid "Custom"
+msgstr "사용자 지정"
+
+#: src/dialogs/create_distrobox_dialog.rs:714
+msgid "Volumes"
+msgstr "볼륨"
+
+#: src/dialogs/create_distrobox_dialog.rs:716
+msgid "Specify volumes in the format 'host_path:container_path'"
+msgstr "'호스트_경로:컨테이너_경로' 형식으로 볼륨을 지정하세요"
+
+#: src/dialogs/create_distrobox_dialog.rs:719
+msgid "Add Volume"
+msgstr "볼륨 추가"
+
+#: src/dialogs/create_distrobox_dialog.rs:727
+msgid "Volume"
+msgstr "볼륨"
+
+#: src/dialogs/create_distrobox_dialog.rs:730
+msgid "Remove Volume"
+msgstr "볼륨 제거"
+
+#: src/dialogs/exportable_apps_dialog.rs:43
+msgid "Manage Exports"
+msgstr "내보내기 관리"
+
+#: src/dialogs/exportable_apps_dialog.rs:63
+msgid "Loading Exports"
+msgstr "내보내기 로드 중"
+
+#: src/dialogs/exportable_apps_dialog.rs:65
+msgid ""
+"Please wait while we load the list of exportable apps and binaries. This may "
+"take some time if the distrobox wasn't running"
+msgstr ""
+"내보낼 수 있는 앱 및 바이너리 목록을 로드하는 동안 잠시 기다려 주십시오. "
+"Distrobox가 실행 중이 아니면 시간이 걸릴 수 있습니다"
+
+#: src/dialogs/exportable_apps_dialog.rs:76
+msgid "Exportable Apps"
+msgstr "내보낼 수 있는 앱"
+
+#: src/dialogs/exportable_apps_dialog.rs:78
+#: src/dialogs/exportable_apps_dialog.rs:242
+msgid "No exportable apps found"
+msgstr "내보낼 수 있는 앱을 찾을 수 없음"
+
+#. Setup binary export input
+#: src/dialogs/exportable_apps_dialog.rs:82
+msgid "Export New Binary"
+msgstr "새 바이너리 내보내기"
+
+#: src/dialogs/exportable_apps_dialog.rs:95
+msgid "Exported Binaries"
+msgstr "내보낸 바이너리"
+
+#: src/dialogs/exportable_apps_dialog.rs:97
+#: src/dialogs/exportable_apps_dialog.rs:270
+msgid "No exported binaries"
+msgstr "내보낸 바이너리 없음"
+
+#: src/dialogs/exportable_apps_dialog.rs:318
+msgid "Binary Already Exists on Host"
+msgstr "바이너리가 호스트에 이미 존재함"
+
+#: src/dialogs/exportable_apps_dialog.rs:321
+msgid "The binary already exists on your host system. Do you want to continue?"
+msgstr "바이너리가 호스트 시스템에 이미 존재합니다. 계속하시겠습니까?"
+
+#: src/dialogs/exportable_apps_dialog.rs:324
+#: src/dialogs/preferences_dialog.rs:274 src/dialogs/preferences_dialog.rs:369
+#: src/widgets/window.rs:420
+msgid "Cancel"
+msgstr "취소"
+
+#: src/dialogs/exportable_apps_dialog.rs:325
+msgid "Export Anyway"
+msgstr "무시하고 내보내기"
+
+#: src/dialogs/preferences_dialog.rs:43 src/widgets/window.rs:393
+msgid "Preferences"
+msgstr "환경 설정"
+
+#: src/dialogs/preferences_dialog.rs:49
+msgid "Terminal Settings"
+msgstr "터미널 설정"
+
+#. Initialize delete button
+#: src/dialogs/preferences_dialog.rs:57 src/dialogs/preferences_dialog.rs:275
+#: src/widgets/window.rs:421
+msgid "Delete"
+msgstr "삭제"
+
+#. Initialize add terminal button
+#: src/dialogs/preferences_dialog.rs:96
+msgid "Add Custom"
+msgstr "사용자 지정 추가"
+
+#: src/dialogs/preferences_dialog.rs:123
+msgid "Distrobox Settings"
+msgstr "Distrobox 설정"
+
+#: src/dialogs/preferences_dialog.rs:126
+msgid "Distrobox Source"
+msgstr "Distrobox 소스"
+
+#: src/dialogs/preferences_dialog.rs:127
+msgid "System (host)"
+msgstr "시스템 (호스트)"
+
+#: src/dialogs/preferences_dialog.rs:127
+msgid "Bundled Version"
+msgstr "번들 버전"
+
+#: src/dialogs/preferences_dialog.rs:154
+msgid "Distrobox Version"
+msgstr "Distrobox 버전"
+
+#: src/dialogs/preferences_dialog.rs:172
+msgid "Not available"
+msgstr "사용 불가"
+
+#: src/dialogs/preferences_dialog.rs:187
+msgid "Re-download Bundled"
+msgstr "번들 버전 다시 다운로드"
+
+#: src/dialogs/preferences_dialog.rs:269
+msgid "Delete this terminal?"
+msgstr "이 터미널을 삭제하시겠습니까?"
+
+#: src/dialogs/preferences_dialog.rs:270
+msgid ""
+"This terminal will be removed from the terminal list. This action cannot be "
+"undone."
+msgstr ""
+"이 터미널은 터미널 목록에서 제거됩니다. 이 작업은 취소할 수 없습니다."
+
+#: src/dialogs/preferences_dialog.rs:308
+msgid "Terminal removed successfully"
+msgstr "터미널이 성공적으로 제거되었습니다"
+
+#: src/dialogs/preferences_dialog.rs:313
+msgid "Failed to delete terminal"
+msgstr "터미널 삭제 실패"
+
+#: src/dialogs/preferences_dialog.rs:326
+msgid "Add Custom Terminal"
+msgstr "사용자 지정 터미널 추가"
+
+#. Name entry
+#: src/dialogs/preferences_dialog.rs:340
+msgid "Terminal Name"
+msgstr "터미널 이름"
+
+#. Program entry
+#: src/dialogs/preferences_dialog.rs:343
+msgid "Program Path"
+msgstr "프로그램 경로"
+
+#. Separator argument entry
+#: src/dialogs/preferences_dialog.rs:346
+msgid "Separator Argument"
+msgstr "구분자 인수"
+
+#: src/dialogs/preferences_dialog.rs:355
+msgid ""
+"The separator argument is used to pass commands to the terminal.\n"
+"Examples: '--' for GNOME Terminal, '-e' for xterm"
+msgstr ""
+"구분자 인수는 터미널에 명령을 전달하는 데 사용됩니다.\n"
+"예: GNOME 터미널의 경우 '--', xterm의 경우 '-e'"
+
+#: src/dialogs/preferences_dialog.rs:372
+msgid "Save"
+msgstr "저장"
+
+#: src/dialogs/preferences_dialog.rs:410
+msgid "All fields are required"
+msgstr "모든 필드는 필수입니다"
+
+#. Show success toast
+#: src/dialogs/preferences_dialog.rs:429
+msgid "Custom terminal added successfully"
+msgstr "사용자 지정 터미널이 성공적으로 추가되었습니다"
+
+#: src/dialogs/preferences_dialog.rs:443
+msgid "Failed to save terminal"
+msgstr "터미널 저장 실패"
+
+#: src/dialogs/task_manager_dialog.rs:40
+msgid "Running Tasks"
+msgstr "실행 중인 작업"
+
+#: src/dialogs/task_manager_dialog.rs:56
+msgid "No Running Tasks"
+msgstr "실행 중인 작업 없음"
+
+#: src/dialogs/task_manager_dialog.rs:58
+msgid "Tasks such as starting, stopping and upgrading will appear here."
+msgstr "시작, 중지 및 업그레이드와 같은 작업이 여기에 표시됩니다."
+
+#: src/dialogs/task_manager_dialog.rs:86
+msgid "Clear Ended Tasks"
+msgstr "종료된 작업 지우기"
+
+#: src/dialogs/task_manager_dialog.rs:286 src/widgets/container_overview.rs:84
+msgid "Stop"
+msgstr "중지"
+
+#: src/widgets/container_overview.rs:74
+msgid "Container Status"
+msgstr "컨테이너 상태"
+
+#: src/widgets/container_overview.rs:78 src/widgets/welcome_view.ui:28
+msgid "Status"
+msgstr "상태"
+
+#: src/widgets/container_overview.rs:89
+msgid "Open Terminal"
+msgstr "터미널 열기"
+
+#: src/widgets/container_overview.rs:98
+msgid "Resources"
+msgstr "리소스"
+
+#: src/widgets/container_overview.rs:128
+msgid "Quick Actions"
+msgstr "빠른 작업"
+
+#: src/widgets/container_overview.rs:131
+msgid "Upgrade Container"
+msgstr "컨테이너 업그레이드"
+
+#: src/widgets/container_overview.rs:133
+msgid "Update all packages"
+msgstr "모든 패키지 업데이트"
+
+#: src/widgets/container_overview.rs:139
+msgid "Applications"
+msgstr "애플리케이션"
+
+#: src/widgets/container_overview.rs:141
+msgid "Manage exportable applications"
+msgstr "내보낼 수 있는 애플리케이션 관리"
+
+#: src/widgets/container_overview.rs:150
+msgid "Install Package"
+msgstr "패키지 설치"
+
+#: src/widgets/container_overview.rs:152
+msgid "Install packages into container"
+msgstr "컨테이너에 패키지 설치"
+
+#: src/widgets/container_overview.rs:159
+msgid "Clone Container"
+msgstr "컨테이너 복제"
+
+#: src/widgets/container_overview.rs:161
+msgid "Create a copy of this container"
+msgstr "이 컨테이너의 복사본 생성"
+
+#: src/widgets/container_overview.rs:168
+msgid "Danger Zone"
+msgstr "위험 구역"
+
+#: src/widgets/container_overview.rs:172
+msgid "Delete Container"
+msgstr "컨테이너 삭제"
+
+#: src/widgets/container_overview.rs:174
+msgid "Permanently remove this container and all its data"
+msgstr "이 컨테이너와 모든 데이터를 영구적으로 제거"
+
+#: src/widgets/container_overview.rs:208
+msgid "Copy image URL"
+msgstr "이미지 URL 복사"
+
+#: src/widgets/container_overview.rs:223
+msgid "Image URL copied"
+msgstr "이미지 URL 복사됨"
+
+#: src/widgets/image_row_item.rs:42
+msgid "Image already downloaded"
+msgstr "이미지가 이미 다운로드됨"
+
+#: src/widgets/integrated_terminal.rs:105
+msgid "Copy"
+msgstr "복사"
+
+#: src/widgets/integrated_terminal.rs:106
+msgid "Paste"
+msgstr "붙여넣기"
+
+#: src/widgets/integrated_terminal.rs:115
+msgid "Reload Terminal"
+msgstr "터미널 다시 로드"
+
+#: src/widgets/terminal_combo_row.rs:34
+msgid "Preferred Terminal"
+msgstr "선호하는 터미널"
+
+#: src/widgets/welcome_view.rs:157 src/widgets/welcome_view.rs:207
+msgid "available"
+msgstr "사용 가능"
+
+#: src/widgets/welcome_view.rs:176
+msgid "Not found - Please install Podman or Docker"
+msgstr "찾을 수 없음 - Podman 또는 Docker를 설치하십시오"
+
+#: src/widgets/welcome_view.rs:201
+msgid "Bundled version"
+msgstr "번들 버전"
+
+#: src/widgets/welcome_view.rs:203
+msgid "System version"
+msgstr "시스템 버전"
+
+#: src/widgets/welcome_view.rs:216
+msgid "Not found - Install from system or use bundled version"
+msgstr "찾을 수 없음 - 시스템에서 설치하거나 번들 버전을 사용하십시오"
+
+#: src/widgets/welcome_view.rs:278 src/widgets/welcome_view.rs:279
+#: src/widgets/welcome_view.ui:32 src/widgets/welcome_view.ui:51
+msgid "Checking…"
+msgstr "확인 중…"
+
+#: src/widgets/welcome_view.rs:348
+msgid "Use Bundled Version"
+msgstr "번들 버전 사용"
+
+#: src/widgets/welcome_view.rs:350
+msgid "Download failed"
+msgstr "다운로드 실패"
+
+#: src/widgets/welcome_view.ui:17
+msgid "System Requirements"
+msgstr "시스템 요구 사항"
+
+#: src/widgets/welcome_view.ui:31
+msgid "Container Runtime"
+msgstr "컨테이너 런타임"
+
+#: src/widgets/welcome_view.ui:50
+msgid "Distrobox"
+msgstr "Distrobox"
+
+#: src/widgets/welcome_view.ui:97
+msgid "Refresh"
+msgstr "새로 고침"
+
+#: src/widgets/welcome_view.ui:107 src/widgets/welcome_view.ui:168
+msgid "Continue"
+msgstr "계속"
+
+#: src/widgets/welcome_view.ui:146
+msgid "Preferred terminal"
+msgstr "선호하는 터미널"
+
+#: src/widgets/welcome_view.ui:197
+msgid "Use Bundled Distrobox"
+msgstr "번들 Distrobox 사용"
+
+#: src/widgets/welcome_view.ui:201 src/widgets/window.ui:70
+msgid "Learn More"
+msgstr "자세히 알아보기"
+
+#: src/widgets/window.rs:392
+msgid "Check your terminal settings."
+msgstr "터미널 설정을 확인하십시오."
+
+#: src/widgets/window.rs:409
+msgid "Delete this container?"
+msgstr "이 컨테이너를 삭제하시겠습니까?"
+
+#: src/widgets/window.rs:415
+msgid "will be deleted. This action cannot be undone."
+msgstr "삭제됩니다. 이 작업은 취소할 수 없습니다."
+
+#. Show file chooser and install package using the appropriate command
+#: src/widgets/window.rs:445
+msgid "Select Package"
+msgstr "패키지 선택"
+
+#: src/widgets/window.ui:39 src/widgets/window.ui:80
+msgid "Create Distrobox"
+msgstr "Distrobox 생성"
+
+#: src/widgets/window.ui:47
+msgid "Main Menu"
+msgstr "메인 메뉴"
+
+#: src/widgets/window.ui:59
+msgid "No Distroboxes Found"
+msgstr "Distrobox를 찾을 수 없음"
+
+#: src/widgets/window.ui:60
+msgid "Distrobox lets you run any Linux distribution inside your terminal."
+msgstr "Distrobox를 사용하면 터미널 내에서 모든 Linux 배포판을 실행할 수 있습니다."
+
+#: src/widgets/window.ui:126
+msgid "Container"
+msgstr "컨테이너"
+
+#: src/widgets/window.ui:158
+msgid "Overview"
+msgstr "개요"
+
+#: src/widgets/window.ui:169
+msgid "Terminal"
+msgstr "터미널"
+
+#: src/widgets/window.ui:218
+msgid "_Refresh"
+msgstr "새로 고침(_R)"
+
+#: src/widgets/window.ui:222
+msgid "_Upgrade All"
+msgstr "모두 업그레이드(_U)"
+
+#: src/widgets/window.ui:226
+msgid "_Command Log"
+msgstr "명령 로그(_C)"
+
+#: src/widgets/window.ui:232
+msgid "_Settings"
+msgstr "설정(_S)"
+
+#: src/widgets/window.ui:236
+msgid "_About"
+msgstr "정보(_A)"
+
+#: src/widgets/window.ui:240
+msgid "Discover _Distrobox"
+msgstr "Distrobox 발견(_D)"

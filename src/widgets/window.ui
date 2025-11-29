@@ -57,7 +57,7 @@
                                     <property name="child">
                                       <object class="AdwStatusPage">
                                         <property name="title" translatable="yes">No Distroboxes Found</property>
-                                        <property name="description">Distrobox lets you run any Linux distribution inside your terminal.</property>
+                                        <property name="description" translatable="yes">Distrobox lets you run any Linux distribution inside your terminal.</property>
                                         <property name="child">
                                           <object class="GtkBox">
                                             <property name="orientation">vertical</property>
@@ -155,7 +155,7 @@
                                         <child>
                                           <object class="AdwViewStackPage">
                                             <property name="name">overview</property>
-                                            <property name="title">Overview</property>
+                                            <property name="title" translatable="yes">Overview</property>
                                             <property name="icon-name">container-symbolic</property>
                                             <property name="child">
                                               <object class="AdwBin" id="overview_bin">
@@ -166,7 +166,7 @@
                                         <child>
                                           <object class="AdwViewStackPage">
                                             <property name="name">terminal</property>
-                                            <property name="title">Terminal</property>
+                                            <property name="title" translatable="yes">Terminal</property>
                                             <property name="icon-name">terminal-symbolic</property>
                                             <property name="child">
                                               <object class="AdwBin" id="terminal_bin">

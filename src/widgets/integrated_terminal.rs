@@ -6,6 +6,7 @@ use gtk::{
 };
 use vte4::prelude::*;
 
+use crate::i18n::gettext;
 use crate::{fakers::Command, models::Container};
 
 mod imp {
@@ -101,8 +102,8 @@ impl IntegratedTerminal {
 
         // Create context menu
         let menu_model = gio::Menu::new();
-        menu_model.append(Some("Copy"), Some("terminal.copy"));
-        menu_model.append(Some("Paste"), Some("terminal.paste"));
+        menu_model.append(Some(&gettext("Copy")), Some("terminal.copy"));
+        menu_model.append(Some(&gettext("Paste")), Some("terminal.paste"));
 
         terminal.set_context_menu_model(Some(&menu_model));
 
@@ -111,7 +112,7 @@ impl IntegratedTerminal {
         terminal_overlay.set_child(Some(terminal));
 
         reload_button.set_icon_name("view-refresh-symbolic");
-        reload_button.set_tooltip_text(Some("Reload Terminal"));
+        reload_button.set_tooltip_text(Some(&gettext("Reload Terminal")));
         reload_button.add_css_class("circular");
         reload_button.add_css_class("suggested-action");
         reload_button.set_halign(gtk::Align::Center);

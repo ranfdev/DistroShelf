@@ -4,6 +4,7 @@ use gtk::glib;
 use gtk::glib::clone;
 
 use crate::gtk_utils::reaction;
+use crate::i18n::gettext;
 use crate::models::{DistroboxTask, RootStore};
 
 use gtk::glib::{Properties, derived_properties};
@@ -36,7 +37,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
-            obj.set_title("Running Tasks");
+            obj.set_title(&gettext("Running Tasks"));
             obj.set_content_width(360);
             obj.set_content_height(640);
 
@@ -52,9 +53,9 @@ mod imp {
             self.stack
                 .set_transition_type(gtk::StackTransitionType::Crossfade);
 
-            self.status_page.set_title("No Running Tasks");
+            self.status_page.set_title(&gettext("No Running Tasks"));
             self.status_page.set_description(Some(
-                "Tasks such as starting, stopping and upgrading will appear here.",
+                &gettext("Tasks such as starting, stopping and upgrading will appear here."),
             ));
             self.stack.add_named(&self.status_page, Some("empty"));
             self.stack.set_visible_child_name("empty");
@@ -82,7 +83,7 @@ mod imp {
             self.list_page_content.set_margin_end(12);
             self.list_page_content.append(&self.list_box);
 
-            let clear_btn = gtk::Button::with_label("Clear Ended Tasks");
+            let clear_btn = gtk::Button::with_label(&gettext("Clear Ended Tasks"));
             clear_btn.set_valign(gtk::Align::End);
             clear_btn.connect_clicked(clone!(
                 #[weak(rename_to=this)]
@@ -282,7 +283,7 @@ impl TaskManagerDialog {
         button_row.set_hexpand(true);
         button_row.set_homogeneous(true);
 
-        let stop_btn = gtk::Button::with_label("Stop");
+        let stop_btn = gtk::Button::with_label(&gettext("Stop"));
         stop_btn.connect_clicked(clone!(
             #[weak]
             task,

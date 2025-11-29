@@ -4,6 +4,7 @@ use glib::Properties;
 use gtk::glib;
 use std::cell::RefCell;
 
+use crate::i18n::gettext;
 use crate::{models::known_distro_by_image, widgets::DistroIcon};
 
 mod imp {
@@ -38,7 +39,7 @@ mod imp {
                 .set_icon_name(Some("drive-harddisk-symbolic"));
             self.downloaded_icon.set_visible(false);
             self.downloaded_icon
-                .set_tooltip_text(Some("Image already downloaded"));
+                .set_tooltip_text(Some(&gettext("Image already downloaded")));
 
             let obj = self.obj();
             obj.add_css_class("distro-row-item");

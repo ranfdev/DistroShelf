@@ -1,4 +1,5 @@
 use crate::fakers::CommandRunnerEvent;
+use crate::i18n::gettext;
 use crate::models::RootStore;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
@@ -31,7 +32,7 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
 
-            obj.set_title("Command Log");
+            obj.set_title(&gettext("Command Log"));
             obj.set_content_width(800);
             obj.set_content_height(600);
 
@@ -40,7 +41,7 @@ mod imp {
 
             // Create header bar
             let header_bar = adw::HeaderBar::new();
-            header_bar.set_title_widget(Some(&adw::WindowTitle::new("Command Log", "")));
+            header_bar.set_title_widget(Some(&adw::WindowTitle::new(&gettext("Command Log"), "")));
             toolbar_view.add_top_bar(&header_bar);
 
             // Create main content
@@ -57,10 +58,9 @@ mod imp {
             content_box.set_margin_top(12);
             content_box.set_margin_bottom(12);
 
-            let description = gtk::Label::new(Some(
-                "Executing a single task (eg: listing applications) may require multiple chains of commands. \
-                For debugging purposes, this log shows all commands executed by the application.",
-            ));
+            let description = gtk::Label::new(Some(&gettext(
+                "Executing a single task (eg: listing applications) may require multiple chains of commands. For debugging purposes, this log shows all commands executed by the application.",
+            )));
             description.set_wrap(true);
             description.set_xalign(0.0);
             description.add_css_class("dim-label");
@@ -190,7 +190,7 @@ impl CommandLogDialog {
                 if let Some(display) = gdk::Display::default() {
                     let clipboard = display.clipboard();
                     clipboard.set_text(&command_owned);
-                    toast_overlay.add_toast(adw::Toast::new("Command copied to clipboard"));
+                    toast_overlay.add_toast(adw::Toast::new(&gettext("Command copied to clipboard")));
                 }
             }
         ));

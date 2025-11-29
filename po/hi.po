@@ -1,0 +1,652 @@
+# Hindi translations for distroshelf package.
+# Copyright (C) 2025 THE distroshelf'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the distroshelf package.
+# Automatically generated, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: distroshelf\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-29 18:14+0100\n"
+"PO-Revision-Date: 2025-11-29 18:14+0100\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: hi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:2
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/widgets/window.ui:30
+msgid "DistroShelf"
+msgstr "DistroShelf"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:8
+msgid "GTK;"
+msgstr "GTK;"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:6
+msgid "Selected terminal emulator"
+msgstr "चयनित टर्मिनल एमुलेटर"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:7
+msgid "The terminal emulator selected by the user."
+msgstr "उपयोगकर्ता द्वारा चयनित टर्मिनल एमुलेटर।"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:11
+msgid "Window width"
+msgstr "विंडो की चौड़ाई"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:12
+msgid "The width of the main window when last closed."
+msgstr "पिछली बार बंद होने पर मुख्य विंडो की चौड़ाई।"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:16
+msgid "Window height"
+msgstr "विंडो की ऊंचाई"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:17
+msgid "The height of the main window when last closed."
+msgstr "पिछली बार बंद होने पर मुख्य विंडो की ऊंचाई।"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:21
+msgid "Distrobox executable source"
+msgstr "Distrobox निष्पादन योग्य स्रोत"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:22
+msgid "The source of the distrobox executable. Can be 'host' or 'bundled'."
+msgstr "distrobox निष्पादन योग्य का स्रोत। 'host' या 'bundled' हो सकता है।"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:8
+msgid "Graphical interface for managing Distrobox containers"
+msgstr "Distrobox कंटेनरों के प्रबंधन के लिए ग्राफिकल इंटरफ़ेस"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:10
+msgid ""
+"DistroShelf is a graphical interface for managing Distrobox containers on "
+"Linux. It provides an easy way to:"
+msgstr ""
+"DistroShelf लिनक्स पर Distrobox कंटेनरों के प्रबंधन के लिए एक ग्राफिकल इंटरफ़ेस है। यह "
+"निम्नलिखित के लिए एक आसान तरीका प्रदान करता है:"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:15
+msgid "Create and manage containers"
+msgstr "कंटेनर बनाएं और प्रबंधित करें"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:16
+msgid "View container status and details"
+msgstr "कंटेनर की स्थिति और विवरण देखें"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:17
+msgid "Install packages"
+msgstr "पैकेज स्थापित करें"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:18
+msgid "Manage exported applications"
+msgstr "निर्यात किए गए अनुप्रयोगों को प्रबंधित करें"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:19
+msgid "Open terminal sessions"
+msgstr "टर्मिनल सत्र खोलें"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:20
+msgid "Upgrade containers"
+msgstr "कंटेनरों को अपग्रेड करें"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:21
+msgid "Clone and delete containers"
+msgstr "कंटेनरों को क्लोन करें और हटाएं"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:26
+msgid "Lorenzo Miglietta"
+msgstr "Lorenzo Miglietta"
+
+#: data/gtk/help-overlay.ui:11
+msgctxt "shortcut window"
+msgid "General"
+msgstr "सामान्य"
+
+#: data/gtk/help-overlay.ui:14
+msgctxt "shortcut window"
+msgid "Show Shortcuts"
+msgstr "शॉर्टकट दिखाएं"
+
+#: data/gtk/help-overlay.ui:20
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "बाहर निकलें"
+
+#: src/dialogs/command_log_dialog.rs:35 src/dialogs/command_log_dialog.rs:44
+msgid "Command Log"
+msgstr "कमांड लॉग"
+
+#: src/dialogs/command_log_dialog.rs:62
+msgid ""
+"Executing a single task (eg: listing applications) may require multiple "
+"chains of commands. For debugging purposes, this log shows all commands "
+"executed by the application."
+msgstr ""
+"एक एकल कार्य (जैसे: अनुप्रयोगों को सूचीबद्ध करना) को निष्पादित करने के लिए कई "
+"कमांड श्रृंखलाओं की आवश्यकता हो सकती है। डिबगिंग उद्देश्यों के लिए, यह लॉग एप्लिकेशन द्वारा "
+"निष्पादित सभी कमांड दिखाता है।"
+
+#: src/dialogs/create_distrobox_dialog.rs:98
+msgid "Create a Distrobox"
+msgstr "एक Distrobox बनाएं"
+
+#: src/dialogs/create_distrobox_dialog.rs:125
+msgid "Cloning"
+msgstr "क्लोनिंग"
+
+#: src/dialogs/create_distrobox_dialog.rs:136
+msgid "Cloning the container requires stopping it first"
+msgstr "कंटेनर को क्लोन करने के लिए पहले इसे रोकना आवश्यक है"
+
+#: src/dialogs/create_distrobox_dialog.rs:143
+msgid "Settings"
+msgstr "सेटिंग्स"
+
+#: src/dialogs/create_distrobox_dialog.rs:144
+msgid "Name"
+msgstr "नाम"
+
+#: src/dialogs/create_distrobox_dialog.rs:146
+msgid "Base Image"
+msgstr "आधार छवि"
+
+#: src/dialogs/create_distrobox_dialog.rs:147
+msgid "Select an image..."
+msgstr "एक छवि चुनें..."
+
+#: src/dialogs/create_distrobox_dialog.rs:164
+msgid "Select Home Directory"
+msgstr "होम डायरेक्टरी चुनें"
+
+#: src/dialogs/create_distrobox_dialog.rs:170
+msgid "Custom Home Directory"
+msgstr "कस्टम होम डायरेक्टरी"
+
+#: src/dialogs/create_distrobox_dialog.rs:187
+msgid "NVIDIA Support"
+msgstr "NVIDIA समर्थन"
+
+#: src/dialogs/create_distrobox_dialog.rs:189
+msgid "Init process"
+msgstr "Init प्रक्रिया"
+
+#. Add create button for assemble file
+#. Add create button for URL
+#: src/dialogs/create_distrobox_dialog.rs:201
+#: src/dialogs/create_distrobox_dialog.rs:254
+#: src/dialogs/create_distrobox_dialog.rs:299
+msgid "Create"
+msgstr "बनाएं"
+
+#: src/dialogs/create_distrobox_dialog.rs:239
+msgid "Assemble from File"
+msgstr "फ़ाइल से असेंबल करें"
+
+#: src/dialogs/create_distrobox_dialog.rs:240
+msgid "Create a container from an assemble file"
+msgstr "एक असेंबल फ़ाइल से एक कंटेनर बनाएं"
+
+#: src/dialogs/create_distrobox_dialog.rs:244
+msgid "Select Assemble File"
+msgstr "असेंबल फ़ाइल चुनें"
+
+#: src/dialogs/create_distrobox_dialog.rs:288
+msgid "From URL"
+msgstr "URL से"
+
+#: src/dialogs/create_distrobox_dialog.rs:289
+msgid "Create a container from a remote URL"
+msgstr "एक दूरस्थ URL से एक कंटेनर बनाएं"
+
+#: src/dialogs/create_distrobox_dialog.rs:292
+msgid "URL"
+msgstr "URL"
+
+#: src/dialogs/create_distrobox_dialog.rs:428
+msgid "No file selected"
+msgstr "कोई फ़ाइल चयनित नहीं"
+
+#: src/dialogs/create_distrobox_dialog.rs:494
+msgid "Search image..."
+msgstr "छवि खोजें..."
+
+#: src/dialogs/create_distrobox_dialog.rs:554
+msgid "Custom"
+msgstr "कस्टम"
+
+#: src/dialogs/create_distrobox_dialog.rs:714
+msgid "Volumes"
+msgstr "वॉल्यूम"
+
+#: src/dialogs/create_distrobox_dialog.rs:716
+msgid "Specify volumes in the format 'host_path:container_path'"
+msgstr "'host_path:container_path' प्रारूप में वॉल्यूम निर्दिष्ट करें"
+
+#: src/dialogs/create_distrobox_dialog.rs:719
+msgid "Add Volume"
+msgstr "वॉल्यूम जोड़ें"
+
+#: src/dialogs/create_distrobox_dialog.rs:727
+msgid "Volume"
+msgstr "वॉल्यूम"
+
+#: src/dialogs/create_distrobox_dialog.rs:730
+msgid "Remove Volume"
+msgstr "वॉल्यूम हटाएं"
+
+#: src/dialogs/exportable_apps_dialog.rs:43
+msgid "Manage Exports"
+msgstr "निर्यात प्रबंधित करें"
+
+#: src/dialogs/exportable_apps_dialog.rs:63
+msgid "Loading Exports"
+msgstr "निर्यात लोड हो रहा है"
+
+#: src/dialogs/exportable_apps_dialog.rs:65
+msgid ""
+"Please wait while we load the list of exportable apps and binaries. This may "
+"take some time if the distrobox wasn't running"
+msgstr ""
+"कृपया प्रतीक्षा करें जब तक हम निर्यात योग्य ऐप्स और बायनेरिज़ की सूची लोड करते हैं। यदि "
+"distrobox नहीं चल रहा था तो इसमें कुछ समय लग सकता है"
+
+#: src/dialogs/exportable_apps_dialog.rs:76
+msgid "Exportable Apps"
+msgstr "निर्यात योग्य ऐप्स"
+
+#: src/dialogs/exportable_apps_dialog.rs:78
+#: src/dialogs/exportable_apps_dialog.rs:242
+msgid "No exportable apps found"
+msgstr "कोई निर्यात योग्य ऐप नहीं मिला"
+
+#. Setup binary export input
+#: src/dialogs/exportable_apps_dialog.rs:82
+msgid "Export New Binary"
+msgstr "नया बाइनरी निर्यात करें"
+
+#: src/dialogs/exportable_apps_dialog.rs:95
+msgid "Exported Binaries"
+msgstr "निर्यातित बायनेरिज़"
+
+#: src/dialogs/exportable_apps_dialog.rs:97
+#: src/dialogs/exportable_apps_dialog.rs:270
+msgid "No exported binaries"
+msgstr "कोई निर्यातित बायनेरिज़ नहीं"
+
+#: src/dialogs/exportable_apps_dialog.rs:318
+msgid "Binary Already Exists on Host"
+msgstr "बाइनरी होस्ट पर पहले से मौजूद है"
+
+#: src/dialogs/exportable_apps_dialog.rs:321
+msgid "The binary already exists on your host system. Do you want to continue?"
+msgstr "बाइनरी आपके होस्ट सिस्टम पर पहले से मौजूद है। क्या आप जारी रखना चाहते हैं?"
+
+#: src/dialogs/exportable_apps_dialog.rs:324
+#: src/dialogs/preferences_dialog.rs:274 src/dialogs/preferences_dialog.rs:369
+#: src/widgets/window.rs:420
+msgid "Cancel"
+msgstr "रद्द करें"
+
+#: src/dialogs/exportable_apps_dialog.rs:325
+msgid "Export Anyway"
+msgstr "फिर भी निर्यात करें"
+
+#: src/dialogs/preferences_dialog.rs:43 src/widgets/window.rs:393
+msgid "Preferences"
+msgstr "प्राथमिकताएं"
+
+#: src/dialogs/preferences_dialog.rs:49
+msgid "Terminal Settings"
+msgstr "टर्मिनल सेटिंग्स"
+
+#. Initialize delete button
+#: src/dialogs/preferences_dialog.rs:57 src/dialogs/preferences_dialog.rs:275
+#: src/widgets/window.rs:421
+msgid "Delete"
+msgstr "हटाएं"
+
+#. Initialize add terminal button
+#: src/dialogs/preferences_dialog.rs:96
+msgid "Add Custom"
+msgstr "कस्टम जोड़ें"
+
+#: src/dialogs/preferences_dialog.rs:123
+msgid "Distrobox Settings"
+msgstr "Distrobox सेटिंग्स"
+
+#: src/dialogs/preferences_dialog.rs:126
+msgid "Distrobox Source"
+msgstr "Distrobox स्रोत"
+
+#: src/dialogs/preferences_dialog.rs:127
+msgid "System (host)"
+msgstr "सिस्टम (होस्ट)"
+
+#: src/dialogs/preferences_dialog.rs:127
+msgid "Bundled Version"
+msgstr "बंडल संस्करण"
+
+#: src/dialogs/preferences_dialog.rs:154
+msgid "Distrobox Version"
+msgstr "Distrobox संस्करण"
+
+#: src/dialogs/preferences_dialog.rs:172
+msgid "Not available"
+msgstr "उपलब्ध नहीं"
+
+#: src/dialogs/preferences_dialog.rs:187
+msgid "Re-download Bundled"
+msgstr "बंडल को फिर से डाउनलोड करें"
+
+#: src/dialogs/preferences_dialog.rs:269
+msgid "Delete this terminal?"
+msgstr "इस टर्मिनल को हटाएं?"
+
+#: src/dialogs/preferences_dialog.rs:270
+msgid ""
+"This terminal will be removed from the terminal list. This action cannot be "
+"undone."
+msgstr ""
+"यह टर्मिनल टर्मिनल सूची से हटा दिया जाएगा। यह क्रिया पूर्ववत नहीं की जा सकती।"
+
+#: src/dialogs/preferences_dialog.rs:308
+msgid "Terminal removed successfully"
+msgstr "टर्मिनल सफलतापूर्वक हटा दिया गया"
+
+#: src/dialogs/preferences_dialog.rs:313
+msgid "Failed to delete terminal"
+msgstr "टर्मिनल हटाने में विफल"
+
+#: src/dialogs/preferences_dialog.rs:326
+msgid "Add Custom Terminal"
+msgstr "कस्टम टर्मिनल जोड़ें"
+
+#. Name entry
+#: src/dialogs/preferences_dialog.rs:340
+msgid "Terminal Name"
+msgstr "टर्मिनल नाम"
+
+#. Program entry
+#: src/dialogs/preferences_dialog.rs:343
+msgid "Program Path"
+msgstr "प्रोग्राम पथ"
+
+#. Separator argument entry
+#: src/dialogs/preferences_dialog.rs:346
+msgid "Separator Argument"
+msgstr "विभाजक तर्क"
+
+#: src/dialogs/preferences_dialog.rs:355
+msgid ""
+"The separator argument is used to pass commands to the terminal.\n"
+"Examples: '--' for GNOME Terminal, '-e' for xterm"
+msgstr ""
+"विभाजक तर्क का उपयोग टर्मिनल को कमांड पास करने के लिए किया जाता है।\n"
+"उदाहरण: GNOME टर्मिनल के लिए '--', xterm के लिए '-e'"
+
+#: src/dialogs/preferences_dialog.rs:372
+msgid "Save"
+msgstr "सहेजें"
+
+#: src/dialogs/preferences_dialog.rs:410
+msgid "All fields are required"
+msgstr "सभी फ़ील्ड आवश्यक हैं"
+
+#. Show success toast
+#: src/dialogs/preferences_dialog.rs:429
+msgid "Custom terminal added successfully"
+msgstr "कस्टम टर्मिनल सफलतापूर्वक जोड़ा गया"
+
+#: src/dialogs/preferences_dialog.rs:443
+msgid "Failed to save terminal"
+msgstr "टर्मिनल सहेजने में विफल"
+
+#: src/dialogs/task_manager_dialog.rs:40
+msgid "Running Tasks"
+msgstr "चल रहे कार्य"
+
+#: src/dialogs/task_manager_dialog.rs:56
+msgid "No Running Tasks"
+msgstr "कोई चल रहा कार्य नहीं"
+
+#: src/dialogs/task_manager_dialog.rs:58
+msgid "Tasks such as starting, stopping and upgrading will appear here."
+msgstr "शुरू करने, रोकने और अपग्रेड करने जैसे कार्य यहां दिखाई देंगे।"
+
+#: src/dialogs/task_manager_dialog.rs:86
+msgid "Clear Ended Tasks"
+msgstr "समाप्त कार्यों को साफ़ करें"
+
+#: src/dialogs/task_manager_dialog.rs:286 src/widgets/container_overview.rs:84
+msgid "Stop"
+msgstr "रोकें"
+
+#: src/widgets/container_overview.rs:74
+msgid "Container Status"
+msgstr "कंटेनर स्थिति"
+
+#: src/widgets/container_overview.rs:78 src/widgets/welcome_view.ui:28
+msgid "Status"
+msgstr "स्थिति"
+
+#: src/widgets/container_overview.rs:89
+msgid "Open Terminal"
+msgstr "टर्मिनल खोलें"
+
+#: src/widgets/container_overview.rs:98
+msgid "Resources"
+msgstr "संसाधन"
+
+#: src/widgets/container_overview.rs:128
+msgid "Quick Actions"
+msgstr "त्वरित क्रियाएं"
+
+#: src/widgets/container_overview.rs:131
+msgid "Upgrade Container"
+msgstr "कंटेनर अपग्रेड करें"
+
+#: src/widgets/container_overview.rs:133
+msgid "Update all packages"
+msgstr "सभी पैकेज अपडेट करें"
+
+#: src/widgets/container_overview.rs:139
+msgid "Applications"
+msgstr "अनुप्रयोग"
+
+#: src/widgets/container_overview.rs:141
+msgid "Manage exportable applications"
+msgstr "निर्यात योग्य अनुप्रयोगों को प्रबंधित करें"
+
+#: src/widgets/container_overview.rs:150
+msgid "Install Package"
+msgstr "पैकेज स्थापित करें"
+
+#: src/widgets/container_overview.rs:152
+msgid "Install packages into container"
+msgstr "कंटेनर में पैकेज स्थापित करें"
+
+#: src/widgets/container_overview.rs:159
+msgid "Clone Container"
+msgstr "कंटेनर क्लोन करें"
+
+#: src/widgets/container_overview.rs:161
+msgid "Create a copy of this container"
+msgstr "इस कंटेनर की एक प्रति बनाएं"
+
+#: src/widgets/container_overview.rs:168
+msgid "Danger Zone"
+msgstr "खतरा क्षेत्र"
+
+#: src/widgets/container_overview.rs:172
+msgid "Delete Container"
+msgstr "कंटेनर हटाएं"
+
+#: src/widgets/container_overview.rs:174
+msgid "Permanently remove this container and all its data"
+msgstr "इस कंटेनर और इसके सभी डेटा को स्थायी रूप से हटा दें"
+
+#: src/widgets/container_overview.rs:208
+msgid "Copy image URL"
+msgstr "छवि URL कॉपी करें"
+
+#: src/widgets/container_overview.rs:223
+msgid "Image URL copied"
+msgstr "छवि URL कॉपी किया गया"
+
+#: src/widgets/image_row_item.rs:42
+msgid "Image already downloaded"
+msgstr "छवि पहले ही डाउनलोड हो चुकी है"
+
+#: src/widgets/integrated_terminal.rs:105
+msgid "Copy"
+msgstr "कॉपी"
+
+#: src/widgets/integrated_terminal.rs:106
+msgid "Paste"
+msgstr "पेस्ट"
+
+#: src/widgets/integrated_terminal.rs:115
+msgid "Reload Terminal"
+msgstr "टर्मिनल पुनः लोड करें"
+
+#: src/widgets/terminal_combo_row.rs:34
+msgid "Preferred Terminal"
+msgstr "पसंदीदा टर्मिनल"
+
+#: src/widgets/welcome_view.rs:157 src/widgets/welcome_view.rs:207
+msgid "available"
+msgstr "उपलब्ध"
+
+#: src/widgets/welcome_view.rs:176
+msgid "Not found - Please install Podman or Docker"
+msgstr "नहीं मिला - कृपया Podman या Docker स्थापित करें"
+
+#: src/widgets/welcome_view.rs:201
+msgid "Bundled version"
+msgstr "बंडल संस्करण"
+
+#: src/widgets/welcome_view.rs:203
+msgid "System version"
+msgstr "सिस्टम संस्करण"
+
+#: src/widgets/welcome_view.rs:216
+msgid "Not found - Install from system or use bundled version"
+msgstr "नहीं मिला - सिस्टम से स्थापित करें या बंडल संस्करण का उपयोग करें"
+
+#: src/widgets/welcome_view.rs:278 src/widgets/welcome_view.rs:279
+#: src/widgets/welcome_view.ui:32 src/widgets/welcome_view.ui:51
+msgid "Checking…"
+msgstr "जाँच हो रही है..."
+
+#: src/widgets/welcome_view.rs:348
+msgid "Use Bundled Version"
+msgstr "बंडल संस्करण का उपयोग करें"
+
+#: src/widgets/welcome_view.rs:350
+msgid "Download failed"
+msgstr "डाउनलोड विफल"
+
+#: src/widgets/welcome_view.ui:17
+msgid "System Requirements"
+msgstr "सिस्टम आवश्यकताएँ"
+
+#: src/widgets/welcome_view.ui:31
+msgid "Container Runtime"
+msgstr "कंटेनर रनटाइम"
+
+#: src/widgets/welcome_view.ui:50
+msgid "Distrobox"
+msgstr "Distrobox"
+
+#: src/widgets/welcome_view.ui:97
+msgid "Refresh"
+msgstr "ताज़ा करें"
+
+#: src/widgets/welcome_view.ui:107 src/widgets/welcome_view.ui:168
+msgid "Continue"
+msgstr "जारी रखें"
+
+#: src/widgets/welcome_view.ui:146
+msgid "Preferred terminal"
+msgstr "पसंदीदा टर्मिनल"
+
+#: src/widgets/welcome_view.ui:197
+msgid "Use Bundled Distrobox"
+msgstr "बंडल Distrobox का उपयोग करें"
+
+#: src/widgets/welcome_view.ui:201 src/widgets/window.ui:70
+msgid "Learn More"
+msgstr "और जानें"
+
+#: src/widgets/window.rs:392
+msgid "Check your terminal settings."
+msgstr "अपनी टर्मिनल सेटिंग्स जांचें।"
+
+#: src/widgets/window.rs:409
+msgid "Delete this container?"
+msgstr "इस कंटेनर को हटाएं?"
+
+#: src/widgets/window.rs:415
+msgid "will be deleted. This action cannot be undone."
+msgstr "हटा दिया जाएगा। यह क्रिया पूर्ववत नहीं की जा सकती।"
+
+#. Show file chooser and install package using the appropriate command
+#: src/widgets/window.rs:445
+msgid "Select Package"
+msgstr "पैकेज चुनें"
+
+#: src/widgets/window.ui:39 src/widgets/window.ui:80
+msgid "Create Distrobox"
+msgstr "Distrobox बनाएं"
+
+#: src/widgets/window.ui:47
+msgid "Main Menu"
+msgstr "मुख्य मेनू"
+
+#: src/widgets/window.ui:59
+msgid "No Distroboxes Found"
+msgstr "कोई Distrobox नहीं मिला"
+
+#: src/widgets/window.ui:60
+msgid "Distrobox lets you run any Linux distribution inside your terminal."
+msgstr "Distrobox आपको अपने टर्मिनल के अंदर किसी भी लिनक्स वितरण को चलाने देता है।"
+
+#: src/widgets/window.ui:126
+msgid "Container"
+msgstr "कंटेनर"
+
+#: src/widgets/window.ui:158
+msgid "Overview"
+msgstr "अवलोकन"
+
+#: src/widgets/window.ui:169
+msgid "Terminal"
+msgstr "टर्मिनल"
+
+#: src/widgets/window.ui:218
+msgid "_Refresh"
+msgstr "ताज़ा करें (_R)"
+
+#: src/widgets/window.ui:222
+msgid "_Upgrade All"
+msgstr "सभी अपग्रेड करें (_U)"
+
+#: src/widgets/window.ui:226
+msgid "_Command Log"
+msgstr "कमांड लॉग (_C)"
+
+#: src/widgets/window.ui:232
+msgid "_Settings"
+msgstr "सेटिंग्स (_S)"
+
+#: src/widgets/window.ui:236
+msgid "_About"
+msgstr ""
+
+#: src/widgets/window.ui:240
+msgid "Discover _Distrobox"
+msgstr ""

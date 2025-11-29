@@ -22,6 +22,7 @@ use crate::dialogs::{
     CommandLogDialog, CreateDistroboxDialog, ExportableAppsDialog, PreferencesDialog,
     TaskManagerDialog,
 };
+use crate::i18n::gettext;
 use crate::models::{Container, DialogParams, DialogType};
 use crate::root_store::RootStore;
 use crate::widgets::{SidebarRow, TasksButton};
@@ -388,8 +389,8 @@ impl DistroShelfWindow {
         let this = self.clone();
         task.connect_status_notify(move |task| {
             if let Some(_) = &*task.error() {
-                let toast = adw::Toast::new("Check your terminal settings.");
-                toast.set_button_label(Some("Preferences"));
+                let toast = adw::Toast::new(&gettext("Check your terminal settings."));
+                toast.set_button_label(Some(&gettext("Preferences")));
                 toast.connect_button_clicked(clone!(
                     #[weak]
                     this,
@@ -405,18 +406,19 @@ impl DistroShelfWindow {
 
     fn build_delete_dialog(&self) {
         let dialog = adw::AlertDialog::builder()
-            .heading("Delete this container?")
+            .heading(gettext("Delete this container?"))
             .body(format!(
-                "{} will be deleted.\nThis action cannot be undone.",
+                "{} {}",
                 self.root_store()
                     .selected_container_name()
-                    .unwrap_or_default()
+                    .unwrap_or_default(),
+                gettext("will be deleted. This action cannot be undone.")
             ))
             .close_response("cancel")
             .default_response("cancel")
             .build();
-        dialog.add_response("cancel", "Cancel");
-        dialog.add_response("delete", "Delete");
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("delete", &gettext("Delete"));
 
         dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
         dialog.connect_response(
@@ -440,7 +442,7 @@ impl DistroShelfWindow {
     fn build_install_package_dialog(&self) {
         if let Some(container) = self.root_store().selected_container() {
             // Show file chooser and install package using the appropriate command
-            let file_dialog = gtk::FileDialog::builder().title("Select Package").build();
+            let file_dialog = gtk::FileDialog::builder().title(gettext("Select Package")).build();
 
             file_dialog.open(
                 Some(self),

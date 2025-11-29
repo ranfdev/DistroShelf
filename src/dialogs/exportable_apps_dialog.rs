@@ -6,6 +6,7 @@ use gtk::{gio, glib, pango};
 use crate::backends::{ExportableApp, ExportableBinary};
 use crate::fakers::Command;
 use crate::gtk_utils::{TypedListStore, reaction};
+use crate::i18n::gettext;
 use crate::models::Container;
 
 use std::cell::RefCell;
@@ -39,7 +40,7 @@ mod imp {
     impl ObjectImpl for ExportableAppsDialog {
         fn constructed(&self) {
             let obj = self.obj();
-            obj.set_title("Manage Exports");
+            obj.set_title(&gettext("Manage Exports"));
             obj.set_content_width(360);
             obj.set_content_height(640);
 
@@ -59,9 +60,9 @@ mod imp {
             self.stack.add_named(&self.error_label, Some("error"));
 
             let loading_page = adw::StatusPage::new();
-            loading_page.set_title("Loading Exports");
+            loading_page.set_title(&gettext("Loading Exports"));
             loading_page.set_description(Some(
-                "Please wait while we load the list of exportable apps and binaries. This may take some time if the distrobox wasn't running",
+                &gettext("Please wait while we load the list of exportable apps and binaries. This may take some time if the distrobox wasn't running"),
             ));
             loading_page.set_child(Some(&adw::Spinner::new()));
             self.stack.add_named(&loading_page, Some("loading"));
@@ -72,13 +73,13 @@ mod imp {
             self.export_apps_group.set_margin_end(12);
             self.export_apps_group.set_margin_top(12);
             self.export_apps_group.set_margin_bottom(12);
-            self.export_apps_group.set_title("Exportable Apps");
+            self.export_apps_group.set_title(&gettext("Exportable Apps"));
             self.export_apps_group
-                .set_description(Some("No exportable apps found"));
+                .set_description(Some(&gettext("No exportable apps found")));
             self.export_apps_group.add(&self.list_box);
 
             // Setup binary export input
-            self.binary_name_entry.set_title("Export New Binary");
+            self.binary_name_entry.set_title(&gettext("Export New Binary"));
             self.binary_name_entry.set_show_apply_button(true);
             self.binary_name_entry.add_css_class("add-binary-entry-row");
 
@@ -91,9 +92,9 @@ mod imp {
             self.export_binaries_group.set_margin_end(12);
             self.export_binaries_group.set_margin_top(0);
             self.export_binaries_group.set_margin_bottom(12);
-            self.export_binaries_group.set_title("Exported Binaries");
+            self.export_binaries_group.set_title(&gettext("Exported Binaries"));
             self.export_binaries_group
-                .set_description(Some("No exported binaries"));
+                .set_description(Some(&gettext("No exported binaries")));
             self.export_binaries_group.add(&self.binary_name_entry);
             self.export_binaries_group.add(&self.binaries_list_box);
 
@@ -238,7 +239,7 @@ impl ExportableAppsDialog {
                 this_clone
                     .imp()
                     .export_apps_group
-                    .set_description(Some("No exportable apps found"));
+                    .set_description(Some(&gettext("No exportable apps found")));
             } else {
                 this_clone.imp().export_apps_group.set_description(None);
             }
@@ -266,7 +267,7 @@ impl ExportableAppsDialog {
                 this_clone
                     .imp()
                     .export_binaries_group
-                    .set_description(Some("No exported binaries"));
+                    .set_description(Some(&gettext("No exported binaries")));
             } else {
                 this_clone.imp().export_binaries_group.set_description(None);
             }
@@ -314,14 +315,14 @@ impl ExportableAppsDialog {
                         if exists {
                             // Show confirmation dialog
                             let dialog = adw::AlertDialog::new(
-                                Some("Binary Already Exists on Host"),
+                                Some(&gettext("Binary Already Exists on Host")),
                                 Some(&format!(
-                                    "The binary '{}' already exists on your host system.\n\nDo you want to continue?",
-                                    binary_name_clone
+                                    "{}",
+                                    gettext("The binary already exists on your host system. Do you want to continue?"),
                                 )),
                             );
-                            dialog.add_response("cancel", "Cancel");
-                            dialog.add_response("export", "Export Anyway");
+                            dialog.add_response("cancel", &gettext("Cancel"));
+                            dialog.add_response("export", &gettext("Export Anyway"));
                             dialog.set_response_appearance("export", adw::ResponseAppearance::Destructive);
                             dialog.set_default_response(Some("cancel"));
                             dialog.set_close_response("cancel");
