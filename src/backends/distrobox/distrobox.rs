@@ -683,7 +683,13 @@ impl Distrobox {
         let res: Vec<ExportableApp> = files
             .into_iter()
             .flat_map(|(path, content)| -> Option<ExportableApp> {
-                let entry = parse_desktop_file(&content);
+                let entry = match parse_desktop_file(&content) {
+                    Ok(e) => e,
+                    Err(e) => {
+                        tracing::warn!("Failed to parse desktop file {}: {}", path, e);
+                        return None;
+                    }
+                };
                 let file_name = Path::new(&path)
                     .file_name()
                     .map(|x| x.to_str())
@@ -695,7 +701,7 @@ impl Distrobox {
                 if is_exported {
                     debug!(found_exported = exported_as);
                 }
-                entry.map(|entry| ExportableApp {
+                Some(ExportableApp {
                     desktop_file_path: path,
                     entry,
                     exported: is_exported,

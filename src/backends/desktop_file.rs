@@ -5,7 +5,7 @@ pub struct DesktopEntry {
     pub icon: String,
 }
 
-pub fn parse_desktop_file(content: &str) -> Option<DesktopEntry> {
+pub fn parse_desktop_file(content: &str) -> anyhow::Result<DesktopEntry> {
     let mut name = None;
     let mut exec = None;
     let mut icon = None;
@@ -38,15 +38,14 @@ pub fn parse_desktop_file(content: &str) -> Option<DesktopEntry> {
         }
     }
 
-    if name.is_none() && exec.is_none() && icon.is_none() {
-        return None;
-    }
+    let name = name.ok_or_else(|| anyhow::anyhow!("Missing Name key"))?;
+    let exec = exec.ok_or_else(|| anyhow::anyhow!("Missing Exec key"))?;
+    let icon = icon.unwrap_or_default();
 
-    Some(DesktopEntry {
-        // TODO: add explicit error handling instead of defaulting to ""
-        name: name.unwrap_or_default(),
-        icon: icon.unwrap_or_default(),
-        exec: exec.unwrap_or_default(),
+    Ok(DesktopEntry {
+        name,
+        icon,
+        exec,
     })
 }
 
@@ -77,18 +76,17 @@ Exec=/usr/bin/firefox %u
 Icon=firefox
         "#;
         let result = parse_desktop_file(content);
-        assert!(result.is_none());
+        assert!(result.is_err());
     }
 
     #[test]
-    fn test_missing_some_fields() {
+    fn test_missing_required_fields() {
         let content = r#"
 [Desktop Entry]
 Icon=firefox
         "#;
-        let result = parse_desktop_file(content).unwrap();
-        assert_eq!(result.name, "");
-        assert_eq!(result.icon, "firefox");
+        let result = parse_desktop_file(content);
+        assert!(result.is_err());
     }
 
     #[test]
