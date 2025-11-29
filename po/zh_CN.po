@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: distroshelf\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-07-11 16:33+0800\n"
+"POT-Creation-Date: 2025-11-29 18:14+0100\n"
 "PO-Revision-Date: 2025-07-11 16:33+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -16,14 +16,46 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: data/com.ranfdev.DistroShelf.desktop.in:3
-#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/window.ui:30
+#: data/com.ranfdev.DistroShelf.desktop.in:2
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/widgets/window.ui:30
 msgid "DistroShelf"
 msgstr "DistroShelf"
 
-#: data/com.ranfdev.DistroShelf.desktop.in:9
+#: data/com.ranfdev.DistroShelf.desktop.in:8
 msgid "GTK;"
 msgstr "GTK;"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:6
+msgid "Selected terminal emulator"
+msgstr "选定的终端模拟器"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:7
+msgid "The terminal emulator selected by the user."
+msgstr "用户选定的终端模拟器。"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:11
+msgid "Window width"
+msgstr "窗口宽度"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:12
+msgid "The width of the main window when last closed."
+msgstr "上次关闭时主窗口的宽度。"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:16
+msgid "Window height"
+msgstr "窗口高度"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:17
+msgid "The height of the main window when last closed."
+msgstr "上次关闭时主窗口的高度。"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:21
+msgid "Distrobox executable source"
+msgstr "Distrobox 可执行文件来源"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:22
+msgid "The source of the distrobox executable. Can be 'host' or 'bundled'."
+msgstr "Distrobox 可执行文件的来源。可以是 'host'（主机）或 'bundled'（捆绑）。"
 
 #: data/com.ranfdev.DistroShelf.metainfo.xml.in:8
 msgid "Graphical interface for managing Distrobox containers"
@@ -34,7 +66,8 @@ msgid ""
 "DistroShelf is a graphical interface for managing Distrobox containers on "
 "Linux. It provides an easy way to:"
 msgstr ""
-"DistroShelf 是一个用于在 Linux 上管理 Distrobox 容器的图形界面。它提供了一种简单的方式来："
+"DistroShelf 是一个用于在 Linux 上管理 Distrobox 容器的图形界面。它提供了一种"
+"简单的方式来："
 
 #: data/com.ranfdev.DistroShelf.metainfo.xml.in:15
 msgid "Create and manage containers"
@@ -64,54 +97,555 @@ msgstr "升级容器"
 msgid "Clone and delete containers"
 msgstr "克隆和删除容器"
 
-#: data/com.ranfdev.DistroShelf.gschema.xml:6
-msgid "Selected terminal emulator"
-msgstr "选定的终端模拟器"
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:26
+msgid "Lorenzo Miglietta"
+msgstr "Lorenzo Miglietta"
 
-#: data/com.ranfdev.DistroShelf.gschema.xml:7
-msgid "The terminal emulator selected by the user."
-msgstr "用户选定的终端模拟器。"
+#: data/gtk/help-overlay.ui:11
+msgctxt "shortcut window"
+msgid "General"
+msgstr "常规"
 
-#: src/window.ui:39 src/window.ui:80
-msgid "Create Distrobox"
+#: data/gtk/help-overlay.ui:14
+msgctxt "shortcut window"
+msgid "Show Shortcuts"
+msgstr "显示快捷键"
+
+#: data/gtk/help-overlay.ui:20
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "退出"
+
+#: src/dialogs/command_log_dialog.rs:35 src/dialogs/command_log_dialog.rs:44
+msgid "Command Log"
+msgstr "命令日志"
+
+#: src/dialogs/command_log_dialog.rs:62
+msgid ""
+"Executing a single task (eg: listing applications) may require multiple "
+"chains of commands. For debugging purposes, this log shows all commands "
+"executed by the application."
+msgstr ""
+"执行单个任务（例如：列出应用程序）可能需要多个命令链。为了调试目的，此日志显示"
+"应用程序执行的所有命令。"
+
+#: src/dialogs/create_distrobox_dialog.rs:98
+msgid "Create a Distrobox"
 msgstr "创建 Distrobox"
 
-#: src/window.ui:47
-msgid "Main Menu"
-msgstr "主菜单"
+#: src/dialogs/create_distrobox_dialog.rs:125
+msgid "Cloning"
+msgstr "正在克隆"
 
-#: src/window.ui:59
-msgid "No Distroboxes Found"
-msgstr "未找到 Distrobox"
+#: src/dialogs/create_distrobox_dialog.rs:136
+msgid "Cloning the container requires stopping it first"
+msgstr "克隆容器需要先停止它"
 
-#: src/window.ui:70
+#: src/dialogs/create_distrobox_dialog.rs:143
+msgid "Settings"
+msgstr "设置"
+
+#: src/dialogs/create_distrobox_dialog.rs:144
+msgid "Name"
+msgstr "名称"
+
+#: src/dialogs/create_distrobox_dialog.rs:146
+msgid "Base Image"
+msgstr "基础镜像"
+
+#: src/dialogs/create_distrobox_dialog.rs:147
+msgid "Select an image..."
+msgstr "选择镜像..."
+
+#: src/dialogs/create_distrobox_dialog.rs:164
+msgid "Select Home Directory"
+msgstr "选择主目录"
+
+#: src/dialogs/create_distrobox_dialog.rs:170
+msgid "Custom Home Directory"
+msgstr "自定义主目录"
+
+#: src/dialogs/create_distrobox_dialog.rs:187
+msgid "NVIDIA Support"
+msgstr "NVIDIA 支持"
+
+#: src/dialogs/create_distrobox_dialog.rs:189
+msgid "Init process"
+msgstr "Init 进程"
+
+#. Add create button for assemble file
+#. Add create button for URL
+#: src/dialogs/create_distrobox_dialog.rs:201
+#: src/dialogs/create_distrobox_dialog.rs:254
+#: src/dialogs/create_distrobox_dialog.rs:299
+msgid "Create"
+msgstr "创建"
+
+#: src/dialogs/create_distrobox_dialog.rs:239
+msgid "Assemble from File"
+msgstr "从文件组装"
+
+#: src/dialogs/create_distrobox_dialog.rs:240
+msgid "Create a container from an assemble file"
+msgstr "从组装文件创建容器"
+
+#: src/dialogs/create_distrobox_dialog.rs:244
+msgid "Select Assemble File"
+msgstr "选择组装文件"
+
+#: src/dialogs/create_distrobox_dialog.rs:288
+msgid "From URL"
+msgstr "从 URL"
+
+#: src/dialogs/create_distrobox_dialog.rs:289
+msgid "Create a container from a remote URL"
+msgstr "从远程 URL 创建容器"
+
+#: src/dialogs/create_distrobox_dialog.rs:292
+msgid "URL"
+msgstr "URL"
+
+#: src/dialogs/create_distrobox_dialog.rs:428
+msgid "No file selected"
+msgstr "未选择文件"
+
+#: src/dialogs/create_distrobox_dialog.rs:494
+msgid "Search image..."
+msgstr "搜索镜像..."
+
+#: src/dialogs/create_distrobox_dialog.rs:554
+msgid "Custom"
+msgstr "自定义"
+
+#: src/dialogs/create_distrobox_dialog.rs:714
+msgid "Volumes"
+msgstr "卷"
+
+#: src/dialogs/create_distrobox_dialog.rs:716
+msgid "Specify volumes in the format 'host_path:container_path'"
+msgstr "以 '主机路径:容器路径' 格式指定卷"
+
+#: src/dialogs/create_distrobox_dialog.rs:719
+msgid "Add Volume"
+msgstr "添加卷"
+
+#: src/dialogs/create_distrobox_dialog.rs:727
+msgid "Volume"
+msgstr "卷"
+
+#: src/dialogs/create_distrobox_dialog.rs:730
+msgid "Remove Volume"
+msgstr "移除卷"
+
+#: src/dialogs/exportable_apps_dialog.rs:43
+msgid "Manage Exports"
+msgstr "管理导出"
+
+#: src/dialogs/exportable_apps_dialog.rs:63
+msgid "Loading Exports"
+msgstr "正在加载导出"
+
+#: src/dialogs/exportable_apps_dialog.rs:65
+msgid ""
+"Please wait while we load the list of exportable apps and binaries. This may "
+"take some time if the distrobox wasn't running"
+msgstr ""
+"请稍候，我们正在加载可导出的应用程序和二进制文件列表。如果 Distrobox 未运行，"
+"这可能需要一些时间"
+
+#: src/dialogs/exportable_apps_dialog.rs:76
+msgid "Exportable Apps"
+msgstr "可导出的应用程序"
+
+#: src/dialogs/exportable_apps_dialog.rs:78
+#: src/dialogs/exportable_apps_dialog.rs:242
+msgid "No exportable apps found"
+msgstr "未找到可导出的应用程序"
+
+#. Setup binary export input
+#: src/dialogs/exportable_apps_dialog.rs:82
+msgid "Export New Binary"
+msgstr "导出新二进制文件"
+
+#: src/dialogs/exportable_apps_dialog.rs:95
+msgid "Exported Binaries"
+msgstr "已导出的二进制文件"
+
+#: src/dialogs/exportable_apps_dialog.rs:97
+#: src/dialogs/exportable_apps_dialog.rs:270
+msgid "No exported binaries"
+msgstr "无已导出的二进制文件"
+
+#: src/dialogs/exportable_apps_dialog.rs:318
+msgid "Binary Already Exists on Host"
+msgstr "二进制文件已存在于主机上"
+
+#: src/dialogs/exportable_apps_dialog.rs:321
+msgid "The binary already exists on your host system. Do you want to continue?"
+msgstr "该二进制文件已存在于您的主机系统上。您要继续吗？"
+
+#: src/dialogs/exportable_apps_dialog.rs:324
+#: src/dialogs/preferences_dialog.rs:274 src/dialogs/preferences_dialog.rs:369
+#: src/widgets/window.rs:420
+msgid "Cancel"
+msgstr "取消"
+
+#: src/dialogs/exportable_apps_dialog.rs:325
+msgid "Export Anyway"
+msgstr "仍然导出"
+
+#: src/dialogs/preferences_dialog.rs:43 src/widgets/window.rs:393
+msgid "Preferences"
+msgstr "首选项"
+
+#: src/dialogs/preferences_dialog.rs:49
+msgid "Terminal Settings"
+msgstr "终端设置"
+
+#. Initialize delete button
+#: src/dialogs/preferences_dialog.rs:57 src/dialogs/preferences_dialog.rs:275
+#: src/widgets/window.rs:421
+msgid "Delete"
+msgstr "删除"
+
+#. Initialize add terminal button
+#: src/dialogs/preferences_dialog.rs:96
+msgid "Add Custom"
+msgstr "添加自定义"
+
+#: src/dialogs/preferences_dialog.rs:123
+msgid "Distrobox Settings"
+msgstr "Distrobox 设置"
+
+#: src/dialogs/preferences_dialog.rs:126
+msgid "Distrobox Source"
+msgstr "Distrobox 来源"
+
+#: src/dialogs/preferences_dialog.rs:127
+msgid "System (host)"
+msgstr "系统 (主机)"
+
+#: src/dialogs/preferences_dialog.rs:127
+msgid "Bundled Version"
+msgstr "捆绑版本"
+
+#: src/dialogs/preferences_dialog.rs:154
+msgid "Distrobox Version"
+msgstr "Distrobox 版本"
+
+#: src/dialogs/preferences_dialog.rs:172
+msgid "Not available"
+msgstr "不可用"
+
+#: src/dialogs/preferences_dialog.rs:187
+msgid "Re-download Bundled"
+msgstr "重新下载捆绑版本"
+
+#: src/dialogs/preferences_dialog.rs:269
+msgid "Delete this terminal?"
+msgstr "删除此终端？"
+
+#: src/dialogs/preferences_dialog.rs:270
+msgid ""
+"This terminal will be removed from the terminal list. This action cannot be "
+"undone."
+msgstr ""
+"此终端将从终端列表中移除。此操作无法撤销。"
+
+#: src/dialogs/preferences_dialog.rs:308
+msgid "Terminal removed successfully"
+msgstr "终端移除成功"
+
+#: src/dialogs/preferences_dialog.rs:313
+msgid "Failed to delete terminal"
+msgstr "删除终端失败"
+
+#: src/dialogs/preferences_dialog.rs:326
+msgid "Add Custom Terminal"
+msgstr "添加自定义终端"
+
+#. Name entry
+#: src/dialogs/preferences_dialog.rs:340
+msgid "Terminal Name"
+msgstr "终端名称"
+
+#. Program entry
+#: src/dialogs/preferences_dialog.rs:343
+msgid "Program Path"
+msgstr "程序路径"
+
+#. Separator argument entry
+#: src/dialogs/preferences_dialog.rs:346
+msgid "Separator Argument"
+msgstr "分隔符参数"
+
+#: src/dialogs/preferences_dialog.rs:355
+msgid ""
+"The separator argument is used to pass commands to the terminal.\n"
+"Examples: '--' for GNOME Terminal, '-e' for xterm"
+msgstr ""
+"分隔符参数用于向终端传递命令。\n"
+"例如：GNOME 终端使用 '--'，xterm 使用 '-e'"
+
+#: src/dialogs/preferences_dialog.rs:372
+msgid "Save"
+msgstr "保存"
+
+#: src/dialogs/preferences_dialog.rs:410
+msgid "All fields are required"
+msgstr "所有字段均为必填项"
+
+#. Show success toast
+#: src/dialogs/preferences_dialog.rs:429
+msgid "Custom terminal added successfully"
+msgstr "自定义终端添加成功"
+
+#: src/dialogs/preferences_dialog.rs:443
+msgid "Failed to save terminal"
+msgstr "保存终端失败"
+
+#: src/dialogs/task_manager_dialog.rs:40
+msgid "Running Tasks"
+msgstr "正在运行的任务"
+
+#: src/dialogs/task_manager_dialog.rs:56
+msgid "No Running Tasks"
+msgstr "无正在运行的任务"
+
+#: src/dialogs/task_manager_dialog.rs:58
+msgid "Tasks such as starting, stopping and upgrading will appear here."
+msgstr "启动、停止和升级等任务将显示在这里。"
+
+#: src/dialogs/task_manager_dialog.rs:86
+msgid "Clear Ended Tasks"
+msgstr "清除已结束的任务"
+
+#: src/dialogs/task_manager_dialog.rs:286 src/widgets/container_overview.rs:84
+msgid "Stop"
+msgstr "停止"
+
+#: src/widgets/container_overview.rs:74
+msgid "Container Status"
+msgstr "容器状态"
+
+#: src/widgets/container_overview.rs:78 src/widgets/welcome_view.ui:28
+msgid "Status"
+msgstr "状态"
+
+#: src/widgets/container_overview.rs:89
+msgid "Open Terminal"
+msgstr "打开终端"
+
+#: src/widgets/container_overview.rs:98
+msgid "Resources"
+msgstr "资源"
+
+#: src/widgets/container_overview.rs:128
+msgid "Quick Actions"
+msgstr "快速操作"
+
+#: src/widgets/container_overview.rs:131
+msgid "Upgrade Container"
+msgstr "升级容器"
+
+#: src/widgets/container_overview.rs:133
+msgid "Update all packages"
+msgstr "更新所有软件包"
+
+#: src/widgets/container_overview.rs:139
+msgid "Applications"
+msgstr "应用程序"
+
+#: src/widgets/container_overview.rs:141
+msgid "Manage exportable applications"
+msgstr "管理可导出的应用程序"
+
+#: src/widgets/container_overview.rs:150
+msgid "Install Package"
+msgstr "安装软件包"
+
+#: src/widgets/container_overview.rs:152
+msgid "Install packages into container"
+msgstr "将软件包安装到容器中"
+
+#: src/widgets/container_overview.rs:159
+msgid "Clone Container"
+msgstr "克隆容器"
+
+#: src/widgets/container_overview.rs:161
+msgid "Create a copy of this container"
+msgstr "创建此容器的副本"
+
+#: src/widgets/container_overview.rs:168
+msgid "Danger Zone"
+msgstr "危险区域"
+
+#: src/widgets/container_overview.rs:172
+msgid "Delete Container"
+msgstr "删除容器"
+
+#: src/widgets/container_overview.rs:174
+msgid "Permanently remove this container and all its data"
+msgstr "永久移除此容器及其所有数据"
+
+#: src/widgets/container_overview.rs:208
+msgid "Copy image URL"
+msgstr "复制镜像 URL"
+
+#: src/widgets/container_overview.rs:223
+msgid "Image URL copied"
+msgstr "镜像 URL 已复制"
+
+#: src/widgets/image_row_item.rs:42
+msgid "Image already downloaded"
+msgstr "镜像已下载"
+
+#: src/widgets/integrated_terminal.rs:105
+msgid "Copy"
+msgstr "复制"
+
+#: src/widgets/integrated_terminal.rs:106
+msgid "Paste"
+msgstr "粘贴"
+
+#: src/widgets/integrated_terminal.rs:115
+msgid "Reload Terminal"
+msgstr "重新加载终端"
+
+#: src/widgets/terminal_combo_row.rs:34
+msgid "Preferred Terminal"
+msgstr "首选终端"
+
+#: src/widgets/welcome_view.rs:157 src/widgets/welcome_view.rs:207
+msgid "available"
+msgstr "可用"
+
+#: src/widgets/welcome_view.rs:176
+msgid "Not found - Please install Podman or Docker"
+msgstr "未找到 - 请安装 Podman 或 Docker"
+
+#: src/widgets/welcome_view.rs:201
+msgid "Bundled version"
+msgstr "捆绑版本"
+
+#: src/widgets/welcome_view.rs:203
+msgid "System version"
+msgstr "系统版本"
+
+#: src/widgets/welcome_view.rs:216
+msgid "Not found - Install from system or use bundled version"
+msgstr "未找到 - 从系统安装或使用捆绑版本"
+
+#: src/widgets/welcome_view.rs:278 src/widgets/welcome_view.rs:279
+#: src/widgets/welcome_view.ui:32 src/widgets/welcome_view.ui:51
+msgid "Checking…"
+msgstr "正在检查..."
+
+#: src/widgets/welcome_view.rs:348
+msgid "Use Bundled Version"
+msgstr "使用捆绑版本"
+
+#: src/widgets/welcome_view.rs:350
+msgid "Download failed"
+msgstr "下载失败"
+
+#: src/widgets/welcome_view.ui:17
+msgid "System Requirements"
+msgstr "系统要求"
+
+#: src/widgets/welcome_view.ui:31
+msgid "Container Runtime"
+msgstr "容器运行时"
+
+#: src/widgets/welcome_view.ui:50
+msgid "Distrobox"
+msgstr "Distrobox"
+
+#: src/widgets/welcome_view.ui:97
+msgid "Refresh"
+msgstr "刷新"
+
+#: src/widgets/welcome_view.ui:107 src/widgets/welcome_view.ui:168
+msgid "Continue"
+msgstr "继续"
+
+#: src/widgets/welcome_view.ui:146
+msgid "Preferred terminal"
+msgstr "首选终端"
+
+#: src/widgets/welcome_view.ui:197
+msgid "Use Bundled Distrobox"
+msgstr "使用捆绑的 Distrobox"
+
+#: src/widgets/welcome_view.ui:201 src/widgets/window.ui:70
 msgid "Learn More"
 msgstr "了解更多"
 
-#: src/window.ui:120
+#: src/widgets/window.rs:392
+msgid "Check your terminal settings."
+msgstr "检查您的终端设置。"
+
+#: src/widgets/window.rs:409
+msgid "Delete this container?"
+msgstr "删除此容器？"
+
+#: src/widgets/window.rs:415
+msgid "will be deleted. This action cannot be undone."
+msgstr "将被删除。此操作无法撤销。"
+
+#. Show file chooser and install package using the appropriate command
+#: src/widgets/window.rs:445
+msgid "Select Package"
+msgstr "选择软件包"
+
+#: src/widgets/window.ui:39 src/widgets/window.ui:80
+msgid "Create Distrobox"
+msgstr "创建 Distrobox"
+
+#: src/widgets/window.ui:47
+msgid "Main Menu"
+msgstr "主菜单"
+
+#: src/widgets/window.ui:59
+msgid "No Distroboxes Found"
+msgstr "未找到 Distrobox"
+
+#: src/widgets/window.ui:60
+msgid "Distrobox lets you run any Linux distribution inside your terminal."
+msgstr "Distrobox 允许您在终端内运行任何 Linux 发行版。"
+
+#: src/widgets/window.ui:126
 msgid "Container"
 msgstr "容器"
 
-#: src/window.ui:161
+#: src/widgets/window.ui:158
+msgid "Overview"
+msgstr "概览"
+
+#: src/widgets/window.ui:169
+msgid "Terminal"
+msgstr "终端"
+
+#: src/widgets/window.ui:218
 msgid "_Refresh"
 msgstr "刷新(_R)"
 
-#: src/window.ui:165
+#: src/widgets/window.ui:222
 msgid "_Upgrade All"
 msgstr "全部升级(_U)"
 
-#: src/window.ui:169
+#: src/widgets/window.ui:226
 msgid "_Command Log"
 msgstr "命令日志(_C)"
 
-#: src/window.ui:175
+#: src/widgets/window.ui:232
 msgid "_Settings"
 msgstr "设置(_S)"
 
-#: src/window.ui:179
+#: src/widgets/window.ui:236
 msgid "_About"
 msgstr "关于(_A)"
 
-#: src/window.ui:183
+#: src/widgets/window.ui:240
 msgid "Discover _Distrobox"
 msgstr "发现 Distrobox(_D)"
