@@ -288,9 +288,7 @@ impl TaskManagerDialog {
             #[weak]
             task,
             move |_| {
-                tracing::warn!(task_id = %task.name(), "Stop requested but not implemented yet");
-                // TODO: implement this
-                // task.stop();
+                task.stop();
             }
         ));
         stop_btn.add_css_class("destructive-action");
@@ -304,7 +302,6 @@ impl TaskManagerDialog {
             }
         ));
 
-        // TODO: remove button row
         button_row.append(&stop_btn);
         content.append(&button_row);
 
