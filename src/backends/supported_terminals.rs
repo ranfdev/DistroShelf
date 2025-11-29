@@ -50,22 +50,32 @@ static SUPPORTED_TERMINALS: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
 });
 
 static FLATPAK_TERMINAL_CANDIDATES: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
-    [
-        ("Ptyxis (Flatpak)", "app.devsuite.Ptyxis", "--"),
-        ("Ptyxis Devel (Flatpak)", "app.devsuite.Ptyxis.Devel", "--"),
-        ("GNOME Console (Flatpak)", "org.gnome.Console", "--"),
-        ("BlackBox (Flatpak)", "com.raggesilver.BlackBox", "--"),
-        ("WezTerm (Flatpak)", "org.wezfurlong.wezterm", "start --"),
-        ("Foot (Flatpak)", "page.codeberg.dnkl.foot", "-e"),
-    ]
-    .iter()
-    .map(|(name, app_id, separator_arg)| Terminal {
-        name: name.to_string(),
-        program: format!("flatpak run {}", app_id),
-        separator_arg: separator_arg.to_string(),
-        read_only: true,
-    })
-    .collect()
+    let base_terminals = [
+        ("Ptyxis", "app.devsuite.Ptyxis", "--"),
+        ("GNOME Console", "org.gnome.Console", "--"),
+        ("BlackBox", "com.raggesilver.BlackBox", "--"),
+        ("WezTerm", "org.wezfurlong.wezterm", "start --"),
+        ("Foot", "page.codeberg.dnkl.foot", "-e"),
+    ];
+
+    let mut candidates = Vec::new();
+    for (name, app_id, separator_arg) in base_terminals {
+        // Stable
+        candidates.push(Terminal {
+            name: format!("{} (Flatpak)", name),
+            program: format!("flatpak run {}", app_id),
+            separator_arg: separator_arg.to_string(),
+            read_only: true,
+        });
+        // Devel
+        candidates.push(Terminal {
+            name: format!("{} Devel (Flatpak)", name),
+            program: format!("flatpak run {}.Devel", app_id),
+            separator_arg: separator_arg.to_string(),
+            read_only: true,
+        });
+    }
+    candidates
 });
 
 mod imp {
