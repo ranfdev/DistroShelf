@@ -300,10 +300,14 @@ impl Child for StubChild {
     }
 
     fn kill(&mut self) -> Result<(), io::Error> {
-        unimplemented!()
+        Ok(())
     }
     fn wait(&mut self) -> Pin<Box<dyn Future<Output = Result<ExitStatus, io::Error>>>> {
-        async { Ok(ExitStatus::from_raw(0)) }.boxed_local()
+        let status = self
+            .exit_status
+            .take()
+            .unwrap_or(Ok(ExitStatus::from_raw(0)));
+        async move { status }.boxed_local()
     }
 }
 
