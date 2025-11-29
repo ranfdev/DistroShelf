@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: distroshelf\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-30 10:16+0200\n"
+"POT-Creation-Date: 2025-11-29 18:14+0100\n"
 "PO-Revision-Date: 2025-05-15 13:26-0300\n"
 "Last-Translator: Matheus <matheus@dukcab.com>\n"
 "Language-Team: Português (Brasil)\n"
@@ -19,13 +19,45 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: data/com.ranfdev.DistroShelf.desktop.in:2
-#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/window.ui:30
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/widgets/window.ui:30
 msgid "DistroShelf"
 msgstr "DistroShelf"
 
 #: data/com.ranfdev.DistroShelf.desktop.in:8
 msgid "GTK;"
 msgstr "GTK;"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:6
+msgid "Selected terminal emulator"
+msgstr "Selecionar o emulador de terminal"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:7
+msgid "The terminal emulator selected by the user."
+msgstr "O emulador de terminal selecionado pelo usuário."
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:11
+msgid "Window width"
+msgstr "Largura da janela"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:12
+msgid "The width of the main window when last closed."
+msgstr "A largura da janela principal quando foi fechada pela última vez."
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:16
+msgid "Window height"
+msgstr "Altura da janela"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:17
+msgid "The height of the main window when last closed."
+msgstr "A altura da janela principal quando foi fechada pela última vez."
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:21
+msgid "Distrobox executable source"
+msgstr "Fonte do executável Distrobox"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:22
+msgid "The source of the distrobox executable. Can be 'host' or 'bundled'."
+msgstr "A fonte do executável distrobox. Pode ser 'host' ou 'bundled'."
 
 #: data/com.ranfdev.DistroShelf.metainfo.xml.in:8
 msgid "Graphical interface for managing Distrobox containers"
@@ -71,46 +103,553 @@ msgstr "Clonar e excluir containers"
 msgid "Lorenzo Miglietta"
 msgstr "Lorenzo Miglietta"
 
-#: data/com.ranfdev.DistroShelf.gschema.xml:6
-msgid "Selected terminal emulator"
-msgstr "Selecionar o emulador de terminal"
+#: data/gtk/help-overlay.ui:11
+msgctxt "shortcut window"
+msgid "General"
+msgstr "Geral"
 
-#: data/com.ranfdev.DistroShelf.gschema.xml:7
-msgid "The terminal emulator selected by the user."
-msgstr "O emulador de terminal selecionado pelo usuário."
+#: data/gtk/help-overlay.ui:14
+msgctxt "shortcut window"
+msgid "Show Shortcuts"
+msgstr "Mostrar atalhos"
 
-#: src/window.ui:57
-msgid "No Distroboxes Found"
-msgstr "Nenhum Distrobox encontrado"
+#: data/gtk/help-overlay.ui:20
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "Sair"
 
-#: src/window.ui:68
+#: src/dialogs/command_log_dialog.rs:35 src/dialogs/command_log_dialog.rs:44
+msgid "Command Log"
+msgstr "Log de Comandos"
+
+#: src/dialogs/command_log_dialog.rs:62
+msgid ""
+"Executing a single task (eg: listing applications) may require multiple "
+"chains of commands. For debugging purposes, this log shows all commands "
+"executed by the application."
+msgstr ""
+"A execução de uma única tarefa (ex: listar aplicativos) pode exigir várias "
+"cadeias de comandos. Para fins de depuração, este log mostra todos os comandos "
+"executados pelo aplicativo."
+
+#: src/dialogs/create_distrobox_dialog.rs:98
+msgid "Create a Distrobox"
+msgstr "Criar um Distrobox"
+
+#: src/dialogs/create_distrobox_dialog.rs:125
+msgid "Cloning"
+msgstr "Clonando"
+
+#: src/dialogs/create_distrobox_dialog.rs:136
+msgid "Cloning the container requires stopping it first"
+msgstr "Clonar o container requer pará-lo primeiro"
+
+#: src/dialogs/create_distrobox_dialog.rs:143
+msgid "Settings"
+msgstr "Configurações"
+
+#: src/dialogs/create_distrobox_dialog.rs:144
+msgid "Name"
+msgstr "Nome"
+
+#: src/dialogs/create_distrobox_dialog.rs:146
+msgid "Base Image"
+msgstr "Imagem Base"
+
+#: src/dialogs/create_distrobox_dialog.rs:147
+msgid "Select an image..."
+msgstr "Selecione uma imagem..."
+
+#: src/dialogs/create_distrobox_dialog.rs:164
+msgid "Select Home Directory"
+msgstr "Selecionar Diretório Home"
+
+#: src/dialogs/create_distrobox_dialog.rs:170
+msgid "Custom Home Directory"
+msgstr "Diretório Home Personalizado"
+
+#: src/dialogs/create_distrobox_dialog.rs:187
+msgid "NVIDIA Support"
+msgstr "Suporte NVIDIA"
+
+#: src/dialogs/create_distrobox_dialog.rs:189
+msgid "Init process"
+msgstr "Processo Init"
+
+#. Add create button for assemble file
+#. Add create button for URL
+#: src/dialogs/create_distrobox_dialog.rs:201
+#: src/dialogs/create_distrobox_dialog.rs:254
+#: src/dialogs/create_distrobox_dialog.rs:299
+msgid "Create"
+msgstr "Criar"
+
+#: src/dialogs/create_distrobox_dialog.rs:239
+msgid "Assemble from File"
+msgstr "Montar a partir de Arquivo"
+
+#: src/dialogs/create_distrobox_dialog.rs:240
+msgid "Create a container from an assemble file"
+msgstr "Criar um container a partir de um arquivo de montagem"
+
+#: src/dialogs/create_distrobox_dialog.rs:244
+msgid "Select Assemble File"
+msgstr "Selecionar Arquivo de Montagem"
+
+#: src/dialogs/create_distrobox_dialog.rs:288
+msgid "From URL"
+msgstr "De URL"
+
+#: src/dialogs/create_distrobox_dialog.rs:289
+msgid "Create a container from a remote URL"
+msgstr "Criar um container a partir de uma URL remota"
+
+#: src/dialogs/create_distrobox_dialog.rs:292
+msgid "URL"
+msgstr "URL"
+
+#: src/dialogs/create_distrobox_dialog.rs:428
+msgid "No file selected"
+msgstr "Nenhum arquivo selecionado"
+
+#: src/dialogs/create_distrobox_dialog.rs:494
+msgid "Search image..."
+msgstr "Pesquisar imagem..."
+
+#: src/dialogs/create_distrobox_dialog.rs:554
+msgid "Custom"
+msgstr "Personalizado"
+
+#: src/dialogs/create_distrobox_dialog.rs:714
+msgid "Volumes"
+msgstr "Volumes"
+
+#: src/dialogs/create_distrobox_dialog.rs:716
+msgid "Specify volumes in the format 'host_path:container_path'"
+msgstr "Especifique volumes no formato 'caminho_host:caminho_container'"
+
+#: src/dialogs/create_distrobox_dialog.rs:719
+msgid "Add Volume"
+msgstr "Adicionar Volume"
+
+#: src/dialogs/create_distrobox_dialog.rs:727
+msgid "Volume"
+msgstr "Volume"
+
+#: src/dialogs/create_distrobox_dialog.rs:730
+msgid "Remove Volume"
+msgstr "Remover Volume"
+
+#: src/dialogs/exportable_apps_dialog.rs:43
+msgid "Manage Exports"
+msgstr "Gerenciar Exportações"
+
+#: src/dialogs/exportable_apps_dialog.rs:63
+msgid "Loading Exports"
+msgstr "Carregando Exportações"
+
+#: src/dialogs/exportable_apps_dialog.rs:65
+msgid ""
+"Please wait while we load the list of exportable apps and binaries. This may "
+"take some time if the distrobox wasn't running"
+msgstr ""
+"Aguarde enquanto carregamos a lista de aplicativos e binários exportáveis. Isso pode "
+"levar algum tempo se o distrobox não estiver em execução"
+
+#: src/dialogs/exportable_apps_dialog.rs:76
+msgid "Exportable Apps"
+msgstr "Aplicativos Exportáveis"
+
+#: src/dialogs/exportable_apps_dialog.rs:78
+#: src/dialogs/exportable_apps_dialog.rs:242
+msgid "No exportable apps found"
+msgstr "Nenhum aplicativo exportável encontrado"
+
+#. Setup binary export input
+#: src/dialogs/exportable_apps_dialog.rs:82
+msgid "Export New Binary"
+msgstr "Exportar Novo Binário"
+
+#: src/dialogs/exportable_apps_dialog.rs:95
+msgid "Exported Binaries"
+msgstr "Binários Exportados"
+
+#: src/dialogs/exportable_apps_dialog.rs:97
+#: src/dialogs/exportable_apps_dialog.rs:270
+msgid "No exported binaries"
+msgstr "Nenhum binário exportado"
+
+#: src/dialogs/exportable_apps_dialog.rs:318
+msgid "Binary Already Exists on Host"
+msgstr "Binário Já Existe no Host"
+
+#: src/dialogs/exportable_apps_dialog.rs:321
+msgid "The binary already exists on your host system. Do you want to continue?"
+msgstr "O binário já existe no seu sistema host. Deseja continuar?"
+
+#: src/dialogs/exportable_apps_dialog.rs:324
+#: src/dialogs/preferences_dialog.rs:274 src/dialogs/preferences_dialog.rs:369
+#: src/widgets/window.rs:420
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: src/dialogs/exportable_apps_dialog.rs:325
+msgid "Export Anyway"
+msgstr "Exportar Mesmo Assim"
+
+#: src/dialogs/preferences_dialog.rs:43 src/widgets/window.rs:393
+msgid "Preferences"
+msgstr "Preferências"
+
+#: src/dialogs/preferences_dialog.rs:49
+msgid "Terminal Settings"
+msgstr "Configurações do Terminal"
+
+#. Initialize delete button
+#: src/dialogs/preferences_dialog.rs:57 src/dialogs/preferences_dialog.rs:275
+#: src/widgets/window.rs:421
+msgid "Delete"
+msgstr "Excluir"
+
+#. Initialize add terminal button
+#: src/dialogs/preferences_dialog.rs:96
+msgid "Add Custom"
+msgstr "Adicionar Personalizado"
+
+#: src/dialogs/preferences_dialog.rs:123
+msgid "Distrobox Settings"
+msgstr "Configurações do Distrobox"
+
+#: src/dialogs/preferences_dialog.rs:126
+msgid "Distrobox Source"
+msgstr "Fonte do Distrobox"
+
+#: src/dialogs/preferences_dialog.rs:127
+msgid "System (host)"
+msgstr "Sistema (host)"
+
+#: src/dialogs/preferences_dialog.rs:127
+msgid "Bundled Version"
+msgstr "Versão Empacotada"
+
+#: src/dialogs/preferences_dialog.rs:154
+msgid "Distrobox Version"
+msgstr "Versão do Distrobox"
+
+#: src/dialogs/preferences_dialog.rs:172
+msgid "Not available"
+msgstr "Não disponível"
+
+#: src/dialogs/preferences_dialog.rs:187
+msgid "Re-download Bundled"
+msgstr "Baixar Novamente Empacotado"
+
+#: src/dialogs/preferences_dialog.rs:269
+msgid "Delete this terminal?"
+msgstr "Excluir este terminal?"
+
+#: src/dialogs/preferences_dialog.rs:270
+msgid ""
+"This terminal will be removed from the terminal list. This action cannot be "
+"undone."
+msgstr ""
+"Este terminal será removido da lista de terminais. Esta ação não pode ser "
+"desfeita."
+
+#: src/dialogs/preferences_dialog.rs:308
+msgid "Terminal removed successfully"
+msgstr "Terminal removido com sucesso"
+
+#: src/dialogs/preferences_dialog.rs:313
+msgid "Failed to delete terminal"
+msgstr "Falha ao excluir terminal"
+
+#: src/dialogs/preferences_dialog.rs:326
+msgid "Add Custom Terminal"
+msgstr "Adicionar Terminal Personalizado"
+
+#. Name entry
+#: src/dialogs/preferences_dialog.rs:340
+msgid "Terminal Name"
+msgstr "Nome do Terminal"
+
+#. Program entry
+#: src/dialogs/preferences_dialog.rs:343
+msgid "Program Path"
+msgstr "Caminho do Programa"
+
+#. Separator argument entry
+#: src/dialogs/preferences_dialog.rs:346
+msgid "Separator Argument"
+msgstr "Argumento Separador"
+
+#: src/dialogs/preferences_dialog.rs:355
+msgid ""
+"The separator argument is used to pass commands to the terminal.\n"
+"Examples: '--' for GNOME Terminal, '-e' for xterm"
+msgstr ""
+"O argumento separador é usado para passar comandos para o terminal.\n"
+"Exemplos: '--' para GNOME Terminal, '-e' para xterm"
+
+#: src/dialogs/preferences_dialog.rs:372
+msgid "Save"
+msgstr "Salvar"
+
+#: src/dialogs/preferences_dialog.rs:410
+msgid "All fields are required"
+msgstr "Todos os campos são obrigatórios"
+
+#. Show success toast
+#: src/dialogs/preferences_dialog.rs:429
+msgid "Custom terminal added successfully"
+msgstr "Terminal personalizado adicionado com sucesso"
+
+#: src/dialogs/preferences_dialog.rs:443
+msgid "Failed to save terminal"
+msgstr "Falha ao salvar terminal"
+
+#: src/dialogs/task_manager_dialog.rs:40
+msgid "Running Tasks"
+msgstr "Tarefas em Execução"
+
+#: src/dialogs/task_manager_dialog.rs:56
+msgid "No Running Tasks"
+msgstr "Nenhuma Tarefa em Execução"
+
+#: src/dialogs/task_manager_dialog.rs:58
+msgid "Tasks such as starting, stopping and upgrading will appear here."
+msgstr "Tarefas como iniciar, parar e atualizar aparecerão aqui."
+
+#: src/dialogs/task_manager_dialog.rs:86
+msgid "Clear Ended Tasks"
+msgstr "Limpar Tarefas Finalizadas"
+
+#: src/dialogs/task_manager_dialog.rs:286 src/widgets/container_overview.rs:84
+msgid "Stop"
+msgstr "Parar"
+
+#: src/widgets/container_overview.rs:74
+msgid "Container Status"
+msgstr "Status do Container"
+
+#: src/widgets/container_overview.rs:78 src/widgets/welcome_view.ui:28
+msgid "Status"
+msgstr "Status"
+
+#: src/widgets/container_overview.rs:89
+msgid "Open Terminal"
+msgstr "Abrir Terminal"
+
+#: src/widgets/container_overview.rs:98
+msgid "Resources"
+msgstr "Recursos"
+
+#: src/widgets/container_overview.rs:128
+msgid "Quick Actions"
+msgstr "Ações Rápidas"
+
+#: src/widgets/container_overview.rs:131
+msgid "Upgrade Container"
+msgstr "Atualizar Container"
+
+#: src/widgets/container_overview.rs:133
+msgid "Update all packages"
+msgstr "Atualizar todos os pacotes"
+
+#: src/widgets/container_overview.rs:139
+msgid "Applications"
+msgstr "Aplicativos"
+
+#: src/widgets/container_overview.rs:141
+msgid "Manage exportable applications"
+msgstr "Gerenciar aplicativos exportáveis"
+
+#: src/widgets/container_overview.rs:150
+msgid "Install Package"
+msgstr "Instalar Pacote"
+
+#: src/widgets/container_overview.rs:152
+msgid "Install packages into container"
+msgstr "Instalar pacotes no container"
+
+#: src/widgets/container_overview.rs:159
+msgid "Clone Container"
+msgstr "Clonar Container"
+
+#: src/widgets/container_overview.rs:161
+msgid "Create a copy of this container"
+msgstr "Criar uma cópia deste container"
+
+#: src/widgets/container_overview.rs:168
+msgid "Danger Zone"
+msgstr "Zona de Perigo"
+
+#: src/widgets/container_overview.rs:172
+msgid "Delete Container"
+msgstr "Excluir Container"
+
+#: src/widgets/container_overview.rs:174
+msgid "Permanently remove this container and all its data"
+msgstr "Remover permanentemente este container e todos os seus dados"
+
+#: src/widgets/container_overview.rs:208
+msgid "Copy image URL"
+msgstr "Copiar URL da imagem"
+
+#: src/widgets/container_overview.rs:223
+msgid "Image URL copied"
+msgstr "URL da imagem copiada"
+
+#: src/widgets/image_row_item.rs:42
+msgid "Image already downloaded"
+msgstr "Imagem já baixada"
+
+#: src/widgets/integrated_terminal.rs:105
+msgid "Copy"
+msgstr "Copiar"
+
+#: src/widgets/integrated_terminal.rs:106
+msgid "Paste"
+msgstr "Colar"
+
+#: src/widgets/integrated_terminal.rs:115
+msgid "Reload Terminal"
+msgstr "Recarregar Terminal"
+
+#: src/widgets/terminal_combo_row.rs:34
+msgid "Preferred Terminal"
+msgstr "Terminal Preferido"
+
+#: src/widgets/welcome_view.rs:157 src/widgets/welcome_view.rs:207
+msgid "available"
+msgstr "disponível"
+
+#: src/widgets/welcome_view.rs:176
+msgid "Not found - Please install Podman or Docker"
+msgstr "Não encontrado - Por favor, instale Podman ou Docker"
+
+#: src/widgets/welcome_view.rs:201
+msgid "Bundled version"
+msgstr "Versão empacotada"
+
+#: src/widgets/welcome_view.rs:203
+msgid "System version"
+msgstr "Versão do sistema"
+
+#: src/widgets/welcome_view.rs:216
+msgid "Not found - Install from system or use bundled version"
+msgstr "Não encontrado - Instale do sistema ou use a versão empacotada"
+
+#: src/widgets/welcome_view.rs:278 src/widgets/welcome_view.rs:279
+#: src/widgets/welcome_view.ui:32 src/widgets/welcome_view.ui:51
+msgid "Checking…"
+msgstr "Verificando…"
+
+#: src/widgets/welcome_view.rs:348
+msgid "Use Bundled Version"
+msgstr "Usar Versão Empacotada"
+
+#: src/widgets/welcome_view.rs:350
+msgid "Download failed"
+msgstr "Download falhou"
+
+#: src/widgets/welcome_view.ui:17
+msgid "System Requirements"
+msgstr "Requisitos do Sistema"
+
+#: src/widgets/welcome_view.ui:31
+msgid "Container Runtime"
+msgstr "Runtime de Container"
+
+#: src/widgets/welcome_view.ui:50
+msgid "Distrobox"
+msgstr "Distrobox"
+
+#: src/widgets/welcome_view.ui:97
+msgid "Refresh"
+msgstr "Atualizar"
+
+#: src/widgets/welcome_view.ui:107 src/widgets/welcome_view.ui:168
+msgid "Continue"
+msgstr "Continuar"
+
+#: src/widgets/welcome_view.ui:146
+msgid "Preferred terminal"
+msgstr "Terminal preferido"
+
+#: src/widgets/welcome_view.ui:197
+msgid "Use Bundled Distrobox"
+msgstr "Usar Distrobox Empacotado"
+
+#: src/widgets/welcome_view.ui:201 src/widgets/window.ui:70
 msgid "Learn More"
-msgstr "Ler mais"
+msgstr "Ler Mais"
 
-#: src/window.ui:78
+#: src/widgets/window.rs:392
+msgid "Check your terminal settings."
+msgstr "Verifique as configurações do seu terminal."
+
+#: src/widgets/window.rs:409
+msgid "Delete this container?"
+msgstr "Excluir este container?"
+
+#: src/widgets/window.rs:415
+msgid "will be deleted. This action cannot be undone."
+msgstr "será excluído. Esta ação não pode ser desfeita."
+
+#. Show file chooser and install package using the appropriate command
+#: src/widgets/window.rs:445
+msgid "Select Package"
+msgstr "Selecionar Pacote"
+
+#: src/widgets/window.ui:39 src/widgets/window.ui:80
 msgid "Create Distrobox"
 msgstr "Criar Distrobox"
 
-#: src/window.ui:118
+#: src/widgets/window.ui:47
+msgid "Main Menu"
+msgstr "Menu Principal"
+
+#: src/widgets/window.ui:59
+msgid "No Distroboxes Found"
+msgstr "Nenhum Distrobox Encontrado"
+
+#: src/widgets/window.ui:60
+msgid "Distrobox lets you run any Linux distribution inside your terminal."
+msgstr "Distrobox permite que você execute qualquer distribuição Linux dentro do seu terminal."
+
+#: src/widgets/window.ui:126
 msgid "Container"
 msgstr "Container"
 
-#: src/window.ui:159
+#: src/widgets/window.ui:158
+msgid "Overview"
+msgstr "Visão Geral"
+
+#: src/widgets/window.ui:169
+msgid "Terminal"
+msgstr "Terminal"
+
+#: src/widgets/window.ui:218
 msgid "_Refresh"
 msgstr "_Atualizar"
 
-#: src/window.ui:163
+#: src/widgets/window.ui:222
 msgid "_Upgrade All"
-msgstr "_Atualizar todos"
+msgstr "_Atualizar Tudo"
 
-#: src/window.ui:169
+#: src/widgets/window.ui:226
+msgid "_Command Log"
+msgstr "_Log de Comandos"
+
+#: src/widgets/window.ui:232
 msgid "_Settings"
 msgstr "_Configurações"
 
-#: src/window.ui:173
+#: src/widgets/window.ui:236
 msgid "_About"
 msgstr "_Sobre"
 
-#: src/window.ui:177
+#: src/widgets/window.ui:240
 msgid "Discover _Distrobox"
 msgstr "Descobrir _Distrobox"
