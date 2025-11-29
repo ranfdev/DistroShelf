@@ -37,6 +37,7 @@ mod imp {
         pub distro: RefCell<Option<KnownDistro>>,
         pub apps: Query<TypedListStore<glib::BoxedAnyObject>>,
         pub binaries: Query<TypedListStore<glib::BoxedAnyObject>>,
+        // Usage statistics, without polling
         pub usage: Query<Usage>,
     }
 
