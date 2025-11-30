@@ -1373,4 +1373,99 @@ Categories=Utility;Security;";
             );
         }
     }
+
+    #[test]
+    fn status_parsing() {
+        // Test "Up" status with details
+        assert_eq!(
+            Status::from_str("Up 2 hours"),
+            Status::Up("2 hours".to_string())
+        );
+        assert_eq!(
+            Status::from_str("Up (Paused)"),
+            Status::Up("(Paused)".to_string())
+        );
+
+        // Test "Created" status
+        assert_eq!(
+            Status::from_str("Created 5 minutes ago"),
+            Status::Created("5 minutes ago".to_string())
+        );
+
+        // Test "Exited" status
+        assert_eq!(
+            Status::from_str("Exited (0) 10 seconds ago"),
+            Status::Exited("(0) 10 seconds ago".to_string())
+        );
+
+        // Test unknown status falls back to Other
+        assert_eq!(
+            Status::from_str("Unknown status"),
+            Status::Other("Unknown status".to_string())
+        );
+
+        // Test empty string
+        assert_eq!(Status::from_str(""), Status::Other("".to_string()));
+    }
+
+    #[test]
+    fn status_display() {
+        assert_eq!(Status::Up("2 hours".to_string()).to_string(), "Up 2 hours");
+        assert_eq!(
+            Status::Created("5 minutes ago".to_string()).to_string(),
+            "Created 5 minutes ago"
+        );
+        assert_eq!(
+            Status::Exited("(0) 10 seconds ago".to_string()).to_string(),
+            "Exited (0) 10 seconds ago"
+        );
+        assert_eq!(
+            Status::Other("Unknown".to_string()).to_string(),
+            "Unknown"
+        );
+    }
+
+    #[test]
+    fn volume_parsing() -> Result<(), Error> {
+        // Test single path (host only, container path same as host)
+        let vol = Volume::from_str("/data")?;
+        assert_eq!(vol.host_path, "/data");
+        assert_eq!(vol.container_path, "/data");
+        assert_eq!(vol.mode, None);
+
+        // Test host:container path
+        let vol = Volume::from_str("/host/path:/container/path")?;
+        assert_eq!(vol.host_path, "/host/path");
+        assert_eq!(vol.container_path, "/container/path");
+        assert_eq!(vol.mode, None);
+
+        // Test host:container:ro (read-only)
+        let vol = Volume::from_str("/data:/data:ro")?;
+        assert_eq!(vol.host_path, "/data");
+        assert_eq!(vol.container_path, "/data");
+        assert_eq!(vol.mode, Some(VolumeMode::ReadOnly));
+
+        // Test invalid volume descriptor
+        let result = Volume::from_str("/a:/b:/c:/d");
+        assert!(result.is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn volume_display() {
+        let vol = Volume {
+            host_path: "/host".to_string(),
+            container_path: "/container".to_string(),
+            mode: None,
+        };
+        assert_eq!(vol.to_string(), "/host:/container");
+
+        let vol_ro = Volume {
+            host_path: "/host".to_string(),
+            container_path: "/container".to_string(),
+            mode: Some(VolumeMode::ReadOnly),
+        };
+        assert_eq!(vol_ro.to_string(), "/host:/container:ro");
+    }
 }
