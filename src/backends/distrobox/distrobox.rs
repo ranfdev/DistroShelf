@@ -20,6 +20,11 @@ use crate::backends::desktop_file::*;
 const POSIX_FIND_AND_CONCAT_DESKTOP_FILES: &str =
     include_str!("POSIX_FIND_AND_CONCAT_DESKTOP_FILES.sh");
 
+/// Encode a string as hex (matching the shell script's base16 function)
+fn to_hex(s: &str) -> String {
+    s.bytes().map(|b| format!("{:02x}", b)).collect()
+}
+
 #[derive(Deserialize, Debug)]
 struct DesktopFiles {
     #[serde(deserialize_with = "DesktopFiles::deserialize_path")]
@@ -333,11 +338,6 @@ pub enum DistroboxCommandRunnerResponse {
 }
 
 impl DistroboxCommandRunnerResponse {
-    /// Helper to encode a string as hex (matching the shell script's base16 function)
-    fn to_hex(s: &str) -> String {
-        s.bytes().map(|b| format!("{:02x}", b)).collect()
-    }
-
     pub fn common_distros() -> LazyCell<Vec<ContainerInfo>> {
         LazyCell::new(|| {
             [
@@ -474,7 +474,7 @@ impl DistroboxCommandRunnerResponse {
         ));
 
         // Build desktop files TOML with hex encoding (matching POSIX_FIND_AND_CONCAT_DESKTOP_FILES.sh output)
-        let mut toml = format!("home_dir=\"{}\"\n", Self::to_hex("/home/me"));
+        let mut toml = format!("home_dir=\"{}\"\n", to_hex("/home/me"));
 
         toml.push_str("[system]\n");
         for (filename, name, icon) in apps {
@@ -490,8 +490,8 @@ impl DistroboxCommandRunnerResponse {
             );
             toml.push_str(&format!(
                 "\"{}\"=\"{}\"\n",
-                Self::to_hex(&path),
-                Self::to_hex(&content)
+                to_hex(&path),
+                to_hex(&content)
             ));
         }
 
@@ -1071,11 +1071,6 @@ impl Default for Distrobox {
 mod tests {
     use super::*;
     use smol::block_on;
-
-    /// Helper to encode a string as hex (matching the shell script's base16 function)
-    fn to_hex(s: &str) -> String {
-        s.bytes().map(|b| format!("{:02x}", b)).collect()
-    }
 
     /// Helper to generate TOML output matching the shell script format
     fn make_desktop_files_toml(
