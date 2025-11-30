@@ -9,6 +9,7 @@ use std::{
     pin::Pin,
     process::ExitStatus,
     rc::Rc,
+    sync::Arc,
 };
 
 use crate::fakers::{Command, FdMode, OutputTracker};
@@ -244,7 +245,7 @@ impl InnerCommandRunner for NullCommandRunner {
         let stub = StubChild::new_null(
             vec![],
             Cursor::new(response()?),
-            Ok(ExitStatus::from_raw(0)),
+            || Ok(ExitStatus::from_raw(0)),
         );
         Ok(Box::new(stub))
     }
@@ -280,19 +281,19 @@ pub trait Child {
 struct StubChild {
     stdin: Option<Box<dyn AsyncWrite + Send + Unpin>>,
     stdout: Option<Box<dyn AsyncRead + Send + Unpin>>,
-    exit_status: Option<io::Result<ExitStatus>>,
+    exit_status_fn: Arc<dyn Fn() -> io::Result<ExitStatus> + Send + Sync>,
 }
 
 impl StubChild {
     fn new_null(
         stdin: impl AsyncWrite + Send + Unpin + 'static,
         stdout: impl AsyncRead + Send + Unpin + 'static,
-        exit_status: io::Result<ExitStatus>, // TODO: replace with a closure, so that we can use it multiple times
+        exit_status_fn: impl Fn() -> io::Result<ExitStatus> + Send + Sync + 'static,
     ) -> StubChild {
         StubChild {
             stdin: Some(Box::new(stdin)),
             stdout: Some(Box::new(stdout)),
-            exit_status: Some(exit_status),
+            exit_status_fn: Arc::new(exit_status_fn),
         }
     }
 }
@@ -308,10 +309,7 @@ impl Child for StubChild {
         Ok(())
     }
     fn wait(&mut self) -> Pin<Box<dyn Future<Output = Result<ExitStatus, io::Error>>>> {
-        let status = self
-            .exit_status
-            .take()
-            .unwrap_or(Ok(ExitStatus::from_raw(0)));
+        let status = (self.exit_status_fn)();
         async move { status }.boxed_local()
     }
 }
@@ -361,5 +359,217 @@ impl InnerCommandRunner for Map {
     ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
         let cmd = (self.map_cmd)(command);
         self.inner.output(cmd)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use smol::block_on;
+
+    #[test]
+    fn test_null_command_runner_default_output() {
+        let runner = CommandRunner::new_null();
+        let cmd = Command::new("some-command");
+        
+        let output = block_on(runner.output(cmd)).unwrap();
+        
+        assert!(output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(output.stderr.is_empty());
+    }
+
+    #[test]
+    fn test_null_command_runner_configured_response() {
+        let runner = NullCommandRunnerBuilder::new()
+            .cmd(&["echo", "hello"], "hello world\n")
+            .build();
+        
+        let cmd = Command::new_with_args("echo", ["hello"]);
+        let output = block_on(runner.output(cmd)).unwrap();
+        
+        assert!(output.status.success());
+        assert_eq!(String::from_utf8_lossy(&output.stdout), "hello world\n");
+    }
+
+    #[test]
+    fn test_output_string() {
+        let runner = NullCommandRunnerBuilder::new()
+            .cmd(&["cat", "file.txt"], "file contents")
+            .build();
+        
+        let cmd = Command::new_with_args("cat", ["file.txt"]);
+        let result = block_on(runner.output_string(cmd)).unwrap();
+        
+        assert_eq!(result, "file contents");
+    }
+
+    #[test]
+    fn test_output_tracker() {
+        let runner = CommandRunner::new_null();
+        let tracker = runner.output_tracker();
+        
+        assert_eq!(tracker.len(), 0);
+        
+        let cmd = Command::new_with_args("ls", ["-la"]);
+        let _ = block_on(runner.output(cmd));
+        
+        let items = tracker.items();
+        assert_eq!(items.len(), 2); // Started + Output events
+        
+        match &items[0] {
+            CommandRunnerEvent::Started(_, cmd) => {
+                assert_eq!(cmd.program.to_string_lossy(), "ls");
+            }
+            _ => panic!("Expected Started event"),
+        }
+    }
+
+    #[test]
+    fn test_map_cmd() {
+        let runner = NullCommandRunnerBuilder::new()
+            .cmd(&["wrapped", "original-cmd", "arg1"], "mapped output")
+            .build();
+        
+        // Map all commands to be prefixed with "wrapped"
+        let mapped_runner = runner.map_cmd(|mut cmd| {
+            let original_program = cmd.program.clone();
+            cmd.program = "wrapped".into();
+            cmd.args.insert(0, original_program);
+            cmd
+        });
+        
+        let cmd = Command::new_with_args("original-cmd", ["arg1"]);
+        let result = block_on(mapped_runner.output_string(cmd)).unwrap();
+        
+        assert_eq!(result, "mapped output");
+    }
+
+    #[test]
+    fn test_wrap_command() {
+        let runner = CommandRunner::new_null();
+        
+        // Default NullCommandRunner doesn't modify commands
+        let cmd = Command::new_with_args("test", ["arg"]);
+        let wrapped = runner.wrap_command(cmd.clone());
+        
+        assert_eq!(wrapped.program, cmd.program);
+        assert_eq!(wrapped.args, cmd.args);
+    }
+
+    #[test]
+    fn test_stub_child_wait_multiple_times() {
+        // Test that the closure-based exit_status allows multiple waits
+        let stub = StubChild::new_null(
+            vec![],
+            Cursor::new("output"),
+            || Ok(ExitStatus::from_raw(0)),
+        );
+        
+        let mut boxed: Box<dyn Child + Send> = Box::new(stub);
+        
+        // First wait
+        let status1 = block_on(boxed.wait()).unwrap();
+        assert!(status1.success());
+        
+        // Second wait should also work (this was the bug with Option-based approach)
+        let status2 = block_on(boxed.wait()).unwrap();
+        assert!(status2.success());
+    }
+
+    #[test]
+    fn test_stub_child_take_stdin_stdout() {
+        let mut stub = StubChild::new_null(
+            vec![1, 2, 3],
+            Cursor::new("stdout data"),
+            || Ok(ExitStatus::from_raw(0)),
+        );
+        
+        // First take should succeed
+        assert!(stub.take_stdin().is_some());
+        assert!(stub.take_stdout().is_some());
+        
+        // Second take should return None
+        assert!(stub.take_stdin().is_none());
+        assert!(stub.take_stdout().is_none());
+    }
+
+    #[test]
+    fn test_stub_child_kill() {
+        let mut stub = StubChild::new_null(
+            vec![],
+            Cursor::new(""),
+            || Ok(ExitStatus::from_raw(0)),
+        );
+        
+        // kill should always succeed for stub
+        assert!(stub.kill().is_ok());
+    }
+
+    #[test]
+    fn test_command_runner_event_accessors() {
+        let cmd = Command::new("test");
+        
+        let spawned = CommandRunnerEvent::Spawned(1, cmd.clone());
+        assert_eq!(spawned.event_id(), 1);
+        assert!(spawned.command().is_some());
+        
+        let started = CommandRunnerEvent::Started(2, cmd.clone());
+        assert_eq!(started.event_id(), 2);
+        assert!(started.command().is_some());
+        
+        let output = CommandRunnerEvent::Output(3, Ok(()));
+        assert_eq!(output.event_id(), 3);
+        assert!(output.command().is_none());
+    }
+
+    #[test]
+    fn test_null_command_runner_spawn() {
+        let runner = NullCommandRunnerBuilder::new()
+            .cmd(&["test-cmd"], "spawn output")
+            .build();
+        
+        let cmd = Command::new("test-cmd");
+        let mut child = runner.spawn(cmd).unwrap();
+        
+        // Should be able to wait on spawned child
+        let status = block_on(child.wait()).unwrap();
+        assert!(status.success());
+    }
+
+    #[test]
+    fn test_command_runner_default() {
+        // Default should create a null runner
+        let runner = CommandRunner::default();
+        let cmd = Command::new("anything");
+        
+        let output = block_on(runner.output(cmd)).unwrap();
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn test_null_command_runner_builder_cmd_full() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        
+        let call_count = Arc::new(AtomicU32::new(0));
+        let call_count_clone = call_count.clone();
+        
+        let runner = NullCommandRunnerBuilder::new()
+            .cmd_full(
+                Command::new_with_args("counter", ["cmd"]),
+                move || {
+                    let count = call_count_clone.fetch_add(1, Ordering::SeqCst);
+                    Ok(format!("call {}", count))
+                },
+            )
+            .build();
+        
+        let cmd1 = Command::new_with_args("counter", ["cmd"]);
+        let result1 = block_on(runner.output_string(cmd1)).unwrap();
+        assert_eq!(result1, "call 0");
+        
+        let cmd2 = Command::new_with_args("counter", ["cmd"]);
+        let result2 = block_on(runner.output_string(cmd2)).unwrap();
+        assert_eq!(result2, "call 1");
     }
 }

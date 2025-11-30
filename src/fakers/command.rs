@@ -131,3 +131,130 @@ impl From<Command> for async_process::Command {
         cmd
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_command_new() {
+        let cmd = Command::new("echo");
+        assert_eq!(cmd.program, "echo");
+        assert!(cmd.args.is_empty());
+    }
+
+    #[test]
+    fn test_command_new_with_args() {
+        let cmd = Command::new_with_args("ls", ["-la", "/tmp"]);
+        assert_eq!(cmd.program, "ls");
+        assert_eq!(cmd.args.len(), 2);
+        assert_eq!(cmd.args[0], "-la");
+        assert_eq!(cmd.args[1], "/tmp");
+    }
+
+    #[test]
+    fn test_command_arg() {
+        let mut cmd = Command::new("echo");
+        cmd.arg("hello");
+        cmd.arg("world");
+        assert_eq!(cmd.args.len(), 2);
+        assert_eq!(cmd.args[0], "hello");
+        assert_eq!(cmd.args[1], "world");
+    }
+
+    #[test]
+    fn test_command_args() {
+        let mut cmd = Command::new("ls");
+        cmd.args(["-l", "-a", "/home"]);
+        assert_eq!(cmd.args.len(), 3);
+    }
+
+    #[test]
+    fn test_command_extend() {
+        let mut cmd1 = Command::new("sh");
+        cmd1.arg("-c");
+        
+        let mut cmd2 = Command::new("echo");
+        cmd2.arg("hello");
+        
+        cmd1.extend("&&", &cmd2);
+        
+        assert_eq!(cmd1.program, "sh");
+        assert_eq!(cmd1.args.len(), 4);
+        assert_eq!(cmd1.args[0], "-c");
+        assert_eq!(cmd1.args[1], "&&");
+        assert_eq!(cmd1.args[2], "echo");
+        assert_eq!(cmd1.args[3], "hello");
+    }
+
+    #[test]
+    fn test_command_remove_flag_arg() {
+        let mut cmd = Command::new("ls");
+        cmd.args(["-l", "-a", "--color"]);
+        cmd.remove_flag_arg("-a");
+        
+        assert_eq!(cmd.args.len(), 2);
+        assert_eq!(cmd.args[0], "-l");
+        assert_eq!(cmd.args[1], "--color");
+    }
+
+    #[test]
+    fn test_command_remove_flag_arg_not_found() {
+        let mut cmd = Command::new("ls");
+        cmd.args(["-l", "-a"]);
+        cmd.remove_flag_arg("-z");
+        
+        // No change when flag not found
+        assert_eq!(cmd.args.len(), 2);
+    }
+
+    #[test]
+    fn test_command_remove_flag_value_arg() {
+        let mut cmd = Command::new("git");
+        cmd.args(["commit", "-m", "message", "--author", "user"]);
+        cmd.remove_flag_value_arg("-m");
+        
+        assert_eq!(cmd.args.len(), 3);
+        assert_eq!(cmd.args[0], "commit");
+        assert_eq!(cmd.args[1], "--author");
+        assert_eq!(cmd.args[2], "user");
+    }
+
+    #[test]
+    fn test_command_to_vec() {
+        let mut cmd = Command::new("echo");
+        cmd.args(["hello", "world"]);
+        
+        let vec = cmd.to_vec();
+        assert_eq!(vec.len(), 3);
+        assert_eq!(vec[0], "echo");
+        assert_eq!(vec[1], "hello");
+        assert_eq!(vec[2], "world");
+    }
+
+    #[test]
+    fn test_command_display() {
+        let mut cmd = Command::new("echo");
+        cmd.args(["hello", "world"]);
+        
+        let display = format!("{}", cmd);
+        assert_eq!(display, "echo hello world");
+    }
+
+    #[test]
+    fn test_command_display_no_args() {
+        let cmd = Command::new("ls");
+        let display = format!("{}", cmd);
+        assert_eq!(display, "ls");
+    }
+
+    #[test]
+    fn test_fd_mode_default() {
+        let cmd = Command::new("echo");
+        // Default should be Inherit for all
+        matches!(cmd.stdin, FdMode::Inherit);
+        matches!(cmd.stdout, FdMode::Inherit);
+        matches!(cmd.stderr, FdMode::Inherit);
+    }
+}
+
