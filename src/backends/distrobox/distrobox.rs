@@ -1323,4 +1323,56 @@ Categories=Utility;Security;";
 17 | Crystal Linux | Created 2 minutes ago | docker.io/library/crystal-linux:latest\n"
         );
     }
+
+    #[test]
+    fn stub_exported_apps_generates_valid_toml() {
+        // Verify that new_common_exported_apps generates valid TOML that can be parsed
+        let exported_apps = DistroboxCommandRunnerResponse::new_common_exported_apps();
+        let commands = exported_apps.to_commands();
+
+        // Find the command that should contain TOML output (distrobox enter ... sh -c ...)
+        let toml_command = commands
+            .iter()
+            .find(|(cmd, _)| {
+                cmd.program.to_string_lossy().contains("distrobox")
+                    && cmd.args.iter().any(|arg| arg.to_string_lossy() == "enter")
+            })
+            .expect("Should have a TOML-generating command");
+
+        let toml_output = toml_command.1().expect("Should generate output");
+
+        // Verify the TOML is parseable
+        let desktop_files: DesktopFiles = toml::from_str(&toml_output)
+            .expect("Generated TOML should be valid and parseable");
+
+        // Verify home_dir is set
+        assert_eq!(
+            desktop_files.home_dir.to_string_lossy(),
+            "/home/me",
+            "home_dir should be /home/me"
+        );
+
+        // Verify we have system files (the mock apps should be in system)
+        assert!(
+            !desktop_files.system.is_empty(),
+            "Should have system desktop files"
+        );
+
+        // Verify all system files are valid desktop entries
+        for (path, content) in &desktop_files.system {
+            assert!(
+                path.to_string_lossy().ends_with(".desktop"),
+                "Path should end with .desktop: {:?}",
+                path
+            );
+            assert!(
+                content.contains("[Desktop Entry]"),
+                "Content should be a valid desktop entry"
+            );
+            assert!(
+                content.contains("Name="),
+                "Content should have a Name field"
+            );
+        }
+    }
 }
