@@ -89,7 +89,10 @@ impl DesktopFiles {
 
     fn into_map(self) -> BTreeMap<PathBuf, String> {
         let mut desktop_files = self.system;
-        if env::home_dir() != Some(self.home_dir) {
+        // Only include user desktop files if the container's home directory is different from the host's
+        // This avoids showing duplicate entries when the container shares the host's home directory
+        let host_home = env::var("HOME").ok().map(PathBuf::from);
+        if host_home.as_ref() != Some(&self.home_dir) {
             desktop_files.extend(self.user)
         }
         desktop_files
