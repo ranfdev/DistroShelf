@@ -189,3 +189,135 @@ impl KnownDistro {
         "tux-symbolic"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_package_manager_installable_file() {
+        assert_eq!(PackageManager::Apt.installable_file(), Some(".deb"));
+        assert_eq!(PackageManager::Dnf.installable_file(), Some(".rpm"));
+        assert_eq!(PackageManager::Pacman.installable_file(), Some(".pkg.tar.zst"));
+        assert_eq!(PackageManager::Apk.installable_file(), Some(".apk"));
+        assert_eq!(PackageManager::Zypper.installable_file(), Some(".rpm"));
+        assert_eq!(PackageManager::Unknown.installable_file(), None);
+    }
+
+    #[test]
+    fn test_package_manager_install_cmd_apt() {
+        let file = PathBuf::from("/tmp/package.deb");
+        let cmd = PackageManager::Apt.install_cmd(&file).unwrap();
+        
+        assert_eq!(cmd.program.to_string_lossy(), "sudo");
+        assert_eq!(cmd.args[0].to_string_lossy(), "apt-get");
+        assert_eq!(cmd.args[1].to_string_lossy(), "install");
+        assert_eq!(cmd.args[2].to_string_lossy(), "/tmp/package.deb");
+    }
+
+    #[test]
+    fn test_package_manager_install_cmd_dnf() {
+        let file = PathBuf::from("/tmp/package.rpm");
+        let cmd = PackageManager::Dnf.install_cmd(&file).unwrap();
+        
+        assert_eq!(cmd.program.to_string_lossy(), "sudo");
+        assert_eq!(cmd.args[0].to_string_lossy(), "dnf");
+        assert_eq!(cmd.args[1].to_string_lossy(), "install");
+    }
+
+    #[test]
+    fn test_package_manager_install_cmd_pacman() {
+        let file = PathBuf::from("/tmp/package.pkg.tar.zst");
+        let cmd = PackageManager::Pacman.install_cmd(&file).unwrap();
+        
+        assert_eq!(cmd.program.to_string_lossy(), "sudo");
+        assert_eq!(cmd.args[0].to_string_lossy(), "pacman");
+        assert_eq!(cmd.args[1].to_string_lossy(), "-U");
+    }
+
+    #[test]
+    fn test_package_manager_install_cmd_apk() {
+        let file = PathBuf::from("/tmp/package.apk");
+        let cmd = PackageManager::Apk.install_cmd(&file).unwrap();
+        
+        assert_eq!(cmd.program.to_string_lossy(), "sudo");
+        assert_eq!(cmd.args[0].to_string_lossy(), "apk");
+        assert_eq!(cmd.args[1].to_string_lossy(), "add");
+        assert_eq!(cmd.args[2].to_string_lossy(), "--allow-untrusted");
+    }
+
+    #[test]
+    fn test_package_manager_install_cmd_zypper() {
+        let file = PathBuf::from("/tmp/package.rpm");
+        let cmd = PackageManager::Zypper.install_cmd(&file).unwrap();
+        
+        assert_eq!(cmd.program.to_string_lossy(), "sudo");
+        assert_eq!(cmd.args[0].to_string_lossy(), "zypper");
+        assert_eq!(cmd.args[1].to_string_lossy(), "install");
+    }
+
+    #[test]
+    fn test_package_manager_install_cmd_unknown() {
+        let file = PathBuf::from("/tmp/package");
+        assert!(PackageManager::Unknown.install_cmd(&file).is_none());
+    }
+
+    #[test]
+    fn test_known_distro_by_image_ubuntu() {
+        let distro = known_distro_by_image("docker.io/library/ubuntu:latest");
+        assert!(distro.is_some());
+        assert_eq!(distro.unwrap().name(), "ubuntu");
+    }
+
+    #[test]
+    fn test_known_distro_by_image_fedora() {
+        let distro = known_distro_by_image("ghcr.io/ublue-os/fedora-toolbox:latest");
+        assert!(distro.is_some());
+        assert_eq!(distro.unwrap().name(), "fedora");
+    }
+
+    #[test]
+    fn test_known_distro_by_image_arch() {
+        let distro = known_distro_by_image("docker.io/library/archlinux:latest");
+        assert!(distro.is_some());
+        assert_eq!(distro.unwrap().name(), "arch");
+    }
+
+    #[test]
+    fn test_known_distro_by_image_unknown() {
+        let distro = known_distro_by_image("docker.io/library/unknown-distro:latest");
+        assert!(distro.is_none());
+    }
+
+    #[test]
+    fn test_generate_css() {
+        let css = generate_css();
+        
+        // Check that CSS contains distro classes
+        assert!(css.contains(".distro-ubuntu"));
+        assert!(css.contains(".distro-fedora"));
+        assert!(css.contains("--distro-color:"));
+    }
+
+    #[test]
+    fn test_distros_map_contains_common_distros() {
+        assert!(DISTROS.contains_key("ubuntu"));
+        assert!(DISTROS.contains_key("fedora"));
+        assert!(DISTROS.contains_key("arch"));
+        assert!(DISTROS.contains_key("debian"));
+        assert!(DISTROS.contains_key("alpine"));
+    }
+
+    #[test]
+    fn test_package_manager_default() {
+        let pm: PackageManager = Default::default();
+        assert_eq!(pm, PackageManager::Unknown);
+    }
+
+    #[test]
+    fn test_known_distro_default_icon_name() {
+        assert_eq!(KnownDistro::default_icon_name(), "tux-symbolic");
+    }
+}
+

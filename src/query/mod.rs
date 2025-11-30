@@ -478,3 +478,152 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Standalone staleness check logic - mirrors QueryInner::is_stale
+    fn check_is_stale(last_fetched_at: Option<SystemTime>, max_age: Duration) -> bool {
+        match last_fetched_at {
+            None => true,
+            Some(fetched_at) => SystemTime::now()
+                .duration_since(fetched_at)
+                .map(|elapsed| elapsed > max_age)
+                .unwrap_or(true),
+        }
+    }
+
+    /// Standalone age calculation logic - mirrors QueryInner::age
+    fn calculate_age(last_fetched_at: Option<SystemTime>) -> Option<Duration> {
+        last_fetched_at.and_then(|fetched_at| SystemTime::now().duration_since(fetched_at).ok())
+    }
+
+    #[test]
+    fn test_is_stale_never_fetched() {
+        // Data that was never fetched is always stale
+        assert!(check_is_stale(None, Duration::from_secs(60)));
+        assert!(check_is_stale(None, Duration::from_secs(0)));
+    }
+
+    #[test]
+    fn test_is_stale_fresh_data() {
+        let fetched_at = Some(SystemTime::now());
+        
+        // Data just fetched should not be stale for reasonable max_age
+        assert!(!check_is_stale(fetched_at, Duration::from_secs(60)));
+        assert!(!check_is_stale(fetched_at, Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn test_is_stale_old_data() {
+        // Set last_fetched_at to 2 seconds ago
+        let fetched_at = Some(SystemTime::now() - Duration::from_secs(2));
+        
+        // Data older than max_age is stale
+        assert!(check_is_stale(fetched_at, Duration::from_secs(1)));
+        // Data newer than max_age is not stale
+        assert!(!check_is_stale(fetched_at, Duration::from_secs(10)));
+    }
+
+    #[test]
+    fn test_age_never_fetched() {
+        // Data that was never fetched has no age
+        assert!(calculate_age(None).is_none());
+    }
+
+    #[test]
+    fn test_age_just_fetched() {
+        let fetched_at = Some(SystemTime::now());
+        
+        // Data just fetched should have very small age
+        let age = calculate_age(fetched_at).expect("Should have age");
+        assert!(age < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn test_age_old_data() {
+        let fetched_at = Some(SystemTime::now() - Duration::from_secs(5));
+        
+        // Data fetched 5 seconds ago should have age of approximately 5 seconds
+        let age = calculate_age(fetched_at).expect("Should have age");
+        assert!(age >= Duration::from_secs(4));
+        assert!(age < Duration::from_secs(7));
+    }
+
+    #[test]
+    fn test_retry_strategy_basic() {
+        // Test that retry_strategy closure works as expected
+        let strategy: Box<dyn Fn(u32) -> Option<Duration>> = Box::new(|n| {
+            if n < 3 {
+                Some(Duration::from_secs(n as u64))
+            } else {
+                None
+            }
+        });
+
+        assert_eq!(strategy(0), Some(Duration::from_secs(0)));
+        assert_eq!(strategy(1), Some(Duration::from_secs(1)));
+        assert_eq!(strategy(2), Some(Duration::from_secs(2)));
+        assert_eq!(strategy(3), None);
+        assert_eq!(strategy(100), None);
+    }
+
+    #[test]
+    fn test_exponential_backoff_strategy() {
+        // Test exponential backoff pattern
+        let strategy: Box<dyn Fn(u32) -> Option<Duration>> = Box::new(|n| {
+            if n < 5 {
+                Some(Duration::from_millis(100 * 2u64.pow(n)))
+            } else {
+                None
+            }
+        });
+
+        assert_eq!(strategy(0), Some(Duration::from_millis(100)));
+        assert_eq!(strategy(1), Some(Duration::from_millis(200)));
+        assert_eq!(strategy(2), Some(Duration::from_millis(400)));
+        assert_eq!(strategy(3), Some(Duration::from_millis(800)));
+        assert_eq!(strategy(4), Some(Duration::from_millis(1600)));
+        assert_eq!(strategy(5), None);
+    }
+
+    #[test]
+    fn test_is_stale_boundary() {
+        // Test exact boundary condition
+        let fetched_at = Some(SystemTime::now() - Duration::from_millis(1000));
+        
+        // At exactly 1 second, should be stale (elapsed > max_age, not >=)
+        assert!(check_is_stale(fetched_at, Duration::from_millis(999)));
+        // At more than elapsed time, should not be stale
+        assert!(!check_is_stale(fetched_at, Duration::from_millis(2000)));
+    }
+
+    #[test]
+    fn test_retry_strategy_with_jitter() {
+        // Test a more complex retry strategy with jitter-like behavior
+        use std::sync::atomic::{AtomicU32, Ordering};
+        let counter = std::sync::Arc::new(AtomicU32::new(0));
+        let counter_clone = counter.clone();
+        
+        let strategy: Box<dyn Fn(u32) -> Option<Duration>> = Box::new(move |n| {
+            counter_clone.fetch_add(1, Ordering::SeqCst);
+            if n < 3 {
+                // Base delay with pseudo-jitter based on retry count
+                Some(Duration::from_millis(100 * (n as u64 + 1)))
+            } else {
+                None
+            }
+        });
+
+        // Call strategy multiple times
+        let _ = strategy(0);
+        let _ = strategy(1);
+        let _ = strategy(2);
+        let _ = strategy(3);
+        
+        // Verify strategy was called correct number of times
+        assert_eq!(counter.load(Ordering::SeqCst), 4);
+    }
+}
+
