@@ -212,10 +212,12 @@ impl DistroShelfWindow {
                 let params = root_store.take_dialog_params();
 
                 let dialog: adw::Dialog = match root_store.current_dialog() {
-                    DialogType::ExportableApps => ExportableAppsDialog::new(
-                        &this_clone.root_store().selected_container().unwrap(),
-                    )
-                    .upcast(),
+                    DialogType::ExportableApps => {
+                        let Some(container) = this_clone.root_store().selected_container() else {
+                            return;
+                        };
+                        ExportableAppsDialog::new(&container).upcast()
+                    }
                     DialogType::CreateDistrobox => {
                         let dialog = CreateDistroboxDialog::new(this_clone.root_store());
                         if let Some(clone_src) = params.clone_source {
@@ -303,8 +305,10 @@ impl DistroShelfWindow {
                 }
             }),
             a("upgrade-container").activate(|this, _, _| {
-                let task = this.root_store().selected_container().unwrap().upgrade();
-                this.root_store().view_task(&task);
+                if let Some(container) = this.root_store().selected_container() {
+                    let task = container.upgrade();
+                    this.root_store().view_task(&task);
+                }
             }),
             a("view-exportable-apps").activate(|this, _, _| {
                 this.root_store().view_exportable_apps();
@@ -313,7 +317,9 @@ impl DistroShelfWindow {
                 this.build_install_package_dialog();
             }),
             a("stop-container").activate(|this, _, _| {
-                this.root_store().selected_container().unwrap().stop();
+                if let Some(container) = this.root_store().selected_container() {
+                    container.stop();
+                }
             }),
             a("delete-container").activate(|this, _, _| {
                 this.build_delete_dialog();
@@ -427,10 +433,12 @@ impl DistroShelfWindow {
                 #[weak(rename_to = this)]
                 self,
                 move |dialog, _| {
-                    this.root_store().selected_container().unwrap().delete();
-                    this.root_store()
-                        .selected_container_model()
-                        .set_selected(gtk::INVALID_LIST_POSITION);
+                    if let Some(container) = this.root_store().selected_container() {
+                        container.delete();
+                        this.root_store()
+                            .selected_container_model()
+                            .set_selected(gtk::INVALID_LIST_POSITION);
+                    }
                     dialog.close();
                 }
             ),
@@ -447,18 +455,14 @@ impl DistroShelfWindow {
             file_dialog.open(
                 Some(self),
                 None::<&gio::Cancellable>,
-                clone!(
-                    #[weak(rename_to = this)]
-                    self,
-                    move |res| {
-                        if let Ok(file) = res
-                            && let Some(path) = file.path() {
-                                info!(container = %container.name(), path = %path.display(), "Installing package into container");
-                                this.root_store().selected_container().unwrap()
-                                    .install(&path);
-                            }
+                move |res| {
+                    if let Ok(file) = res
+                        && let Some(path) = file.path()
+                    {
+                        info!(container = %container.name(), path = %path.display(), "Installing package into container");
+                        container.install(&path);
                     }
-                ),
+                },
             );
         }
     }
