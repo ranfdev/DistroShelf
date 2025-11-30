@@ -330,14 +330,31 @@ pub enum Error {
     ResolveHostPath(String),
 }
 
+/// Represents mock responses for the NullCommandRunner used in previews and testing.
+///
+/// These responses simulate the output of various distrobox commands without
+/// actually executing them. This is essential for:
+/// - UI previews in development (via DistroboxStoreTy::NullWorking)
+/// - Unit testing without requiring a real distrobox installation
+/// - Flatpak sandbox testing
 #[derive(Clone)]
 pub enum DistroboxCommandRunnerResponse {
+    /// Mock response for `distrobox version` command
+    /// Returns a successful version string like "distrobox: 1.7.2.1"
     Version,
+    /// Mock response for when distrobox is not installed
+    /// Returns an error when version is queried
     NoVersion,
+    /// Mock response for `distrobox ls --no-color` command
+    /// Returns a list of containers in the expected pipe-delimited format
     List(Vec<ContainerInfo>),
+    /// Mock response for `distrobox create --compatibility` command
+    /// Returns a list of compatible container images
     Compatibility(Vec<String>),
-    // The exported apps commands is complex, it may fail, but we don't want the app to crash
-    ExportedApps(String, Vec<(String, String, String)>), // (distrobox_name, [(filename, name, icon)])
+    /// Mock response for listing exportable applications from a container
+    /// Contains: (distrobox_name, [(filename, app_name, icon_name)])
+    /// Generates the TOML hex-encoded format expected by the desktop file parser
+    ExportedApps(String, Vec<(String, String, String)>),
 }
 
 impl DistroboxCommandRunnerResponse {
