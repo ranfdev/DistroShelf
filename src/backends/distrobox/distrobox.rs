@@ -333,6 +333,11 @@ pub enum DistroboxCommandRunnerResponse {
 }
 
 impl DistroboxCommandRunnerResponse {
+    /// Helper to encode a string as hex (matching the shell script's base16 function)
+    fn to_hex(s: &str) -> String {
+        s.bytes().map(|b| format!("{:02x}", b)).collect()
+    }
+
     pub fn common_distros() -> LazyCell<Vec<ContainerInfo>> {
         LazyCell::new(|| {
             [
@@ -456,10 +461,11 @@ impl DistroboxCommandRunnerResponse {
             "/home/me".to_string(),
         ));
 
-        // List desktop files
+        // List desktop files - these are the exported files in the user's local applications folder
+        // Format: {box_name}-{filename}
         let file_list = apps
             .iter()
-            .map(|(filename, _, _)| format!("ubuntu-{}", filename))
+            .map(|(filename, _, _)| format!("{box_name}-{}", filename))
             .collect::<Vec<_>>()
             .join("\n");
         commands.push((
@@ -467,20 +473,30 @@ impl DistroboxCommandRunnerResponse {
             file_list,
         ));
 
-        // Get desktop file contents
-        let mut contents = String::new();
+        // Build desktop files TOML with hex encoding (matching POSIX_FIND_AND_CONCAT_DESKTOP_FILES.sh output)
+        let mut toml = format!("home_dir=\"{}\"\n", Self::to_hex("/home/me"));
+
+        toml.push_str("[system]\n");
         for (filename, name, icon) in apps {
-            contents.push_str(&format!(
-                "# START FILE /usr/share/applications/{}\n\
-                [Desktop Entry]\n\
+            let path = format!("/usr/share/applications/{}", filename);
+            let content = format!(
+                "[Desktop Entry]\n\
                 Type=Application\n\
                 Name={}\n\
                 Exec=/path/to/{}\n\
                 Icon={}\n\
-                Categories=Utility;Network;\n\n",
-                filename, name, name, icon
+                Categories=Utility;Network;",
+                name, name, icon
+            );
+            toml.push_str(&format!(
+                "\"{}\"=\"{}\"\n",
+                Self::to_hex(&path),
+                Self::to_hex(&content)
             ));
         }
+
+        toml.push_str("[user]\n");
+
         commands.push((
             Command::new_with_args(
                 "distrobox",
@@ -493,7 +509,7 @@ impl DistroboxCommandRunnerResponse {
                     POSIX_FIND_AND_CONCAT_DESKTOP_FILES,
                 ],
             ),
-            contents,
+            toml,
         ));
 
         commands
