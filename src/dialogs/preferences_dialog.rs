@@ -92,6 +92,22 @@ mod imp {
 
             terminal_group.add(&terminal_combo_row);
 
+            // Connect to terminals-changed signal to update UI when terminals change
+            obj.root_store().terminal_repository().connect_closure(
+                "terminals-changed",
+                false,
+                glib::closure_local!(
+                    #[weak]
+                    obj,
+                    #[weak]
+                    terminal_combo_row,
+                    move |_: crate::backends::supported_terminals::TerminalRepository| {
+                        terminal_combo_row.rebuild_terminals_list();
+                        obj.update_delete_button_state();
+                    }
+                ),
+            );
+
             // Initialize add terminal button
             self.add_terminal_btn.set_label(&gettext("Add Custom"));
             self.add_terminal_btn.add_css_class("pill");
@@ -227,9 +243,12 @@ glib::wrapper! {
 
 impl PreferencesDialog {
     pub fn new(root_store: RootStore) -> Self {
-        glib::Object::builder()
-            .property("root-store", root_store)
-            .build()
+        let this = glib::Object::builder()
+            .property("root-store", root_store.clone())
+            .build();
+
+        root_store.terminal_repository().flatpak_terminals_query().refetch();
+        this
     }
 
     fn update_delete_button_state(&self) {
@@ -293,7 +312,7 @@ impl PreferencesDialog {
                                 if let Some(terminal_combo_row) =
                                     this.imp().terminal_combo_row.borrow().as_ref()
                                 {
-                                    terminal_combo_row.reload_terminals();
+                                    terminal_combo_row.rebuild_terminals_list();
                                     terminal_combo_row.set_selected_by_name(
                                         &this
                                             .root_store()
@@ -415,6 +434,7 @@ impl PreferencesDialog {
                 let terminal = supported_terminals::Terminal {
                     name,
                     program,
+                    extra_args: vec![],
                     separator_arg,
                     read_only: false,
                 };
@@ -431,7 +451,7 @@ impl PreferencesDialog {
                         if let Some(terminal_combo_row) =
                             this.imp().terminal_combo_row.borrow().as_ref()
                         {
-                            terminal_combo_row.reload_terminals();
+                            terminal_combo_row.rebuild_terminals_list();
                             terminal_combo_row.set_selected_by_name(&terminal.name);
                         }
 

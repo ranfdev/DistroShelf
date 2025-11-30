@@ -521,6 +521,7 @@ impl RootStore {
         };
         let mut spawn_cmd = Command::new(supported_terminal.program);
         spawn_cmd
+            .args(supported_terminal.extra_args)
             .arg(supported_terminal.separator_arg)
             .arg(cmd.program.clone())
             .args(cmd.args.clone());
@@ -577,7 +578,8 @@ impl RootStore {
 
         // Try running a simple command to validate the terminal
         let mut cmd = Command::new(terminal.program.clone());
-        cmd.arg(terminal.separator_arg)
+        cmd.args(terminal.extra_args.clone())
+            .arg(terminal.separator_arg)
             .arg("echo")
             .arg("DistroShelf terminal validation");
 

@@ -57,7 +57,7 @@ mod imp {
             self.selected_item_signal_handler
                 .replace(Some(signal_handler));
 
-            obj.reload_terminals();
+            obj.rebuild_terminals_list();
 
             obj.root_store().terminal_repository().connect_closure(
                 "terminals-changed",
@@ -66,7 +66,7 @@ mod imp {
                     #[strong]
                     obj,
                     move |_: TerminalRepository| {
-                        obj.reload_terminals();
+                        obj.rebuild_terminals_list();
                     }
                 ),
             );
@@ -153,7 +153,7 @@ impl TerminalComboRow {
             }
         }
     }
-    pub fn reload_terminals(&self) {
+    pub fn rebuild_terminals_list(&self) {
         let terminals = self
             .root_store()
             .clone()

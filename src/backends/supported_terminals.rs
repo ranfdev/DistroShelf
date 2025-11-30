@@ -9,6 +9,7 @@ use gtk::prelude::*;
 use tracing::{error, info, warn};
 
 use crate::fakers::{Command, CommandRunner, FdMode};
+use crate::query::Query;
 
 use gtk::subclass::prelude::*;
 
@@ -16,8 +17,25 @@ use gtk::subclass::prelude::*;
 pub struct Terminal {
     pub name: String,
     pub program: String,
+    /// Arguments that come after the program but before the separator_arg.
+    /// For example, for flatpak terminals: ["run", "org.gnome.Console"]
+    #[serde(default)]
+    pub extra_args: Vec<String>,
     pub separator_arg: String,
     pub read_only: bool,
+}
+
+impl Terminal {
+    /// Returns a unique identifier for this terminal combining program and extra_args.
+    /// This is used for deduplication since multiple terminals may use the same program
+    /// (e.g., multiple flatpak terminals all use "flatpak" as the program).
+    pub fn full_command_id(&self) -> String {
+        if self.extra_args.is_empty() {
+            self.program.clone()
+        } else {
+            format!("{} {}", self.program, self.extra_args.join(" "))
+        }
+    }
 }
 
 static SUPPORTED_TERMINALS: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
@@ -44,6 +62,7 @@ static SUPPORTED_TERMINALS: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
     .map(|(name, program, separator_arg)| Terminal {
         name: name.to_string(),
         program: program.to_string(),
+        extra_args: vec![],
         separator_arg: separator_arg.to_string(),
         read_only: true,
     })
@@ -54,7 +73,7 @@ static FLATPAK_TERMINAL_CANDIDATES: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
     let base_terminals = [
         ("Ptyxis", "app.devsuite.Ptyxis", "--"),
         ("GNOME Console", "org.gnome.Console", "--"),
-        ("BlackBox", "com.raggesilver.BlackBox", "--"),
+        // ("BlackBox", "com.raggesilver.BlackBox", "--"), for some reason it doesn't work
         ("WezTerm", "org.wezfurlong.wezterm", "start --"),
         ("Foot", "page.codeberg.dnkl.foot", "-e"),
     ];
@@ -64,14 +83,16 @@ static FLATPAK_TERMINAL_CANDIDATES: LazyLock<Vec<Terminal>> = LazyLock::new(|| {
         // Stable
         candidates.push(Terminal {
             name: format!("{} (Flatpak)", name),
-            program: format!("flatpak run {}", app_id),
+            program: "flatpak".to_string(),
+            extra_args: vec!["run".to_string(), app_id.to_string()],
             separator_arg: separator_arg.to_string(),
             read_only: true,
         });
         // Devel
         candidates.push(Terminal {
             name: format!("{} Devel (Flatpak)", name),
-            program: format!("flatpak run {}.Devel", app_id),
+            program: "flatpak".to_string(),
+            extra_args: vec!["run".to_string(), format!("{}.Devel", app_id)],
             separator_arg: separator_arg.to_string(),
             read_only: true,
         });
@@ -88,6 +109,7 @@ mod imp {
         pub list: RefCell<Vec<Terminal>>,
         pub custom_list_path: PathBuf,
         pub command_runner: OnceCell<CommandRunner>,
+        pub flatpak_terminals_query: Query<Vec<Terminal>>,
     }
 
     impl Default for TerminalRepository {
@@ -97,6 +119,9 @@ mod imp {
                 list: RefCell::new(vec![]),
                 custom_list_path,
                 command_runner: OnceCell::new(),
+                flatpak_terminals_query: Query::new("flatpak_terminals".into(), || async {
+                    Ok(vec![])
+                }),
             }
         }
     }
@@ -125,7 +150,7 @@ impl TerminalRepository {
         let this: Self = glib::Object::builder().build();
         this.imp()
             .command_runner
-            .set(command_runner)
+            .set(command_runner.clone())
             .map_err(|_| "command runner already set")
             .unwrap();
 
@@ -142,60 +167,71 @@ impl TerminalRepository {
         list.sort_by(|a, b| a.name.cmp(&b.name));
         this.imp().list.replace(list);
 
+        // Set up the flatpak terminals query fetcher
+        let runner = command_runner.clone();
+        this.imp()
+            .flatpak_terminals_query
+            .set_fetcher(move || {
+                let runner = runner.clone();
+                async move { Self::fetch_flatpak_terminals(&runner).await }
+            });
+
+        // Connect to query success to update the terminal list
         let this_clone = this.clone();
-        glib::MainContext::default().spawn_local(async move {
-            this_clone.discover_flatpak_terminals().await;
+        this.flatpak_terminals_query().connect_success(move |terminals| {
+            this_clone.merge_flatpak_terminals(terminals.clone());
         });
 
         this
     }
 
-    pub async fn discover_flatpak_terminals(&self) {
-        let Some(runner) = self.imp().command_runner.get() else {
-            return;
-        };
-
+    async fn fetch_flatpak_terminals(runner: &CommandRunner) -> anyhow::Result<Vec<Terminal>> {
         // Get list of installed flatpaks
         let mut cmd = Command::new_with_args("flatpak", ["list", "--app", "--columns=application"]);
         cmd.stdout = FdMode::Pipe;
         cmd.stderr = FdMode::Pipe;
 
-        let Ok(output) = runner.output(cmd).await else {
-            return;
-        };
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let installed_apps: HashSet<&str> = stdout.lines().collect();
+        let output = runner.output_string(cmd).await?;
+        let installed_apps: HashSet<&str> = output.lines().collect();
 
         let mut found_terminals = Vec::new();
         for terminal in FLATPAK_TERMINAL_CANDIDATES.iter() {
-            // Extract app_id from program "flatpak run <app_id>"
-            if let Some(app_id) = terminal.program.split_whitespace().nth(2) {
-                if installed_apps.contains(app_id) {
+            // Extract app_id from extra_args (e.g., ["run", "org.gnome.Console"])
+            if let Some(app_id) = terminal.extra_args.get(1) {
+                if installed_apps.contains(app_id.as_str()) {
                     found_terminals.push(terminal.clone());
                 }
             }
         }
 
-        if !found_terminals.is_empty() {
-            let mut list = self.imp().list.borrow_mut();
-            // Build a set of existing programs to avoid duplicates
-            let existing_programs: HashSet<&str> =
-                list.iter().map(|t| t.program.as_str()).collect();
+        Ok(found_terminals)
+    }
 
-            // Only add terminals that don't already exist
-            let new_terminals: Vec<Terminal> = found_terminals
-                .into_iter()
-                .filter(|t| !existing_programs.contains(t.program.as_str()))
-                .collect();
-
-            if !new_terminals.is_empty() {
-                list.extend(new_terminals);
-                list.sort_by(|a, b| a.name.cmp(&b.name));
-                drop(list);
-                self.emit_by_name::<()>("terminals-changed", &[]);
-            }
+    fn merge_flatpak_terminals(&self, terminals: Vec<Terminal>) {
+        if terminals.is_empty() {
+            return;
         }
+
+        let mut list = self.imp().list.borrow_mut();
+        // Build a set of existing terminal identifiers to avoid duplicates
+        let existing_ids: HashSet<String> = list.iter().map(|t| t.full_command_id()).collect();
+
+        // Only add terminals that don't already exist
+        let new_terminals: Vec<Terminal> = terminals
+            .into_iter()
+            .filter(|t| !existing_ids.contains(&t.full_command_id()))
+            .collect();
+
+        if !new_terminals.is_empty() {
+            list.extend(new_terminals);
+            list.sort_by(|a, b| a.name.cmp(&b.name));
+            drop(list);
+            self.emit_by_name::<()>("terminals-changed", &[]);
+        }
+    }
+
+    pub fn flatpak_terminals_query(&self) -> Query<Vec<Terminal>> {
+        self.imp().flatpak_terminals_query.clone()
     }
 
     pub fn is_read_only(&self, name: &str) -> bool {
@@ -248,7 +284,7 @@ impl TerminalRepository {
             .list
             .borrow()
             .iter()
-            .find(|x| x.program == program)
+            .find(|x| x.program == program || x.full_command_id() == program)
             .cloned()
     }
 
