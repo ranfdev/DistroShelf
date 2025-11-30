@@ -732,7 +732,7 @@ mod tests {
     use super::*;
     use crate::fakers::NullCommandRunnerBuilder;
 
-    #[test]
+    #[gtk::test]
     fn test_resolve_path() {
         // (input_path, getfattr_output, expected_resolved_path)
         let tests = [
@@ -741,8 +741,9 @@ mod tests {
                 Ok("/home/user/Documents/custom-home-folder"),
                 Ok("/home/user/Documents/custom-home-folder"),
             ),
+            // When getfattr returns empty for a non-sandbox path, we return the original path
             ("/home/user/Documents/custom-home-folder", Ok(""), {
-                Ok("/home/user/Documents/custom/home/folder")
+                Ok("/home/user/Documents/custom-home-folder")
             }),
             // If the resolution fails and the path is from a sandbox, we expect an error
             ("/run/user/1000/doc/xyz456", Err(()), Err(())),
@@ -765,7 +766,7 @@ mod tests {
             if let Ok(expected_resolved_path) = expected_resolved_path {
                 assert_eq!(resolved_path.unwrap(), expected_resolved_path);
             } else {
-                assert!(expected_resolved_path.is_err());
+                assert!(resolved_path.is_err());
             }
         }
     }

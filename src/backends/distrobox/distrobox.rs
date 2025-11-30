@@ -1056,6 +1056,32 @@ mod tests {
     use super::*;
     use smol::block_on;
 
+    /// Helper to encode a string as hex (matching the shell script's base16 function)
+    fn to_hex(s: &str) -> String {
+        s.bytes().map(|b| format!("{:02x}", b)).collect()
+    }
+
+    /// Helper to generate TOML output matching the shell script format
+    fn make_desktop_files_toml(
+        home_dir: &str,
+        system_files: &[(&str, &str)],
+        user_files: &[(&str, &str)],
+    ) -> String {
+        let mut toml = format!("home_dir=\"{}\"\n", to_hex(home_dir));
+
+        toml.push_str("[system]\n");
+        for (path, content) in system_files {
+            toml.push_str(&format!("\"{}\"=\"{}\"\n", to_hex(path), to_hex(content)));
+        }
+
+        toml.push_str("[user]\n");
+        for (path, content) in user_files {
+            toml.push_str(&format!("\"{}\"=\"{}\"\n", to_hex(path), to_hex(content)));
+        }
+
+        toml
+    }
+
     #[test]
     fn list() -> Result<(), Error> {
         block_on(async {
@@ -1098,6 +1124,31 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
 
     #[test]
     fn list_apps() -> Result<(), Error> {
+        let vim_desktop = "[Desktop Entry]
+Type=Application
+Name=Vim
+Exec=/path/to/vim
+Icon=/path/to/icon.png
+Comment=A brief description of my application
+Categories=Utility;Network;";
+
+        let fish_desktop = "[Desktop Entry]
+Type=Application
+Name=Fish
+Exec=/path/to/fish
+Icon=/path/to/icon.png
+Comment=A brief description of my application
+Categories=Utility;Network;";
+
+        let desktop_files_toml = make_desktop_files_toml(
+            "/home/me",
+            &[
+                ("/usr/share/applications/vim.desktop", vim_desktop),
+                ("/usr/share/applications/fish.desktop", fish_desktop),
+            ],
+            &[],
+        );
+
         let db = Distrobox::new(
             NullCommandRunnerBuilder::new()
                 .cmd(&["sh", "-c", "echo $XDG_DATA_HOME"], "")
@@ -1116,40 +1167,40 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                         "-c",
                         POSIX_FIND_AND_CONCAT_DESKTOP_FILES,
                     ],
-                    "# START FILE /usr/share/applications/vim.desktop
-[Desktop Entry]
-Type=Application
-Name=Vim
-Exec=/path/to/vim
-Icon=/path/to/icon.png
-Comment=A brief description of my application
-Categories=Utility;Network;
-# START FILE /usr/share/applications/fish.desktop
-[Desktop Entry]
-Type=Application
-Name=Fish
-Exec=/path/to/fish
-Icon=/path/to/icon.png
-Comment=A brief description of my application
-Categories=Utility;Network;
-",
+                    &desktop_files_toml,
                 )
                 .build(),
         );
 
         let apps = block_on(db.list_apps("ubuntu"))?;
-        assert_eq!(&apps[0].entry.name, "Vim");
-        assert_eq!(&apps[0].entry.exec, "/path/to/vim");
-        assert!(apps[0].exported);
-        assert_eq!(&apps[1].entry.name, "Fish");
-        assert_eq!(&apps[1].entry.exec, "/path/to/fish");
-        assert!(!apps[1].exported);
+        assert_eq!(&apps[0].entry.name, "Fish");
+        assert_eq!(&apps[0].entry.exec, "/path/to/fish");
+        assert!(!apps[0].exported);
+        assert_eq!(&apps[1].entry.name, "Vim");
+        assert_eq!(&apps[1].entry.exec, "/path/to/vim");
+        assert!(apps[1].exported);
         Ok(())
     }
 
     #[test]
     fn list_apps_with_space_in_filename() -> Result<(), Error> {
         // Simulate a desktop file with a space in its filename and ensure it's parsed/export-detected correctly
+        let proton_desktop = "[Desktop Entry]
+Type=Application
+Name=Proton Authenticator
+Exec=/usr/bin/proton-authenticator %u
+Icon=proton-authenticator
+Categories=Utility;Security;";
+
+        let desktop_files_toml = make_desktop_files_toml(
+            "/home/me",
+            &[(
+                "/usr/share/applications/Proton Authenticator.desktop",
+                proton_desktop,
+            )],
+            &[],
+        );
+
         let db = Distrobox::new(
             NullCommandRunnerBuilder::new()
                 .cmd(&["sh", "-c", "echo $XDG_DATA_HOME"], "")
@@ -1168,13 +1219,7 @@ Categories=Utility;Network;
                         "-c",
                         POSIX_FIND_AND_CONCAT_DESKTOP_FILES,
                     ],
-                    "# START FILE /usr/share/applications/Proton Authenticator.desktop
-[Desktop Entry]
-Type=Application
-Name=Proton Authenticator
-Exec=/usr/bin/proton-authenticator %u
-Icon=proton-authenticator
-Categories=Utility;Security;",
+                    &desktop_files_toml,
                 )
                 .build(),
         );

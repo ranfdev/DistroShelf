@@ -276,10 +276,8 @@ impl<T: IsA<glib::Object>> DoubleEndedIterator for TypedListStoreIter<T> {
 mod tests {
     use super::*;
 
-    #[test]
+    #[gtk::test]
     fn test_typed_list_store() {
-        gtk::init().unwrap();
-
         let store = TypedListStore::<gtk::StringObject>::new();
         assert_eq!(store.len(), 0);
         assert!(store.is_empty());
@@ -306,10 +304,8 @@ mod tests {
         assert_eq!(items[1].string(), "Item 2");
     }
 
-    #[test]
+    #[gtk::test]
     fn test_retain() {
-        gtk::init().unwrap();
-
         let store = TypedListStore::<gtk::StringObject>::new();
         store.append(&gtk::StringObject::new("keep1"));
         store.append(&gtk::StringObject::new("remove"));
@@ -322,10 +318,8 @@ mod tests {
         assert_eq!(store.get(1).unwrap().string(), "keep2");
     }
 
-    #[test]
+    #[gtk::test]
     fn test_find_with() {
-        gtk::init().unwrap();
-
         let store = TypedListStore::<gtk::StringObject>::new();
         store.append(&gtk::StringObject::new("first"));
         store.append(&gtk::StringObject::new("second"));
