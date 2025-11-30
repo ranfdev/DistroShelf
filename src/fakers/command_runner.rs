@@ -152,6 +152,7 @@ pub trait InnerCommandRunner {
 #[derive(Clone, Debug)]
 pub struct RealCommandRunner {}
 impl RealCommandRunner {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         RealCommandRunner {}
     }
@@ -174,6 +175,7 @@ impl InnerCommandRunner for RealCommandRunner {
 #[derive(Default, Clone)]
 pub struct NullCommandRunnerBuilder {
     responses: HashMap<Vec<String>, Rc<dyn Fn() -> Result<String, io::Error>>>,
+    #[allow(dead_code)]
     fallback_exit_status: ExitStatus,
 }
 
@@ -181,6 +183,7 @@ impl NullCommandRunnerBuilder {
     pub fn new() -> Self {
         Default::default()
     }
+    #[allow(dead_code)]
     pub fn cmd<T: AsRef<str>>(&mut self, args: &[T], out: T) -> &mut Self {
         let args: Vec<_> = args.iter().map(|x| x.as_ref()).collect();
         let mut cmd = Command::new(args[0]);
@@ -197,6 +200,7 @@ impl NullCommandRunnerBuilder {
         self.responses.insert(key, Rc::new(out));
         self
     }
+    #[allow(dead_code)]
     pub fn fallback(&mut self, status: ExitStatus) -> &mut Self {
         self.fallback_exit_status = status;
         self
@@ -213,6 +217,7 @@ impl NullCommandRunnerBuilder {
 #[derive(Default, Clone)]
 pub struct NullCommandRunner {
     responses: HashMap<Vec<String>, Rc<dyn Fn() -> Result<String, io::Error>>>,
+    #[allow(dead_code)]
     fallback_exit_status: ExitStatus,
 }
 

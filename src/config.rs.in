@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub static VERSION: &str = @VERSION@;
 pub static PATH_ID: &str = @PATH_ID@;
 pub static GETTEXT_PACKAGE: &str = @GETTEXT_PACKAGE@;

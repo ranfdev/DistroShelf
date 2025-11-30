@@ -25,8 +25,10 @@ pub fn map_docker_to_podman(mut command: Command) -> Command {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PodmanEvent {
+    #[allow(dead_code)]
     #[serde(rename = "ID")]
     pub id: Option<String>,
+    #[allow(dead_code)]
     pub name: Option<String>,
     pub status: Option<String>,
     #[serde(rename = "Type")]
