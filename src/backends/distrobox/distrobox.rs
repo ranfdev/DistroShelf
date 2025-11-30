@@ -1468,4 +1468,51 @@ Categories=Utility;Security;";
         };
         assert_eq!(vol_ro.to_string(), "/host:/container:ro");
     }
+
+    #[test]
+    fn container_info_parsing() -> Result<(), Error> {
+        // Test valid container line with "Up" status
+        let line = "abc123 | my-container | Up 5 hours | docker.io/library/ubuntu:latest";
+        let info = ContainerInfo::from_str(line)?;
+        assert_eq!(info.id, "abc123");
+        assert_eq!(info.name, "my-container");
+        assert_eq!(info.status, Status::Up("5 hours".to_string()));
+        assert_eq!(info.image, "docker.io/library/ubuntu:latest");
+
+        // Test container with "Created" status
+        let line = "def456 | fedora | Created 2 minutes ago | ghcr.io/ublue-os/fedora-toolbox:latest";
+        let info = ContainerInfo::from_str(line)?;
+        assert_eq!(info.id, "def456");
+        assert_eq!(info.name, "fedora");
+        assert_eq!(info.status, Status::Created("2 minutes ago".to_string()));
+        assert_eq!(info.image, "ghcr.io/ublue-os/fedora-toolbox:latest");
+
+        // Test container with "Exited" status
+        let line = "789ghi | arch | Exited (0) 1 day ago | docker.io/library/archlinux:latest";
+        let info = ContainerInfo::from_str(line)?;
+        assert_eq!(info.id, "789ghi");
+        assert_eq!(info.name, "arch");
+        assert_eq!(info.status, Status::Exited("(0) 1 day ago".to_string()));
+        assert_eq!(info.image, "docker.io/library/archlinux:latest");
+
+        Ok(())
+    }
+
+    #[test]
+    fn container_info_parsing_errors() {
+        // Too few fields
+        let result = ContainerInfo::from_str("abc123 | my-container | Up");
+        assert!(result.is_err());
+
+        // Too many fields shouldn't happen in normal distrobox output, but test behavior
+        let result = ContainerInfo::from_str("a | b | c | d | e");
+        assert!(result.is_err());
+
+        // Empty fields should fail
+        let result = ContainerInfo::from_str(" | my-container | Up | image");
+        assert!(result.is_err());
+
+        let result = ContainerInfo::from_str("abc123 |  | Up | image");
+        assert!(result.is_err());
+    }
 }
