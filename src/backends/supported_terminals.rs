@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     path::{Path, PathBuf},
     sync::LazyLock,
 };
@@ -154,33 +155,46 @@ impl TerminalRepository {
             return;
         };
 
-        // Check if flatpak is available
-        let mut check_cmd = Command::new_with_args("flatpak", ["--version"]);
-        check_cmd.stdout = FdMode::Pipe;
-        check_cmd.stderr = FdMode::Pipe;
-        if runner.output(check_cmd).await.is_err() {
+        // Get list of installed flatpaks
+        let mut cmd = Command::new_with_args("flatpak", ["list", "--app", "--columns=application"]);
+        cmd.stdout = FdMode::Pipe;
+        cmd.stderr = FdMode::Pipe;
+
+        let Ok(output) = runner.output(cmd).await else {
             return;
-        }
+        };
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let installed_apps: HashSet<&str> = stdout.lines().collect();
 
         let mut found_terminals = Vec::new();
         for terminal in FLATPAK_TERMINAL_CANDIDATES.iter() {
             // Extract app_id from program "flatpak run <app_id>"
-            let app_id = terminal.program.split_whitespace().nth(2).unwrap();
-
-            let mut cmd = Command::new_with_args("flatpak", ["info", app_id]);
-            cmd.stdout = FdMode::Pipe;
-            cmd.stderr = FdMode::Pipe;
-            if runner.output(cmd).await.is_ok() {
-                found_terminals.push(terminal.clone());
+            if let Some(app_id) = terminal.program.split_whitespace().nth(2) {
+                if installed_apps.contains(app_id) {
+                    found_terminals.push(terminal.clone());
+                }
             }
         }
 
         if !found_terminals.is_empty() {
             let mut list = self.imp().list.borrow_mut();
-            list.extend(found_terminals);
-            list.sort_by(|a, b| a.name.cmp(&b.name));
-            drop(list);
-            self.emit_by_name::<()>("terminals-changed", &[]);
+            // Build a set of existing programs to avoid duplicates
+            let existing_programs: HashSet<&str> =
+                list.iter().map(|t| t.program.as_str()).collect();
+
+            // Only add terminals that don't already exist
+            let new_terminals: Vec<Terminal> = found_terminals
+                .into_iter()
+                .filter(|t| !existing_programs.contains(t.program.as_str()))
+                .collect();
+
+            if !new_terminals.is_empty() {
+                list.extend(new_terminals);
+                list.sort_by(|a, b| a.name.cmp(&b.name));
+                drop(list);
+                self.emit_by_name::<()>("terminals-changed", &[]);
+            }
         }
     }
 
