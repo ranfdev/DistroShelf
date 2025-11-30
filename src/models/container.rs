@@ -143,7 +143,10 @@ impl Container {
             let this = this_clone.clone();
             async move {
                 let root_store = this.root_store();
-                let runtime = root_store.container_runtime().data().unwrap();
+                let runtime = root_store
+                    .container_runtime()
+                    .data()
+                    .ok_or_else(|| anyhow::anyhow!("Container runtime not available"))?;
                 let usage = runtime.usage(&this.name()).await?;
                 Ok(usage)
             }
@@ -206,8 +209,16 @@ impl Container {
             });
     }
     pub fn install(&self, path: &Path) {
+        let Some(distro) = self.distro() else {
+            tracing::error!(
+                container = %self.name(),
+                "Cannot install package: distro information not available"
+            );
+            return;
+        };
+
         let this = self.clone();
-        let package_manager = { self.distro().map(|d| d.package_manager()).unwrap() };
+        let package_manager = distro.package_manager();
         let path_clone = path.to_owned();
         let name_clone = self.name();
         self.root_store()
@@ -233,7 +244,13 @@ impl Container {
                 let tmp_path = format!("/tmp/com.ranfdev.DistroShelf.{}", filename);
                 let tmp_path = Path::new(&tmp_path);
                 let cp_cmd_pure = Command::new_with_args("cp", [&path_clone, tmp_path]);
-                let install_cmd_pure = package_manager.install_cmd(tmp_path).unwrap();
+
+                let Some(install_cmd_pure) = package_manager.install_cmd(tmp_path) else {
+                    anyhow::bail!(
+                        "Package manager {:?} does not support installing files",
+                        package_manager
+                    );
+                };
 
                 let mut cp_cmd = enter_cmd.clone();
                 cp_cmd.extend("--", &cp_cmd_pure);
