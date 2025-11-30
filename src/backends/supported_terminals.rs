@@ -265,8 +265,20 @@ impl TerminalRepository {
             .filter(|x| !x.read_only)
             .cloned()
             .collect::<Vec<_>>();
-        let json = serde_json::to_string(&*list).unwrap();
-        std::fs::write(&self.imp().custom_list_path, json).unwrap();
+
+        match serde_json::to_string(&list) {
+            Ok(json) => {
+                if let Err(e) = std::fs::write(&self.imp().custom_list_path, json) {
+                    error!(
+                        "Failed to write custom terminals to {:?}: {}",
+                        &self.imp().custom_list_path, e
+                    );
+                }
+            }
+            Err(e) => {
+                error!("Failed to serialize custom terminals: {}", e);
+            }
+        }
     }
 
     fn load_terminals_from_json(path: &Path) -> anyhow::Result<Vec<Terminal>> {
@@ -287,18 +299,22 @@ impl TerminalRepository {
         command.stdout = FdMode::Pipe;
         command.stderr = FdMode::Pipe;
 
-        let output = self
-            .imp()
-            .command_runner
-            .get()
-            .unwrap()
-            .output(command.clone());
-        let Ok(output) = output.await else {
+        let Some(runner) = self.imp().command_runner.get() else {
+            error!("Command runner not initialized");
+            return None;
+        };
+
+        let Ok(output) = runner.output(command.clone()).await else {
             error!("Failed to get default terminal, running {:?}", &command);
             return None;
         };
-        let terminal_program = String::from_utf8(output.stdout).unwrap().trim().to_string();
-        let terminal_program = terminal_program.trim_matches('\'');
+
+        let Ok(terminal_program) = String::from_utf8(output.stdout) else {
+            error!("Default terminal output is not valid UTF-8");
+            return None;
+        };
+
+        let terminal_program = terminal_program.trim().trim_matches('\'');
         if terminal_program.is_empty() {
             return None;
         }
