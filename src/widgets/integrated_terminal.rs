@@ -7,7 +7,7 @@ use gtk::{
 use vte4::prelude::*;
 
 use crate::i18n::gettext;
-use crate::{fakers::Command, models::Container};
+use crate::models::Container;
 
 mod imp {
     use std::cell::OnceCell;
@@ -152,16 +152,10 @@ impl IntegratedTerminal {
         imp.reload_button.set_visible(false);
         let root_store = self.container().root_store();
 
-        // Prepare the shell command
-        let shell = root_store
-            .command_runner()
-            .wrap_command(
-                Command::new("distrobox")
-                    .arg("enter")
-                    .arg(self.container().name())
-                    .clone(),
-            )
-            .to_vec();
+        // Prepare the shell command via the Distrobox backend (uses injected factory)
+        let name = self.container().name();
+        let enter_cmd = root_store.distrobox().enter_cmd(&name);
+        let shell = root_store.command_runner().wrap_command(enter_cmd).to_vec();
 
         let fut = imp.terminal.spawn_future(
             vte4::PtyFlags::DEFAULT,

@@ -16,6 +16,7 @@ use std::{
 use tracing::{debug, error, info, warn};
 
 use crate::backends::desktop_file::*;
+use crate::backends::distrobox::command::{CmdFactory, default_cmd_factory};
 
 const POSIX_FIND_AND_CONCAT_DESKTOP_FILES: &str =
     include_str!("POSIX_FIND_AND_CONCAT_DESKTOP_FILES.sh");
@@ -101,6 +102,7 @@ impl DesktopFiles {
 
 pub struct Distrobox {
     cmd_runner: CommandRunner,
+    cmd_factory: CmdFactory,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash)]
@@ -427,13 +429,13 @@ impl DistroboxCommandRunnerResponse {
     }
 
     fn build_version_response() -> (Command, String) {
-        let mut cmd = Command::new("distrobox");
+        let mut cmd = default_cmd_factory()();
         cmd.arg("version");
         (cmd, "distrobox: 1.7.2.1".to_string())
     }
 
     fn build_no_version_response() -> (Command, Rc<dyn Fn() -> io::Result<String>>) {
-        let mut cmd = Command::new("distrobox");
+        let mut cmd = default_cmd_factory()();
         cmd.arg("version");
         (cmd, Rc::new(|| Err(io::Error::from_raw_os_error(0))))
     }
@@ -451,14 +453,14 @@ impl DistroboxCommandRunnerResponse {
             output.push_str(&container.image);
             output.push('\n');
         }
-        let mut cmd = Command::new("distrobox");
+        let mut cmd = default_cmd_factory()();
         cmd.arg("ls").arg("--no-color");
         (cmd, output.clone())
     }
 
     fn build_compatibility_response(images: &[String]) -> (Command, String) {
         let output = images.join("\n");
-        let mut cmd = Command::new("distrobox");
+        let mut cmd = default_cmd_factory()();
         cmd.arg("create").arg("--compatibility");
         (cmd, output)
     }
@@ -517,20 +519,16 @@ impl DistroboxCommandRunnerResponse {
 
         toml.push_str("[user]\n");
 
-        commands.push((
-            Command::new_with_args(
-                "distrobox",
-                [
-                    "enter",
-                    box_name,
-                    "--",
-                    "sh",
-                    "-c",
-                    POSIX_FIND_AND_CONCAT_DESKTOP_FILES,
-                ],
-            ),
-            toml,
-        ));
+        let mut db_cmd = default_cmd_factory()();
+        db_cmd.args([
+            "enter",
+            box_name,
+            "--",
+            "sh",
+            "-c",
+            POSIX_FIND_AND_CONCAT_DESKTOP_FILES,
+        ]);
+        commands.push((db_cmd, toml));
 
         commands
     }
@@ -565,12 +563,16 @@ impl DistroboxCommandRunnerResponse {
 }
 
 impl Distrobox {
-    pub fn new(cmd_runner: CommandRunner) -> Self {
-        Self { cmd_runner }
+    // The command factory ensures we can customize the distrobox executable path, e.g. to use a bundled version.
+    pub fn new(cmd_runner: CommandRunner, cmd_factory: CmdFactory) -> Self {
+        Self {
+            cmd_runner,
+            cmd_factory,
+        }
     }
 
     fn dbcmd(&self) -> Command {
-        Command::new("distrobox")
+        (self.cmd_factory)()
     }
 
     pub fn null_command_runner(responses: &[DistroboxCommandRunnerResponse]) -> CommandRunner {
@@ -1083,7 +1085,7 @@ impl Distrobox {
 
 impl Default for Distrobox {
     fn default() -> Self {
-        Self::new(CommandRunner::new_null())
+        Self::new(CommandRunner::new_null(), default_cmd_factory())
     }
 }
 
@@ -1122,6 +1124,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "ls", "--no-color"], output)
                     .build(),
+                    default_cmd_factory()
             );
             assert_eq!(
                 db.list().await?,
@@ -1147,6 +1150,8 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "version"], output)
                     .build(),
+                    default_cmd_factory()
+
             );
             assert_eq!(db.version().await?, "1.7.2.1".to_string(),);
             Ok(())
@@ -1201,6 +1206,8 @@ Categories=Utility;Network;";
                     &desktop_files_toml,
                 )
                 .build(),
+                    default_cmd_factory()
+
         );
 
         let apps = block_on(db.list_apps("ubuntu"))?;
@@ -1253,6 +1260,8 @@ Categories=Utility;Security;";
                     &desktop_files_toml,
                 )
                 .build(),
+                    default_cmd_factory()
+
         );
 
         let apps = block_on(db.list_apps("ubuntu"))?;
@@ -1270,7 +1279,7 @@ Categories=Utility;Security;";
     #[test]
     fn create() -> Result<(), Error> {
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();
-        let db = Distrobox::new(CommandRunner::new_null());
+        let db = Distrobox::new(CommandRunner::new_null(), default_cmd_factory());
         let output_tracker = db.cmd_runner.output_tracker();
         debug!("Testing container creation");
         let args = CreateArgs {
@@ -1294,7 +1303,7 @@ Categories=Utility;Security;";
     }
     #[test]
     fn assemble() -> Result<(), Error> {
-        let db = Distrobox::new(CommandRunner::new_null());
+        let db = Distrobox::new(CommandRunner::new_null(), default_cmd_factory());
         let output_tracker = db.cmd_runner.output_tracker();
         db.assemble("/path/to/assemble.yml")?;
         assert_eq!(
@@ -1306,7 +1315,7 @@ Categories=Utility;Security;";
 
     #[test]
     fn remove() -> Result<(), Error> {
-        let db = Distrobox::new(CommandRunner::new_null());
+        let db = Distrobox::new(CommandRunner::new_null(), default_cmd_factory());
         let output_tracker = db.cmd_runner.output_tracker();
         block_on(db.remove("ubuntu"))?;
         assert_eq!(

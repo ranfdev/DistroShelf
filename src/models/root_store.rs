@@ -166,23 +166,24 @@ impl RootStore {
             .terminal_repository
             .replace(TerminalRepository::new(command_runner.clone()));
 
-        // Create a mapped command runner for Distrobox that handles the executable path
-        let settings = this.settings();
-        let distrobox_cmd_runner = command_runner.clone().map_cmd(move |mut cmd| {
-            // Only map commands that are trying to run "distrobox"
-            if cmd.program == "distrobox" {
-                let distrobox_executable = settings.string("distrobox-executable");
-                if distrobox_executable == "bundled" {
-                    let bundled_path = crate::distrobox_downloader::get_bundled_distrobox_path();
-                    cmd.program = bundled_path.into();
-                }
-            }
-            cmd
+        // Build a CmdFactory that will be injected into the Distrobox backend. The factory
+        // is created here (root_store) so the distrobox module does not depend on `gio::Settings`.
+        let this_clone = this.clone();
+        let cmd_factory: crate::backends::distrobox::command::CmdFactory = Box::new(move || {
+            let distrobox_executable_val = this_clone.settings().string("distrobox-executable");
+            let selected_program: String = if distrobox_executable_val == "bundled" {
+                crate::distrobox_downloader::get_bundled_distrobox_path()
+                    .to_string_lossy()
+                    .into_owned()
+            } else {
+                "distrobox".into()
+            };
+            crate::fakers::Command::new(selected_program.clone())
         });
 
         this.imp()
             .distrobox
-            .set(Distrobox::new(distrobox_cmd_runner))
+            .set(Distrobox::new(command_runner.clone(), cmd_factory))
             .or(Err("distrobox already set"))
             .unwrap();
 
