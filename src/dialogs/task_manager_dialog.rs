@@ -54,9 +54,9 @@ mod imp {
                 .set_transition_type(gtk::StackTransitionType::Crossfade);
 
             self.status_page.set_title(&gettext("No Running Tasks"));
-            self.status_page.set_description(Some(
-                &gettext("Tasks such as starting, stopping and upgrading will appear here."),
-            ));
+            self.status_page.set_description(Some(&gettext(
+                "Tasks such as starting, stopping and upgrading will appear here.",
+            )));
             self.stack.add_named(&self.status_page, Some("empty"));
             self.stack.set_visible_child_name("empty");
 

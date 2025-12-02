@@ -73,13 +73,15 @@ mod imp {
             self.export_apps_group.set_margin_end(12);
             self.export_apps_group.set_margin_top(12);
             self.export_apps_group.set_margin_bottom(12);
-            self.export_apps_group.set_title(&gettext("Exportable Apps"));
+            self.export_apps_group
+                .set_title(&gettext("Exportable Apps"));
             self.export_apps_group
                 .set_description(Some(&gettext("No exportable apps found")));
             self.export_apps_group.add(&self.list_box);
 
             // Setup binary export input
-            self.binary_name_entry.set_title(&gettext("Export New Binary"));
+            self.binary_name_entry
+                .set_title(&gettext("Export New Binary"));
             self.binary_name_entry.set_show_apply_button(true);
             self.binary_name_entry.add_css_class("add-binary-entry-row");
 
@@ -92,7 +94,8 @@ mod imp {
             self.export_binaries_group.set_margin_end(12);
             self.export_binaries_group.set_margin_top(0);
             self.export_binaries_group.set_margin_bottom(12);
-            self.export_binaries_group.set_title(&gettext("Exported Binaries"));
+            self.export_binaries_group
+                .set_title(&gettext("Exported Binaries"));
             self.export_binaries_group
                 .set_description(Some(&gettext("No exported binaries")));
             self.export_binaries_group.add(&self.binary_name_entry);

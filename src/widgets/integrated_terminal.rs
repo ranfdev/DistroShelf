@@ -160,10 +160,7 @@ impl IntegratedTerminal {
         let fut = imp.terminal.spawn_future(
             vte4::PtyFlags::DEFAULT,
             None,
-            &shell
-                .iter()
-                .filter_map(|s| s.to_str())
-                .collect::<Vec<_>>(),
+            &shell.iter().filter_map(|s| s.to_str()).collect::<Vec<_>>(),
             &[],
             glib::SpawnFlags::DEFAULT,
             || {},

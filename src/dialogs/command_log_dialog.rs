@@ -190,7 +190,8 @@ impl CommandLogDialog {
                 if let Some(display) = gdk::Display::default() {
                     let clipboard = display.clipboard();
                     clipboard.set_text(&command_owned);
-                    toast_overlay.add_toast(adw::Toast::new(&gettext("Command copied to clipboard")));
+                    toast_overlay
+                        .add_toast(adw::Toast::new(&gettext("Command copied to clipboard")));
                 }
             }
         ));

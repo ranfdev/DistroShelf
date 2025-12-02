@@ -509,7 +509,7 @@ mod tests {
     #[test]
     fn test_is_stale_fresh_data() {
         let fetched_at = Some(SystemTime::now());
-        
+
         // Data just fetched should not be stale for reasonable max_age
         assert!(!check_is_stale(fetched_at, Duration::from_secs(60)));
         assert!(!check_is_stale(fetched_at, Duration::from_secs(1)));
@@ -519,7 +519,7 @@ mod tests {
     fn test_is_stale_old_data() {
         // Set last_fetched_at to 2 seconds ago
         let fetched_at = Some(SystemTime::now() - Duration::from_secs(2));
-        
+
         // Data older than max_age is stale
         assert!(check_is_stale(fetched_at, Duration::from_secs(1)));
         // Data newer than max_age is not stale
@@ -535,7 +535,7 @@ mod tests {
     #[test]
     fn test_age_just_fetched() {
         let fetched_at = Some(SystemTime::now());
-        
+
         // Data just fetched should have very small age
         let age = calculate_age(fetched_at).expect("Should have age");
         assert!(age < Duration::from_secs(1));
@@ -544,7 +544,7 @@ mod tests {
     #[test]
     fn test_age_old_data() {
         let fetched_at = Some(SystemTime::now() - Duration::from_secs(5));
-        
+
         // Data fetched 5 seconds ago should have age of approximately 5 seconds
         let age = calculate_age(fetched_at).expect("Should have age");
         assert!(age >= Duration::from_secs(4));
@@ -592,7 +592,7 @@ mod tests {
     fn test_is_stale_boundary() {
         // Test exact boundary condition
         let fetched_at = Some(SystemTime::now() - Duration::from_millis(1000));
-        
+
         // At exactly 1 second, should be stale (elapsed > max_age, not >=)
         assert!(check_is_stale(fetched_at, Duration::from_millis(999)));
         // At more than elapsed time, should not be stale
@@ -605,7 +605,7 @@ mod tests {
         use std::sync::atomic::{AtomicU32, Ordering};
         let counter = std::sync::Arc::new(AtomicU32::new(0));
         let counter_clone = counter.clone();
-        
+
         let strategy: Box<dyn Fn(u32) -> Option<Duration>> = Box::new(move |n| {
             counter_clone.fetch_add(1, Ordering::SeqCst);
             if n < 3 {
@@ -621,9 +621,8 @@ mod tests {
         let _ = strategy(1);
         let _ = strategy(2);
         let _ = strategy(3);
-        
+
         // Verify strategy was called correct number of times
         assert_eq!(counter.load(Ordering::SeqCst), 4);
     }
 }
-

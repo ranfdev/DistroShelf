@@ -510,11 +510,7 @@ impl DistroboxCommandRunnerResponse {
                 Categories=Utility;Network;",
                 name, name, icon
             );
-            toml.push_str(&format!(
-                "\"{}\"=\"{}\"\n",
-                to_hex(&path),
-                to_hex(&content)
-            ));
+            toml.push_str(&format!("\"{}\"=\"{}\"\n", to_hex(&path), to_hex(&content)));
         }
 
         toml.push_str("[user]\n");
@@ -1124,7 +1120,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "ls", "--no-color"], output)
                     .build(),
-                    default_cmd_factory()
+                default_cmd_factory(),
             );
             assert_eq!(
                 db.list().await?,
@@ -1150,8 +1146,7 @@ d24405b14180 | ubuntu               | Created            | ghcr.io/ublue-os/ubun
                 NullCommandRunnerBuilder::new()
                     .cmd(&["distrobox", "version"], output)
                     .build(),
-                    default_cmd_factory()
-
+                default_cmd_factory(),
             );
             assert_eq!(db.version().await?, "1.7.2.1".to_string(),);
             Ok(())
@@ -1206,8 +1201,7 @@ Categories=Utility;Network;";
                     &desktop_files_toml,
                 )
                 .build(),
-                    default_cmd_factory()
-
+            default_cmd_factory(),
         );
 
         let apps = block_on(db.list_apps("ubuntu"))?;
@@ -1260,8 +1254,7 @@ Categories=Utility;Security;";
                     &desktop_files_toml,
                 )
                 .build(),
-                    default_cmd_factory()
-
+            default_cmd_factory(),
         );
 
         let apps = block_on(db.list_apps("ubuntu"))?;
@@ -1366,8 +1359,8 @@ Categories=Utility;Security;";
         let toml_output = toml_command.1().expect("Should generate output");
 
         // Verify the TOML is parseable
-        let desktop_files: DesktopFiles = toml::from_str(&toml_output)
-            .expect("Generated TOML should be valid and parseable");
+        let desktop_files: DesktopFiles =
+            toml::from_str(&toml_output).expect("Generated TOML should be valid and parseable");
 
         // Verify home_dir is set
         assert_eq!(
@@ -1445,10 +1438,7 @@ Categories=Utility;Security;";
             Status::Exited("(0) 10 seconds ago".to_string()).to_string(),
             "Exited (0) 10 seconds ago"
         );
-        assert_eq!(
-            Status::Other("Unknown".to_string()).to_string(),
-            "Unknown"
-        );
+        assert_eq!(Status::Other("Unknown".to_string()).to_string(), "Unknown");
     }
 
     #[test]
@@ -1506,7 +1496,8 @@ Categories=Utility;Security;";
         assert_eq!(info.image, "docker.io/library/ubuntu:latest");
 
         // Test container with "Created" status
-        let line = "def456 | fedora | Created 2 minutes ago | ghcr.io/ublue-os/fedora-toolbox:latest";
+        let line =
+            "def456 | fedora | Created 2 minutes ago | ghcr.io/ublue-os/fedora-toolbox:latest";
         let info = ContainerInfo::from_str(line)?;
         assert_eq!(info.id, "def456");
         assert_eq!(info.name, "fedora");

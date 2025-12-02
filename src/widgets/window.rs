@@ -242,14 +242,20 @@ impl DistroShelfWindow {
 
         // Register terminal visibility callback once
         let this_clone = this.clone();
-        this.imp().view_stack.connect_visible_child_notify(move |stack| {
-            if stack.visible_child_name().as_deref() == Some("terminal") {
-                if let Some(terminal) = this_clone.imp().current_integrated_terminal.borrow().as_ref()
-                {
-                    terminal.spawn_terminal();
+        this.imp()
+            .view_stack
+            .connect_visible_child_notify(move |stack| {
+                if stack.visible_child_name().as_deref() == Some("terminal") {
+                    if let Some(terminal) = this_clone
+                        .imp()
+                        .current_integrated_terminal
+                        .borrow()
+                        .as_ref()
+                    {
+                        terminal.spawn_terminal();
+                    }
                 }
-            }
-        });
+            });
 
         // Save window size when closing
         let this_clone = this.clone();
@@ -450,7 +456,9 @@ impl DistroShelfWindow {
     fn build_install_package_dialog(&self) {
         if let Some(container) = self.root_store().selected_container() {
             // Show file chooser and install package using the appropriate command
-            let file_dialog = gtk::FileDialog::builder().title(gettext("Select Package")).build();
+            let file_dialog = gtk::FileDialog::builder()
+                .title(gettext("Select Package"))
+                .build();
 
             file_dialog.open(
                 Some(self),

@@ -173,12 +173,12 @@ mod tests {
     fn test_command_extend() {
         let mut cmd1 = Command::new("sh");
         cmd1.arg("-c");
-        
+
         let mut cmd2 = Command::new("echo");
         cmd2.arg("hello");
-        
+
         cmd1.extend("&&", &cmd2);
-        
+
         assert_eq!(cmd1.program, "sh");
         assert_eq!(cmd1.args.len(), 4);
         assert_eq!(cmd1.args[0], "-c");
@@ -192,7 +192,7 @@ mod tests {
         let mut cmd = Command::new("ls");
         cmd.args(["-l", "-a", "--color"]);
         cmd.remove_flag_arg("-a");
-        
+
         assert_eq!(cmd.args.len(), 2);
         assert_eq!(cmd.args[0], "-l");
         assert_eq!(cmd.args[1], "--color");
@@ -203,7 +203,7 @@ mod tests {
         let mut cmd = Command::new("ls");
         cmd.args(["-l", "-a"]);
         cmd.remove_flag_arg("-z");
-        
+
         // No change when flag not found
         assert_eq!(cmd.args.len(), 2);
     }
@@ -213,7 +213,7 @@ mod tests {
         let mut cmd = Command::new("git");
         cmd.args(["commit", "-m", "message", "--author", "user"]);
         cmd.remove_flag_value_arg("-m");
-        
+
         assert_eq!(cmd.args.len(), 3);
         assert_eq!(cmd.args[0], "commit");
         assert_eq!(cmd.args[1], "--author");
@@ -224,7 +224,7 @@ mod tests {
     fn test_command_to_vec() {
         let mut cmd = Command::new("echo");
         cmd.args(["hello", "world"]);
-        
+
         let vec = cmd.to_vec();
         assert_eq!(vec.len(), 3);
         assert_eq!(vec[0], "echo");
@@ -236,7 +236,7 @@ mod tests {
     fn test_command_display() {
         let mut cmd = Command::new("echo");
         cmd.args(["hello", "world"]);
-        
+
         let display = format!("{}", cmd);
         assert_eq!(display, "echo hello world");
     }
@@ -257,4 +257,3 @@ mod tests {
         matches!(cmd.stderr, FdMode::Inherit);
     }
 }
-

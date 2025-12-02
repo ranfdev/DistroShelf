@@ -153,8 +153,11 @@ mod imp {
                     "docker" => "Docker",
                     _ => name,
                 };
-                self.container_runtime_row
-                    .set_subtitle(&format!("{} {}", display_name, gettext("available")));
+                self.container_runtime_row.set_subtitle(&format!(
+                    "{} {}",
+                    display_name,
+                    gettext("available")
+                ));
 
                 // Try to get version asynchronously
                 let runtime_version_label = self.runtime_version_label.clone();
@@ -203,8 +206,11 @@ mod imp {
                     gettext("System version")
                 };
 
-                self.distrobox_row
-                    .set_subtitle(&format!("{} {}", source_label, gettext("available")));
+                self.distrobox_row.set_subtitle(&format!(
+                    "{} {}",
+                    source_label,
+                    gettext("available")
+                ));
                 self.distrobox_version_label.set_text(version);
                 self.distrobox_version_label.set_visible(true);
             } else {
@@ -212,8 +218,9 @@ mod imp {
                 icon.add_css_class("warning");
                 self.distrobox_row.add_prefix(&icon);
                 self.distrobox_status_icon.replace(Some(icon));
-                self.distrobox_row
-                    .set_subtitle(&gettext("Not found - Install from system or use bundled version"));
+                self.distrobox_row.set_subtitle(&gettext(
+                    "Not found - Install from system or use bundled version",
+                ));
             }
 
             self.update_continue_button();
@@ -275,7 +282,8 @@ mod imp {
                 self.distrobox_row.remove(&old_icon);
             }
 
-            self.container_runtime_row.set_subtitle(&gettext("Checking…"));
+            self.container_runtime_row
+                .set_subtitle(&gettext("Checking…"));
             self.distrobox_row.set_subtitle(&gettext("Checking…"));
             self.runtime_version_label.set_visible(false);
             self.distrobox_version_label.set_visible(false);
@@ -345,7 +353,9 @@ mod imp {
                             .carousel
                             .scroll_to(&*obj.imp().terminal_preferences_page, true);
                     } else if task.is_failed() {
-                        btn.set_child(Some(&gtk::Label::new(Some(&gettext("Use Bundled Version")))));
+                        btn.set_child(Some(&gtk::Label::new(Some(&gettext(
+                            "Use Bundled Version",
+                        )))));
                         btn.set_sensitive(true);
                         obj.set_distrobox_error(Some(gettext("Download failed")));
                     }

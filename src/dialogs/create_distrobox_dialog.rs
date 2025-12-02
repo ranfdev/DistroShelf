@@ -167,7 +167,8 @@ mod imp {
                     obj.set_home_folder(Some(path.display().to_string()));
                 },
             );
-            self.home_row_expander.set_title(&gettext("Custom Home Directory"));
+            self.home_row_expander
+                .set_title(&gettext("Custom Home Directory"));
             self.home_row_expander.set_show_enable_switch(true);
             self.home_row_expander.set_enable_expansion(false);
             self.home_row_expander.add_row(&home_row);
@@ -237,7 +238,8 @@ mod imp {
 
             let assemble_group = adw::PreferencesGroup::new();
             assemble_group.set_title(&gettext("Assemble from File"));
-            assemble_group.set_description(Some(&gettext("Create a container from an assemble file")));
+            assemble_group
+                .set_description(Some(&gettext("Create a container from an assemble file")));
 
             let obj = self.obj().clone();
             let file_row = self.obj().build_file_row(
@@ -712,11 +714,13 @@ impl CreateDistroboxDialog {
     pub fn build_volumes_group(&self) -> adw::PreferencesGroup {
         let volumes_group = adw::PreferencesGroup::new();
         volumes_group.set_title(&gettext("Volumes"));
-        volumes_group.set_description(Some(
-            &gettext("Specify volumes in the format 'host_path:container_path'"),
-        ));
+        volumes_group.set_description(Some(&gettext(
+            "Specify volumes in the format 'host_path:container_path'",
+        )));
 
-        let add_volume_button = adw::ButtonRow::builder().title(&gettext("Add Volume")).build();
+        let add_volume_button = adw::ButtonRow::builder()
+            .title(&gettext("Add Volume"))
+            .build();
         add_volume_button.connect_activated(clone!(
             #[weak(rename_to=this)]
             self,

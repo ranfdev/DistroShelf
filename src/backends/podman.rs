@@ -145,7 +145,7 @@ mod tests {
     fn test_map_docker_to_podman() {
         let cmd = Command::new("docker");
         let mapped = map_docker_to_podman(cmd);
-        
+
         assert_eq!(mapped.program.to_string_lossy(), "podman");
     }
 
@@ -153,9 +153,9 @@ mod tests {
     fn test_map_docker_to_podman_with_args() {
         let mut cmd = Command::new("docker");
         cmd.args(["ps", "-a"]);
-        
+
         let mapped = map_docker_to_podman(cmd);
-        
+
         assert_eq!(mapped.program.to_string_lossy(), "podman");
         assert_eq!(mapped.args[0].to_string_lossy(), "ps");
         assert_eq!(mapped.args[1].to_string_lossy(), "-a");
@@ -165,7 +165,7 @@ mod tests {
     fn test_map_docker_to_podman_non_docker() {
         let cmd = Command::new("other-command");
         let mapped = map_docker_to_podman(cmd);
-        
+
         // Non-docker commands should not be changed
         assert_eq!(mapped.program.to_string_lossy(), "other-command");
     }
@@ -174,7 +174,7 @@ mod tests {
     fn test_podman_event_is_distrobox() {
         let mut attrs = HashMap::new();
         attrs.insert("manager".to_string(), "distrobox".to_string());
-        
+
         let event = PodmanEvent {
             id: Some("abc123".to_string()),
             name: Some("my-container".to_string()),
@@ -182,7 +182,7 @@ mod tests {
             event_type: Some("container".to_string()),
             attributes: Some(attrs),
         };
-        
+
         assert!(event.is_distrobox());
     }
 
@@ -190,7 +190,7 @@ mod tests {
     fn test_podman_event_not_distrobox() {
         let mut attrs = HashMap::new();
         attrs.insert("manager".to_string(), "other".to_string());
-        
+
         let event = PodmanEvent {
             id: Some("abc123".to_string()),
             name: None,
@@ -198,7 +198,7 @@ mod tests {
             event_type: None,
             attributes: Some(attrs),
         };
-        
+
         assert!(!event.is_distrobox());
     }
 
@@ -211,7 +211,7 @@ mod tests {
             event_type: None,
             attributes: None,
         };
-        
+
         assert!(!event.is_distrobox());
     }
 
@@ -224,7 +224,7 @@ mod tests {
             event_type: Some("container".to_string()),
             attributes: None,
         };
-        
+
         assert!(event.is_container_event());
     }
 
@@ -237,7 +237,7 @@ mod tests {
             event_type: Some("image".to_string()),
             attributes: None,
         };
-        
+
         assert!(!event.is_container_event());
     }
 
@@ -250,8 +250,7 @@ mod tests {
             event_type: None,
             attributes: None,
         };
-        
+
         assert!(!event.is_container_event());
     }
 }
-

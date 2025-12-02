@@ -1,4 +1,4 @@
-use futures::{AsyncBufReadExt, StreamExt, io::BufReader, FutureExt};
+use futures::{AsyncBufReadExt, FutureExt, StreamExt, io::BufReader};
 use glib::Properties;
 use glib::subclass::prelude::*;
 use gtk::glib;
@@ -66,7 +66,7 @@ impl DistroboxTask {
             .property("name", name)
             .property("status", TaskStatus::Pending)
             .build();
-        
+
         *this.imp().cancellable.borrow_mut() = Some(cancellable.clone());
 
         let this_clone = this.clone();
@@ -74,7 +74,7 @@ impl DistroboxTask {
             let this_clone_clone = this_clone.clone();
             this_clone.set_status_executing();
             let res = f(this_clone_clone).await;
-            
+
             if cancellable.is_cancelled() {
                 this_clone.set_status_failed(anyhow::anyhow!("Task cancelled"));
             } else if let Err(e) = res {

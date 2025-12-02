@@ -42,11 +42,7 @@ pub fn parse_desktop_file(content: &str) -> anyhow::Result<DesktopEntry> {
     let exec = exec.ok_or_else(|| anyhow::anyhow!("Missing Exec key"))?;
     let icon = icon.unwrap_or_default();
 
-    Ok(DesktopEntry {
-        name,
-        icon,
-        exec,
-    })
+    Ok(DesktopEntry { name, icon, exec })
 }
 
 #[cfg(test)]

@@ -128,9 +128,8 @@ mod imp {
     impl ObjectImpl for TerminalRepository {
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: OnceLock<Vec<glib::subclass::Signal>> = OnceLock::new();
-            SIGNALS.get_or_init(|| {
-                vec![glib::subclass::Signal::builder("terminals-changed").build()]
-            })
+            SIGNALS
+                .get_or_init(|| vec![glib::subclass::Signal::builder("terminals-changed").build()])
         }
     }
 
@@ -169,18 +168,17 @@ impl TerminalRepository {
 
         // Set up the flatpak terminals query fetcher
         let runner = command_runner.clone();
-        this.imp()
-            .flatpak_terminals_query
-            .set_fetcher(move || {
-                let runner = runner.clone();
-                async move { Self::fetch_flatpak_terminals(&runner).await }
-            });
+        this.imp().flatpak_terminals_query.set_fetcher(move || {
+            let runner = runner.clone();
+            async move { Self::fetch_flatpak_terminals(&runner).await }
+        });
 
         // Connect to query success to update the terminal list
         let this_clone = this.clone();
-        this.flatpak_terminals_query().connect_success(move |terminals| {
-            this_clone.merge_flatpak_terminals(terminals.clone());
-        });
+        this.flatpak_terminals_query()
+            .connect_success(move |terminals| {
+                this_clone.merge_flatpak_terminals(terminals.clone());
+            });
 
         this
     }
@@ -307,7 +305,8 @@ impl TerminalRepository {
                 if let Err(e) = std::fs::write(&self.imp().custom_list_path, json) {
                     error!(
                         "Failed to write custom terminals to {:?}: {}",
-                        &self.imp().custom_list_path, e
+                        &self.imp().custom_list_path,
+                        e
                     );
                 }
             }

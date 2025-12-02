@@ -140,7 +140,8 @@ mod imp {
 
             let distrobox_source_row = adw::ComboRow::new();
             distrobox_source_row.set_title(&gettext("Distrobox Source"));
-            let model = gtk::StringList::new(&[&gettext("System (host)"), &gettext("Bundled Version")]);
+            let model =
+                gtk::StringList::new(&[&gettext("System (host)"), &gettext("Bundled Version")]);
             distrobox_source_row.set_model(Some(&model));
 
             // Bind to settings
@@ -247,7 +248,10 @@ impl PreferencesDialog {
             .property("root-store", root_store.clone())
             .build();
 
-        root_store.terminal_repository().flatpak_terminals_query().refetch();
+        root_store
+            .terminal_repository()
+            .flatpak_terminals_query()
+            .refetch();
         this
     }
 
@@ -324,7 +328,9 @@ impl PreferencesDialog {
                                     );
                                 }
 
-                                this.add_toast(adw::Toast::new(&gettext("Terminal removed successfully")));
+                                this.add_toast(adw::Toast::new(&gettext(
+                                    "Terminal removed successfully",
+                                )));
                             });
                         }
                         Err(err) => {
@@ -356,13 +362,19 @@ impl PreferencesDialog {
         let group = adw::PreferencesGroup::new();
 
         // Name entry
-        let name_entry = adw::EntryRow::builder().title(gettext("Terminal Name")).build();
+        let name_entry = adw::EntryRow::builder()
+            .title(gettext("Terminal Name"))
+            .build();
 
         // Program entry
-        let program_entry = adw::EntryRow::builder().title(gettext("Program Path")).build();
+        let program_entry = adw::EntryRow::builder()
+            .title(gettext("Program Path"))
+            .build();
 
         // Separator argument entry
-        let separator_entry = adw::EntryRow::builder().title(gettext("Separator Argument")).build();
+        let separator_entry = adw::EntryRow::builder()
+            .title(gettext("Separator Argument"))
+            .build();
 
         group.add(&name_entry);
         group.add(&program_entry);
