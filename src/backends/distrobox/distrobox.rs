@@ -4,7 +4,7 @@ use serde::{Deserialize, Deserializer};
 use std::{
     cell::LazyCell,
     collections::BTreeMap,
-    env,
+    
     ffi::OsString,
     io,
     os::unix::ffi::OsStringExt,
@@ -88,11 +88,10 @@ impl DesktopFiles {
             .collect()
     }
 
-    fn into_map(self) -> BTreeMap<PathBuf, String> {
+    fn into_map(self, host_home: Option<PathBuf>) -> BTreeMap<PathBuf, String> {
         let mut desktop_files = self.system;
         // Only include user desktop files if the container's home directory is different from the host's
         // This avoids showing duplicate entries when the container shares the host's home directory
-        let host_home = env::var("HOME").ok().map(PathBuf::from);
         if host_home.as_ref() != Some(&self.home_dir) {
             desktop_files.extend(self.user)
         }
@@ -471,15 +470,15 @@ impl DistroboxCommandRunnerResponse {
     ) -> Vec<(Command, String)> {
         let mut commands = Vec::new();
 
-        // Get XDG_DATA_HOME
+        // Get XDG_DATA_HOME (mocked via printenv)
         commands.push((
-            Command::new_with_args("sh", ["-c", "echo $XDG_DATA_HOME"]),
+            Command::new_with_args("printenv", ["XDG_DATA_HOME"]),
             String::new(),
         ));
 
-        // Get HOME if XDG_DATA_HOME is empty
+        // Get HOME if XDG_DATA_HOME is empty (mocked via printenv)
         commands.push((
-            Command::new_with_args("sh", ["-c", "echo $HOME"]),
+            Command::new_with_args("printenv", ["HOME"]),
             "/home/me".to_string(),
         ));
 
@@ -659,19 +658,31 @@ impl Distrobox {
     }
 
     async fn host_applications_path(&self) -> Result<PathBuf, Error> {
-        let mut cmd = Command::new("sh");
-        cmd.args(["-c", "echo $XDG_DATA_HOME"]);
-        let xdg_data_home = self.cmd_output_string(cmd).await?;
-
-        let xdg_data_home = if xdg_data_home.trim().is_empty() {
-            let mut cmd = Command::new("sh");
-            cmd.args(["-c", "echo $HOME"]);
-            let home = self.cmd_output_string(cmd).await?;
-            Path::new(home.trim()).join(".local/share")
-        } else {
-            Path::new(xdg_data_home.trim()).to_path_buf()
+        // Resolve XDG_DATA_HOME via runner (works in Flatpak via map_flatpak_spawn_host)
+        let xdg_data_home_opt = match crate::fakers::resolve_host_env_via_runner(&self.cmd_runner, "XDG_DATA_HOME").await {
+            Ok(Some(s)) if !s.trim().is_empty() => Some(Path::new(s.trim()).to_path_buf()),
+            Ok(_) => None,
+            Err(e) => {
+                tracing::warn!("failed to resolve XDG_DATA_HOME via CommandRunner: {e:?}");
+                None
+            }
         };
-        let apps_path = xdg_data_home.join("applications");
+
+        let apps_base = if let Some(p) = xdg_data_home_opt {
+            p
+        } else {
+            // Fallback to HOME
+            match crate::fakers::resolve_host_env_via_runner(&self.cmd_runner, "HOME").await {
+                Ok(Some(s)) if !s.trim().is_empty() => Path::new(s.trim()).join(".local/share"),
+                Ok(_) => return Err(Error::ResolveHostPath("XDG_DATA_HOME and HOME are not set on the host".into())),
+                Err(e) => {
+                    tracing::warn!("failed to resolve HOME via CommandRunner: {e:?}");
+                    return Err(Error::ResolveHostPath("failed to resolve host HOME".into()));
+                }
+            }
+        };
+
+        let apps_path = apps_base.join("applications");
         Ok(apps_path)
     }
     async fn get_exported_desktop_files(&self) -> Result<Vec<String>, Error> {
@@ -702,8 +713,18 @@ impl Distrobox {
             .map_err(|e| Error::ParseOutput(format!("{e:?}")))?;
         debug!(desktop_files = format_args!("{desktop_files:#?}"));
 
+        // Resolve host HOME via CommandRunner so this works inside Flatpak as well
+        let host_home_opt = match crate::fakers::resolve_host_env_via_runner(&self.cmd_runner, "HOME").await {
+            Ok(Some(s)) => Some(PathBuf::from(s)),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::warn!("failed to resolve host HOME via CommandRunner: {e:?}");
+                None
+            }
+        };
+
         Ok(desktop_files
-            .into_map()
+            .into_map(host_home_opt)
             .into_iter()
             .map(|(path, content)| (path.to_string_lossy().into_owned(), content))
             .collect::<Vec<_>>())
@@ -1182,8 +1203,9 @@ Categories=Utility;Network;";
 
         let db = Distrobox::new(
             NullCommandRunnerBuilder::new()
-                .cmd(&["sh", "-c", "echo $XDG_DATA_HOME"], "")
-                .cmd(&["sh", "-c", "echo $HOME"], "/home/me")
+                .cmd(&["printenv", "HOME"], "/home/me")
+                .cmd(&["printenv", "XDG_DATA_HOME"], "")
+                .cmd(&["printenv", "HOME"], "/home/me")
                 .cmd(
                     &["ls", "/home/me/.local/share/applications"],
                     "ubuntu-vim.desktop\n",
@@ -1235,8 +1257,9 @@ Categories=Utility;Security;";
 
         let db = Distrobox::new(
             NullCommandRunnerBuilder::new()
-                .cmd(&["sh", "-c", "echo $XDG_DATA_HOME"], "")
-                .cmd(&["sh", "-c", "echo $HOME"], "/home/me")
+                .cmd(&["printenv", "HOME"], "/home/me")
+                .cmd(&["printenv", "XDG_DATA_HOME"], "")
+                .cmd(&["printenv", "HOME"], "/home/me")
                 .cmd(
                     &["ls", "/home/me/.local/share/applications"],
                     "ubuntu-Proton Authenticator.desktop\n",
