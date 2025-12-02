@@ -71,6 +71,20 @@
   </screenshots>
 
   <releases>
+    <release version="1.2.0" date="2025-12-02">
+      <description translate="no">
+        <ul>
+          <li>Support for a bundled Distrobox: download, verify and use a bundled distrobox executable from the app.</li>
+          <li>Initial support for launching flatpak terminals</li>
+          <li>Refactor: move distrobox implementation into a `backends` module and introduce a `ContainerRuntime` abstraction (Podman / Docker) with automatic detection.</li>
+          <li>Welcome page and system checks: new page shows runtime and Distrobox status, with actions to fetch or use a bundled Distrobox.</li>
+          <li>Desktop file parsing and app export: safer parsing (hex-encoded payloads) and include user .local apps when home differs.</li>
+          <li>UI polish: updated window switcher, responsive improvements and task manager error/status UI updates.</li>
+          <li>Translations: 7+ translations added.</li>
+          <li>Misc: dependency updates, various bug fixes, test adjustments and small typos corrected.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2025-11-19">
       <description translate="no">
         <ul>
