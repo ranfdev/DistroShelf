@@ -22,6 +22,8 @@ pub enum FileRowSelection {
     Folder,
 }
 mod imp {
+    use crate::dialogs::create_distrobox_helpers::split_repo_tag_digest;
+
     use super::*;
 
     #[derive(Default, Properties)]
@@ -37,6 +39,7 @@ mod imp {
         pub image_row: adw::ActionRow,
         pub images_model: gtk::StringList,
         pub selected_image: RefCell<String>,
+        pub prefill_generation: std::cell::Cell<u64>,
         pub home_row_expander: adw::ExpanderRow,
         #[property(get, set, nullable)]
         pub home_folder: RefCell<Option<String>>,
@@ -154,7 +157,22 @@ mod imp {
                 #[weak]
                 obj,
                 move |_| {
-                    let picker = obj.build_image_picker_view();
+                    // Read the current subtitle and derive an initial search string
+                    let subtitle: String = obj.imp().image_row.property("subtitle");
+                    let default_sub = gettext("Select an image...");
+
+                    let initial_search_repo: &str = split_repo_tag_digest(
+                        if subtitle == default_sub {
+                            ""
+                        } else {
+                            &subtitle
+                        },
+                    ).0;
+                    // A repo is docker.io/library/xyz by default, we only want to search by 'xyz'
+                    let initial_search = initial_search_repo.rsplit('/').next().unwrap_or(initial_search_repo);
+                        
+
+                    let picker = obj.build_image_picker_view(Some(initial_search));
                     obj.imp().navigation_view.push(&picker);
                 }
             ));
@@ -228,6 +246,54 @@ mod imp {
             create_btn.set_margin_top(12);
 
             self.content.append(&create_btn);
+
+            // Prefill wiring: debounce name changes to suggest an image when user hasn't interacted
+            let obj_for_prefill = self.obj().clone();
+            let name_row = obj_for_prefill.imp().name_row.clone();
+            name_row.connect_changed(clone!(
+                #[weak]
+                obj_for_prefill,
+                move |entry| {
+                    let imp = obj_for_prefill.imp();
+                    let prefill_gen = imp.prefill_generation.get().wrapping_add(1);
+                    imp.prefill_generation.set(prefill_gen);
+                    let text = entry.text().to_string();
+                    let obj_inner = obj_for_prefill.clone();
+                    glib::MainContext::ref_thread_default().spawn_local(clone!(
+                        #[weak]
+                        obj_inner,
+                        async move {
+                            glib::timeout_future(std::time::Duration::from_millis(300)).await;
+                            let imp = obj_inner.imp();
+                            if imp.prefill_generation.get() != prefill_gen {
+                                return;
+                            }
+                            // don't prefill if cloning from a source
+                            if imp.clone_src.borrow().is_some() {
+                                return;
+                            }
+                            if text.is_empty() {
+                                if imp.selected_image.borrow().is_empty() {
+                                    imp.image_row.set_subtitle(&gettext("Select an image..."));
+                                }
+                            } else {
+                                let candidates = imp.images_model.snapshot().into_iter().filter_map(|item| {
+                                    item.downcast::<gtk::StringObject>().ok().map(|sobj| sobj.string().to_string())
+                                }).collect::<Vec<_>>();
+                                
+                                let (_filter, suggested_opt) =
+                                    crate::dialogs::create_distrobox_helpers::derive_image_prefill(&text, Some(&candidates));
+                                if let Some(suggested) = suggested_opt {
+                                    // set subtitle as tentative prefill (do not overwrite confirmed selection)
+                                    if imp.selected_image.borrow().is_empty() {
+                                        imp.image_row.set_subtitle(&suggested);
+                                    }
+                                }
+                            }
+                        }
+                    ));
+                }
+            ));
 
             // Create page for assemble from file
             let assemble_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
@@ -486,7 +552,7 @@ impl CreateDistroboxDialog {
         row
     }
 
-    pub fn build_image_picker_view(&self) -> adw::NavigationPage {
+    pub fn build_image_picker_view(&self, initial_search: Option<&str>) -> adw::NavigationPage {
         let view = adw::ToolbarView::new();
 
         let header = adw::HeaderBar::new();
@@ -495,6 +561,9 @@ impl CreateDistroboxDialog {
         let search_entry = gtk::SearchEntry::new();
         search_entry.set_placeholder_text(Some(&gettext("Search image...")));
         search_entry.set_hexpand(true);
+        if let Some(text) = initial_search {
+            search_entry.set_text(text);
+        }
 
         header.set_title_widget(Some(&search_entry));
 
@@ -536,6 +605,9 @@ impl CreateDistroboxDialog {
             let child: &ImageRowItem = child.and_downcast_ref().unwrap();
             child.set_image(&image);
 
+            // TODO: Consider doing an availability check (remote / lazy-download)
+            // to determine if an image is actually accessible, not just in the
+            // downloaded tags set.
             let is_downloaded = obj.imp().downloaded_tags.borrow().contains(image.as_str());
             child.set_is_downloaded(is_downloaded);
         });
@@ -673,7 +745,21 @@ impl CreateDistroboxDialog {
 
     pub async fn extract_create_args(&self) -> Result<CreateArgs, Error> {
         let imp = self.imp();
-        let image = imp.selected_image.borrow().clone();
+        let image = {
+            let sel = imp.selected_image.borrow();
+            if sel.is_empty() {
+                // fallback to the action row subtitle (tentative prefill)
+                let subtitle: String = imp.image_row.property("subtitle");
+                let default_sub = gettext("Select an image...");
+                if subtitle.is_empty() || subtitle == default_sub {
+                    String::new()
+                } else {
+                    subtitle
+                }
+            } else {
+                sel.clone()
+            }
+        };
         if image.is_empty() && imp.clone_src.borrow().is_none() {
             return Err(Error::InvalidField(
                 "image".into(),

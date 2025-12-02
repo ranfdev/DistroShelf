@@ -1,5 +1,6 @@
 pub mod command_log_dialog;
 pub mod create_distrobox_dialog;
+pub mod create_distrobox_helpers;
 pub mod exportable_apps_dialog;
 pub mod preferences_dialog;
 pub mod task_manager_dialog;
