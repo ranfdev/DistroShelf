@@ -2,9 +2,11 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::gio::File;
 use gtk::{gio, glib};
+use std::cell::Cell;
 use tracing::error;
 
 use crate::backends::{self, CreateArgName, CreateArgs, Error};
+use crate::fakers::Command;
 use crate::i18n::gettext;
 use crate::models::Container;
 use crate::root_store::RootStore;
@@ -34,8 +36,11 @@ mod imp {
         pub dialog: adw::Dialog,
         pub navigation_view: adw::NavigationView,
         pub toolbar_view: adw::ToolbarView,
+        pub toast_overlay: adw::ToastOverlay,
         pub content: gtk::Box,
         pub name_row: adw::EntryRow,
+        #[property(get, set)]
+        pub url_validated: Cell<bool>,
         pub image_row: adw::ActionRow,
         pub images_model: gtk::StringList,
         pub selected_image: RefCell<String>,
@@ -181,6 +186,7 @@ mod imp {
             let home_row = self.obj().build_file_row(
                 &gettext("Select Home Directory"),
                 FileRowSelection::Folder,
+                None,  // No filter for folders
                 move |path| {
                     obj.set_home_folder(Some(path.display().to_string()));
                 },
@@ -219,6 +225,7 @@ mod imp {
 
             let create_btn = gtk::Button::with_label(&gettext("Create"));
             create_btn.set_halign(gtk::Align::Center);
+            create_btn.set_sensitive(false);  // Initially disabled until name is valid
 
             let obj = self.obj();
             create_btn.connect_clicked(clone!(
@@ -246,6 +253,18 @@ mod imp {
             create_btn.set_margin_top(12);
 
             self.content.append(&create_btn);
+
+            // Add name validation for Create button sensitivity
+            let guided_create_btn = create_btn.clone();
+            self.name_row.connect_changed(clone!(
+                #[weak]
+                guided_create_btn,
+                move |entry| {
+                    let text = entry.text();
+                    let is_valid = !text.is_empty() && backends::CreateArgName::new(&text).is_ok();
+                    guided_create_btn.set_sensitive(is_valid);
+                }
+            ));
 
             // Prefill wiring: debounce name changes to suggest an image when user hasn't interacted
             let obj_for_prefill = self.obj().clone();
@@ -307,10 +326,15 @@ mod imp {
             assemble_group
                 .set_description(Some(&gettext("Create a container from an assemble file")));
 
+            let ini_filter = gtk::FileFilter::new();
+            ini_filter.set_name(Some(&gettext("INI Files")));
+            ini_filter.add_pattern("*.ini");
+
             let obj = self.obj().clone();
             let file_row = self.obj().build_file_row(
                 &gettext("Select Assemble File"),
                 FileRowSelection::File,
+                Some(&ini_filter),
                 move |path| {
                     obj.set_assemble_file(Some(path.display().to_string()));
                 },
@@ -358,7 +382,9 @@ mod imp {
 
             let url_row = adw::EntryRow::new();
             url_row.set_title(&gettext("URL"));
-            url_row.set_text("https://example.com/container.yaml");
+            url_row.set_text("https://example.com/container.ini");
+            url_row.set_show_apply_button(true);
+
 
             url_group.add(&url_row);
             url_page.append(&url_group);
@@ -372,12 +398,60 @@ mod imp {
             create_btn.set_sensitive(false);
             url_page.append(&create_btn);
 
-            // Enable button when URL is entered
+            // Store reference for use in multiple closures
+            let url_create_btn = create_btn.clone();
+            let obj_for_url = self.obj().clone();
+
             url_row.connect_changed(clone!(
                 #[weak]
-                obj,
+                obj_for_url,
+                #[weak]
+                url_create_btn,
                 move |entry| {
-                    obj.set_assemble_url(Some(entry.text()));
+                    obj_for_url.set_assemble_url(Some(entry.text()));
+                    obj_for_url.set_url_validated(false);
+                    url_create_btn.set_sensitive(false);
+                    // Clear error CSS when user types
+                    entry.remove_css_class("error");
+                }
+            ));
+
+            url_row.connect_apply(clone!(
+                #[weak]
+                obj_for_url,
+                #[weak]
+                url_create_btn,
+                move |entry| {
+                    let url = entry.text().to_string();
+                    if url.is_empty() {
+                        return;
+                    }
+
+                    // Reset validation state
+                    obj_for_url.set_url_validated(false);
+                    url_create_btn.set_sensitive(false);
+
+                    glib::MainContext::ref_thread_default().spawn_local(clone!(
+                        #[weak]
+                        obj_for_url,
+                        #[weak]
+                        url_create_btn,
+                        #[weak]
+                        entry,
+                        async move {
+                            let is_valid = obj_for_url.validate_url(&url).await;
+                            obj_for_url.set_url_validated(is_valid);
+                            url_create_btn.set_sensitive(is_valid);
+
+                            if !is_valid {
+                                let toast = adw::Toast::new(&gettext("Could not connect to URL"));
+                                obj_for_url.imp().toast_overlay.add_toast(toast);
+                                entry.add_css_class("error");
+                            } else {
+                                entry.remove_css_class("error");
+                            }
+                        }
+                    ));
                 }
             ));
 
@@ -392,10 +466,6 @@ mod imp {
                     obj.close();
                 }
             ));
-
-            obj.connect_assemble_url_notify(move |obj| {
-                create_btn.set_sensitive(obj.assemble_url().is_some());
-            });
 
             // Add pages to view stack
             view_stack.add_titled(&self.content, Some("create"), "Guided");
@@ -420,9 +490,12 @@ mod imp {
             scrolled_window.set_propagate_natural_height(true);
             scrolled_window.set_child(Some(&content_box));
 
+            // Wrap in toast overlay for showing notifications
+            self.toast_overlay.set_child(Some(&scrolled_window));
+
             toolbar_view.add_top_bar(&header);
             toolbar_view.set_vexpand(true);
-            toolbar_view.set_content(Some(&scrolled_window));
+            toolbar_view.set_content(Some(&self.toast_overlay));
 
             let page = adw::NavigationPage::new(toolbar_view, "Create a Distrobox");
             navigation_view.add(&page);
@@ -489,6 +562,7 @@ impl CreateDistroboxDialog {
         &self,
         title: &str,
         selection: FileRowSelection,
+        filter: Option<&gtk::FileFilter>,
         cb: impl Fn(PathBuf) + Clone + 'static,
     ) -> adw::ActionRow {
         let row = adw::ActionRow::new();
@@ -500,6 +574,7 @@ impl CreateDistroboxDialog {
         row.add_suffix(&file_icon);
 
         let title = title.to_owned();
+        let filter = filter.cloned();  // Clone the Option<&FileFilter> to Option<FileFilter>
         let dialog_cb = clone!(
             #[weak(rename_to=this)]
             self,
@@ -535,6 +610,15 @@ impl CreateDistroboxDialog {
         );
         row.connect_activated(move |_| {
             let file_dialog = gtk::FileDialog::builder().title(&title).modal(true).build();
+
+            // Apply filter if provided
+            if let Some(ref f) = filter {
+                let filters = gio::ListStore::new::<gtk::FileFilter>();
+                filters.append(f);
+                file_dialog.set_filters(Some(&filters));
+                file_dialog.set_default_filter(Some(f));
+            }
+
             let dialog_cb = dialog_cb.clone();
             match selection {
                 FileRowSelection::File => {
@@ -859,8 +943,34 @@ impl CreateDistroboxDialog {
             Err(backends::Error::InvalidField(field, msg)) if field == "name" => {
                 imp.name_row.add_css_class("error");
                 imp.name_row.set_tooltip_text(Some(msg));
+                // Show toast for name validation error
+                let toast = adw::Toast::new(msg);
+                imp.toast_overlay.add_toast(toast);
+            }
+            Err(backends::Error::InvalidField(_, msg)) => {
+                // Show toast for other field validation errors
+                let toast = adw::Toast::new(msg);
+                imp.toast_overlay.add_toast(toast);
             }
             _ => {}
+        }
+    }
+
+    async fn validate_url(&self, url: &str) -> bool {
+        // Use curl with HEAD request to validate URL
+        // CRITICAL: Use self.root_store().command_runner() for Flatpak compatibility
+        let command_runner = self.root_store().command_runner();
+        let mut cmd = Command::new("curl");
+        cmd.arg("-s");              // Silent
+        cmd.arg("-f");              // Fail on HTTP errors
+        cmd.arg("-I");              // HEAD request only
+        cmd.arg("--connect-timeout");
+        cmd.arg("5");               // 5 second connection timeout
+        cmd.arg(url);
+
+        match command_runner.output(cmd).await {
+            Ok(output) => output.status.success(),
+            Err(_) => false,
         }
     }
 }
