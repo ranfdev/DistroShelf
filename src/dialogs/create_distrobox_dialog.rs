@@ -166,16 +166,18 @@ mod imp {
                     let subtitle: String = obj.imp().image_row.property("subtitle");
                     let default_sub = gettext("Select an image...");
 
-                    let initial_search_repo: &str = split_repo_tag_digest(
-                        if subtitle == default_sub {
+                    let initial_search_repo: &str =
+                        split_repo_tag_digest(if subtitle == default_sub {
                             ""
                         } else {
                             &subtitle
-                        },
-                    ).0;
+                        })
+                        .0;
                     // A repo is docker.io/library/xyz by default, we only want to search by 'xyz'
-                    let initial_search = initial_search_repo.rsplit('/').next().unwrap_or(initial_search_repo);
-                        
+                    let initial_search = initial_search_repo
+                        .rsplit('/')
+                        .next()
+                        .unwrap_or(initial_search_repo);
 
                     let picker = obj.build_image_picker_view(Some(initial_search));
                     obj.imp().navigation_view.push(&picker);
@@ -186,7 +188,7 @@ mod imp {
             let home_row = self.obj().build_file_row(
                 &gettext("Select Home Directory"),
                 FileRowSelection::Folder,
-                None,  // No filter for folders
+                None, // No filter for folders
                 move |path| {
                     obj.set_home_folder(Some(path.display().to_string()));
                 },
@@ -225,7 +227,7 @@ mod imp {
 
             let create_btn = gtk::Button::with_label(&gettext("Create"));
             create_btn.set_halign(gtk::Align::Center);
-            create_btn.set_sensitive(false);  // Initially disabled until name is valid
+            create_btn.set_sensitive(false); // Initially disabled until name is valid
 
             let obj = self.obj();
             create_btn.connect_clicked(clone!(
@@ -296,12 +298,22 @@ mod imp {
                                     imp.image_row.set_subtitle(&gettext("Select an image..."));
                                 }
                             } else {
-                                let candidates = imp.images_model.snapshot().into_iter().filter_map(|item| {
-                                    item.downcast::<gtk::StringObject>().ok().map(|sobj| sobj.string().to_string())
-                                }).collect::<Vec<_>>();
-                                
+                                let candidates = imp
+                                    .images_model
+                                    .snapshot()
+                                    .into_iter()
+                                    .filter_map(|item| {
+                                        item.downcast::<gtk::StringObject>()
+                                            .ok()
+                                            .map(|sobj| sobj.string().to_string())
+                                    })
+                                    .collect::<Vec<_>>();
+
                                 let (_filter, suggested_opt) =
-                                    crate::dialogs::create_distrobox_helpers::derive_image_prefill(&text, Some(&candidates));
+                                    crate::dialogs::create_distrobox_helpers::derive_image_prefill(
+                                        &text,
+                                        Some(&candidates),
+                                    );
                                 if let Some(suggested) = suggested_opt {
                                     // set subtitle as tentative prefill (do not overwrite confirmed selection)
                                     if imp.selected_image.borrow().is_empty() {
@@ -384,7 +396,6 @@ mod imp {
             url_row.set_title(&gettext("URL"));
             url_row.set_text("https://example.com/container.ini");
             url_row.set_show_apply_button(true);
-
 
             url_group.add(&url_row);
             url_page.append(&url_group);
@@ -574,7 +585,7 @@ impl CreateDistroboxDialog {
         row.add_suffix(&file_icon);
 
         let title = title.to_owned();
-        let filter = filter.cloned();  // Clone the Option<&FileFilter> to Option<FileFilter>
+        let filter = filter.cloned(); // Clone the Option<&FileFilter> to Option<FileFilter>
         let dialog_cb = clone!(
             #[weak(rename_to=this)]
             self,
@@ -961,11 +972,11 @@ impl CreateDistroboxDialog {
         // CRITICAL: Use self.root_store().command_runner() for Flatpak compatibility
         let command_runner = self.root_store().command_runner();
         let mut cmd = Command::new("curl");
-        cmd.arg("-s");              // Silent
-        cmd.arg("-f");              // Fail on HTTP errors
-        cmd.arg("-I");              // HEAD request only
+        cmd.arg("-s"); // Silent
+        cmd.arg("-f"); // Fail on HTTP errors
+        cmd.arg("-I"); // HEAD request only
         cmd.arg("--connect-timeout");
-        cmd.arg("5");               // 5 second connection timeout
+        cmd.arg("5"); // 5 second connection timeout
         cmd.arg(url);
 
         match command_runner.output(cmd).await {

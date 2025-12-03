@@ -4,7 +4,6 @@ use serde::{Deserialize, Deserializer};
 use std::{
     cell::LazyCell,
     collections::BTreeMap,
-    
     ffi::OsString,
     io,
     os::unix::ffi::OsStringExt,
@@ -659,14 +658,17 @@ impl Distrobox {
 
     async fn host_applications_path(&self) -> Result<PathBuf, Error> {
         // Resolve XDG_DATA_HOME via runner (works in Flatpak via map_flatpak_spawn_host)
-        let xdg_data_home_opt = match crate::fakers::resolve_host_env_via_runner(&self.cmd_runner, "XDG_DATA_HOME").await {
-            Ok(Some(s)) if !s.trim().is_empty() => Some(Path::new(s.trim()).to_path_buf()),
-            Ok(_) => None,
-            Err(e) => {
-                tracing::warn!("failed to resolve XDG_DATA_HOME via CommandRunner: {e:?}");
-                None
-            }
-        };
+        let xdg_data_home_opt =
+            match crate::fakers::resolve_host_env_via_runner(&self.cmd_runner, "XDG_DATA_HOME")
+                .await
+            {
+                Ok(Some(s)) if !s.trim().is_empty() => Some(Path::new(s.trim()).to_path_buf()),
+                Ok(_) => None,
+                Err(e) => {
+                    tracing::warn!("failed to resolve XDG_DATA_HOME via CommandRunner: {e:?}");
+                    None
+                }
+            };
 
         let apps_base = if let Some(p) = xdg_data_home_opt {
             p
@@ -674,7 +676,11 @@ impl Distrobox {
             // Fallback to HOME
             match crate::fakers::resolve_host_env_via_runner(&self.cmd_runner, "HOME").await {
                 Ok(Some(s)) if !s.trim().is_empty() => Path::new(s.trim()).join(".local/share"),
-                Ok(_) => return Err(Error::ResolveHostPath("XDG_DATA_HOME and HOME are not set on the host".into())),
+                Ok(_) => {
+                    return Err(Error::ResolveHostPath(
+                        "XDG_DATA_HOME and HOME are not set on the host".into(),
+                    ));
+                }
                 Err(e) => {
                     tracing::warn!("failed to resolve HOME via CommandRunner: {e:?}");
                     return Err(Error::ResolveHostPath("failed to resolve host HOME".into()));
@@ -714,14 +720,15 @@ impl Distrobox {
         debug!(desktop_files = format_args!("{desktop_files:#?}"));
 
         // Resolve host HOME via CommandRunner so this works inside Flatpak as well
-        let host_home_opt = match crate::fakers::resolve_host_env_via_runner(&self.cmd_runner, "HOME").await {
-            Ok(Some(s)) => Some(PathBuf::from(s)),
-            Ok(None) => None,
-            Err(e) => {
-                tracing::warn!("failed to resolve host HOME via CommandRunner: {e:?}");
-                None
-            }
-        };
+        let host_home_opt =
+            match crate::fakers::resolve_host_env_via_runner(&self.cmd_runner, "HOME").await {
+                Ok(Some(s)) => Some(PathBuf::from(s)),
+                Ok(None) => None,
+                Err(e) => {
+                    tracing::warn!("failed to resolve host HOME via CommandRunner: {e:?}");
+                    None
+                }
+            };
 
         Ok(desktop_files
             .into_map(host_home_opt)

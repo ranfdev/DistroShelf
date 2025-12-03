@@ -242,7 +242,7 @@ impl InnerCommandRunner for NullCommandRunner {
             .get(&key[..])
             .cloned()
             .unwrap_or(Rc::new(|| Ok(String::new())));
-        let stub = StubChild::new_null(vec![], Cursor::new(response()?), || {
+        let stub = StubChild::new_null(vec![], Cursor::new(response()?), Cursor::new(""), || {
             Ok(ExitStatus::from_raw(0))
         });
         Ok(Box::new(stub))
@@ -272,6 +272,7 @@ impl InnerCommandRunner for NullCommandRunner {
 pub trait Child {
     fn take_stdin(&mut self) -> Option<Box<dyn AsyncWrite + Send + Unpin>>;
     fn take_stdout(&mut self) -> Option<Box<dyn AsyncRead + Send + Unpin>>;
+    fn take_stderr(&mut self) -> Option<Box<dyn AsyncRead + Send + Unpin>>;
     fn kill(&mut self) -> Result<(), io::Error>;
     fn wait(&mut self) -> Pin<Box<dyn Future<Output = Result<ExitStatus, io::Error>>>>;
 }
@@ -279,6 +280,7 @@ pub trait Child {
 struct StubChild {
     stdin: Option<Box<dyn AsyncWrite + Send + Unpin>>,
     stdout: Option<Box<dyn AsyncRead + Send + Unpin>>,
+    stderr: Option<Box<dyn AsyncRead + Send + Unpin>>,
     exit_status_fn: Arc<dyn Fn() -> io::Result<ExitStatus> + Send + Sync>,
 }
 
@@ -286,11 +288,13 @@ impl StubChild {
     fn new_null(
         stdin: impl AsyncWrite + Send + Unpin + 'static,
         stdout: impl AsyncRead + Send + Unpin + 'static,
+        stderr: impl AsyncRead + Send + Unpin + 'static,
         exit_status_fn: impl Fn() -> io::Result<ExitStatus> + Send + Sync + 'static,
     ) -> StubChild {
         StubChild {
             stdin: Some(Box::new(stdin)),
             stdout: Some(Box::new(stdout)),
+            stderr: Some(Box::new(stderr)),
             exit_status_fn: Arc::new(exit_status_fn),
         }
     }
@@ -301,6 +305,9 @@ impl Child for StubChild {
     }
     fn take_stdout(&mut self) -> Option<Box<dyn AsyncRead + Send + Unpin>> {
         self.stdout.take()
+    }
+    fn take_stderr(&mut self) -> Option<Box<dyn AsyncRead + Send + Unpin>> {
+        self.stderr.take()
     }
 
     fn kill(&mut self) -> Result<(), io::Error> {
@@ -320,6 +327,12 @@ impl Child for async_process::Child {
     }
     fn take_stdout(&mut self) -> Option<Box<dyn AsyncRead + Send + Unpin>> {
         self.stdout
+            .take()
+            .map(|x| Box::new(x) as Box<dyn AsyncRead + Send + Unpin>)
+    }
+
+    fn take_stderr(&mut self) -> Option<Box<dyn AsyncRead + Send + Unpin>> {
+        self.stderr
             .take()
             .map(|x| Box::new(x) as Box<dyn AsyncRead + Send + Unpin>)
     }
@@ -458,7 +471,7 @@ mod tests {
     #[test]
     fn test_stub_child_wait_multiple_times() {
         // Test that the closure-based exit_status allows multiple waits
-        let stub = StubChild::new_null(vec![], Cursor::new("output"), || {
+        let stub = StubChild::new_null(vec![], Cursor::new("output"), Cursor::new(""), || {
             Ok(ExitStatus::from_raw(0))
         });
 
@@ -475,9 +488,12 @@ mod tests {
 
     #[test]
     fn test_stub_child_take_stdin_stdout() {
-        let mut stub = StubChild::new_null(vec![1, 2, 3], Cursor::new("stdout data"), || {
-            Ok(ExitStatus::from_raw(0))
-        });
+        let mut stub = StubChild::new_null(
+            vec![1, 2, 3],
+            Cursor::new("stdout data"),
+            Cursor::new("stderr data"),
+            || Ok(ExitStatus::from_raw(0)),
+        );
 
         // First take should succeed
         assert!(stub.take_stdin().is_some());
@@ -490,7 +506,9 @@ mod tests {
 
     #[test]
     fn test_stub_child_kill() {
-        let mut stub = StubChild::new_null(vec![], Cursor::new(""), || Ok(ExitStatus::from_raw(0)));
+        let mut stub = StubChild::new_null(vec![], Cursor::new(""), Cursor::new(""), || {
+            Ok(ExitStatus::from_raw(0))
+        });
 
         // kill should always succeed for stub
         assert!(stub.kill().is_ok());

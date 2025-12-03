@@ -4,9 +4,11 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 // Matches tags that are numeric-only (e.g. "1.2.3" or "1_2-3")
-static VERSION_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(?:\d+(?:[._-]\d+)*)$").unwrap());
+static VERSION_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?:\d+(?:[._-]\d+)*)$").unwrap());
 // Capture a numeric version inside a tag (e.g. "v1.2" -> captures "1.2")
-static VER_CAPTURE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?P<ver>\d+(?:[._-]\d+)*)").unwrap());
+static VER_CAPTURE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?P<ver>\d+(?:[._-]\d+)*)").unwrap());
 
 // Compare two numeric-version vectors treating missing components as zeros.
 fn compare_version_vec(a: &[u64], b: &[u64]) -> std::cmp::Ordering {
@@ -48,7 +50,10 @@ pub fn split_repo_tag_digest(s: &str) -> (&str, Option<&str>, Option<&str>) {
     (s, None, None)
 }
 
-pub fn derive_image_prefill(container_name: &str, candidates: Option<&[String]>) -> (String, Option<String>) {
+pub fn derive_image_prefill(
+    container_name: &str,
+    candidates: Option<&[String]>,
+) -> (String, Option<String>) {
     // Basic normalization: trim, lowercase, replace spaces with '-', keep ascii alnum, '.', '_', '-', '/',
     // but preserve registry port patterns like ':5000' when immediately before '/' or end of component.
     let s = container_name.trim().to_lowercase();
@@ -130,7 +135,9 @@ pub fn derive_image_prefill(container_name: &str, candidates: Option<&[String]>)
     }
 
     // Trim leading/trailing '-' '.' '/'
-    let filter = norm.trim_matches(|c| c == '-' || c == '.' || c == '/').to_string();
+    let filter = norm
+        .trim_matches(|c| c == '-' || c == '.' || c == '/')
+        .to_string();
     if filter.is_empty() {
         return (filter, None);
     }
@@ -138,7 +145,7 @@ pub fn derive_image_prefill(container_name: &str, candidates: Option<&[String]>)
     // If candidates are provided, try to pick the best matching image tag
     if let Some(cands) = candidates {
         // collect matching candidates where repo ends with filter or equals it
-            let matching: Vec<&String> = cands
+        let matching: Vec<&String> = cands
             .iter()
             .filter(|img| {
                 let s = img.as_str();
@@ -220,11 +227,26 @@ mod tests {
 
     #[test]
     fn split_repo_tag_digest_examples() {
-        assert_eq!(split_repo_tag_digest("repo:1.2.3"), ("repo", Some("1.2.3"), None));
-        assert_eq!(split_repo_tag_digest("repo@sha256:abcdef"), ("repo", None, Some("sha256:abcdef")));
-        assert_eq!(split_repo_tag_digest("host:5000/repo:1.0"), ("host:5000/repo", Some("1.0"), None));
-        assert_eq!(split_repo_tag_digest("host:5000/repo@sha256:abc"), ("host:5000/repo", None, Some("sha256:abc")));
-        assert_eq!(split_repo_tag_digest("repo:tag@sha256:abc"), ("repo", None, Some("sha256:abc")));
+        assert_eq!(
+            split_repo_tag_digest("repo:1.2.3"),
+            ("repo", Some("1.2.3"), None)
+        );
+        assert_eq!(
+            split_repo_tag_digest("repo@sha256:abcdef"),
+            ("repo", None, Some("sha256:abcdef"))
+        );
+        assert_eq!(
+            split_repo_tag_digest("host:5000/repo:1.0"),
+            ("host:5000/repo", Some("1.0"), None)
+        );
+        assert_eq!(
+            split_repo_tag_digest("host:5000/repo@sha256:abc"),
+            ("host:5000/repo", None, Some("sha256:abc"))
+        );
+        assert_eq!(
+            split_repo_tag_digest("repo:tag@sha256:abc"),
+            ("repo", None, Some("sha256:abc"))
+        );
     }
 
     #[test]
@@ -272,7 +294,10 @@ mod tests {
 
     #[test]
     fn candidates_none_matching_returns_none() {
-        let cands = vec!["other/repo:1.0".to_string(), "another/repo:latest".to_string()];
+        let cands = vec![
+            "other/repo:1.0".to_string(),
+            "another/repo:latest".to_string(),
+        ];
         let (f, s) = derive_image_prefill("doesnotexist", Some(&cands));
         assert_eq!(f, "doesnotexist");
         assert!(s.is_none());
@@ -281,11 +306,20 @@ mod tests {
     #[test]
     fn split_repo_tag_digest_more_cases() {
         // triple combo: repo:tag@sha256: -> digest should win, tag discarded
-        assert_eq!(split_repo_tag_digest("repo:tag@sha256:abc"), ("repo", None, Some("sha256:abc")));
+        assert_eq!(
+            split_repo_tag_digest("repo:tag@sha256:abc"),
+            ("repo", None, Some("sha256:abc"))
+        );
         // host with port, tag and digest -> digest wins and repo includes host:port/repo
-        assert_eq!(split_repo_tag_digest("example.com:5000/repo:1.0@sha256:abc"), ("example.com:5000/repo", None, Some("sha256:abc")));
+        assert_eq!(
+            split_repo_tag_digest("example.com:5000/repo:1.0@sha256:abc"),
+            ("example.com:5000/repo", None, Some("sha256:abc"))
+        );
         // plain repo no tag/digest
-        assert_eq!(split_repo_tag_digest("plainrepo"), ("plainrepo", None, None));
+        assert_eq!(
+            split_repo_tag_digest("plainrepo"),
+            ("plainrepo", None, None)
+        );
     }
 
     #[test]
@@ -313,8 +347,14 @@ mod tests {
 
     #[test]
     fn ipv6_and_bracketed_host_handling() {
-        assert_eq!(split_repo_tag_digest("[::1]:5000/repo:1.0"), ("[::1]:5000/repo", Some("1.0"), None));
-        assert_eq!(split_repo_tag_digest("[::1]:5000/repo@sha256:abc"), ("[::1]:5000/repo", None, Some("sha256:abc")));
+        assert_eq!(
+            split_repo_tag_digest("[::1]:5000/repo:1.0"),
+            ("[::1]:5000/repo", Some("1.0"), None)
+        );
+        assert_eq!(
+            split_repo_tag_digest("[::1]:5000/repo@sha256:abc"),
+            ("[::1]:5000/repo", None, Some("sha256:abc"))
+        );
     }
 
     #[test]

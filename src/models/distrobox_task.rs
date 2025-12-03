@@ -109,8 +109,14 @@ impl DistroboxTask {
         });
 
         let stdout = child.take_stdout().unwrap();
-        let bufread = BufReader::new(stdout);
-        let mut lines = bufread.lines();
+        let stderr = child.take_stderr().unwrap();
+        let mut lines = BufReader::new(stdout).lines();
+        let mut err_lines = BufReader::new(stderr).lines();
+
+        let insert_line = |line: String| {
+            self.output().insert(&mut self.output().end_iter(), &line);
+            self.output().insert(&mut self.output().end_iter(), "\n");
+        };
 
         let mut cancel_rx = cancel_rx.fuse();
 
@@ -119,13 +125,21 @@ impl DistroboxTask {
                 line = lines.next().fuse() => {
                     match line {
                         Some(Ok(line)) => {
-                            self.output().insert(&mut self.output().end_iter(), &line);
-                            self.output().insert(&mut self.output().end_iter(), "\n");
+                            insert_line(line);
                         }
                         Some(Err(e)) => return Err(e.into()),
                         None => break,
                     }
-                }
+                },
+                err_line = err_lines.next().fuse() => {
+                    match err_line {
+                        Some(Ok(line)) => {
+                            insert_line(line);
+                        }
+                        Some(Err(e)) => return Err(e.into()),
+                        None => break,
+                    }
+                },
                 _ = cancel_rx => {
                     info!("Task cancelled, killing child process");
                     let _ = child.kill();
