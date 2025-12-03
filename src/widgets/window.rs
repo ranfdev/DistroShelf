@@ -333,6 +333,18 @@ impl DistroShelfWindow {
             a("open-terminal").activate(|this, _, _| {
                 this.open_terminal();
             }),
+            a("generate-entry").activate(|this, _, _| {
+                if let Some(container) = this.root_store().selected_container() {
+                    let task = container.generate_entry();
+                    this.root_store().view_task(&task);
+                }
+            }),
+            a("delete-entry").activate(|this, _, _| {
+                if let Some(container) = this.root_store().selected_container() {
+                    let task = container.delete_entry();
+                    this.root_store().view_task(&task);
+                }
+            }),
         ];
         self.add_action_entries(actions.into_iter().map(|entry| entry.build()));
     }

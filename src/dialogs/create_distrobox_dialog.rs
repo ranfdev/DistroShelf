@@ -54,6 +54,7 @@ mod imp {
         pub assemble_url: RefCell<Option<String>>,
         pub nvidia_row: adw::SwitchRow,
         pub init_row: adw::SwitchRow,
+        pub no_entry_row: adw::SwitchRow,
         pub volume_rows: Rc<RefCell<Vec<adw::EntryRow>>>,
         pub scrolled_window: gtk::ScrolledWindow,
         #[property(get, set=Self::set_clone_src, nullable)]
@@ -215,11 +216,15 @@ mod imp {
 
             self.init_row.set_title(&gettext("Init process"));
 
+            self.no_entry_row.set_title(&gettext("Skip Desktop Entry"));
+            self.no_entry_row.set_subtitle(&gettext("Do not create a desktop entry for this container"));
+
             preferences_group.add(&self.name_row);
             preferences_group.add(&self.image_row);
             preferences_group.add(&self.home_row_expander);
             preferences_group.add(&self.nvidia_row);
             preferences_group.add(&self.init_row);
+            preferences_group.add(&self.no_entry_row);
 
             let volumes_group = self.obj().build_volumes_group();
             self.content.append(&preferences_group);
@@ -885,6 +890,7 @@ impl CreateDistroboxDialog {
             nvidia: imp.nvidia_row.is_active(),
             home_path: self.home_folder(),
             init: imp.init_row.is_active(),
+            no_entry: imp.no_entry_row.is_active(),
             volumes,
         };
         dbg!(&create_args);

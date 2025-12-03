@@ -143,6 +143,22 @@ impl ContainerOverview {
         );
         actions_group.add(&apps_row);
 
+        let generate_entry_row = self.create_button_row(
+            &gettext("Generate Desktop Entry"),
+            "application-x-executable-symbolic",
+            &gettext("Create a desktop entry to launch this container"),
+            "win.generate-entry",
+        );
+        actions_group.add(&generate_entry_row);
+
+        let delete_entry_row = self.create_button_row(
+            &gettext("Delete Desktop Entry"),
+            "edit-delete-symbolic",
+            &gettext("Remove the desktop entry for this container"),
+            "win.delete-entry",
+        );
+        actions_group.add(&delete_entry_row);
+
         if let Some(distro) = container.distro()
             && distro.package_manager().installable_file().is_some()
         {

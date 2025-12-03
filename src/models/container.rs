@@ -333,6 +333,28 @@ impl Container {
                 Ok(())
             });
     }
+    pub fn generate_entry(&self) -> DistroboxTask {
+        let this = self.clone();
+        self.root_store()
+            .create_task(&self.name(), "generate-entry", move |_task| async move {
+                this.root_store()
+                    .distrobox()
+                    .generate_entry(&this.name())
+                    .await?;
+                Ok(())
+            })
+    }
+    pub fn delete_entry(&self) -> DistroboxTask {
+        let this = self.clone();
+        self.root_store()
+            .create_task(&self.name(), "delete-entry", move |_task| async move {
+                this.root_store()
+                    .distrobox()
+                    .delete_entry(&this.name())
+                    .await?;
+                Ok(())
+            })
+    }
     pub fn spawn_terminal(&self) -> DistroboxTask {
         let this = self.clone();
         self.root_store()

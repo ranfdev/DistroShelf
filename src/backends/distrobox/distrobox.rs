@@ -240,6 +240,7 @@ impl CreateArgName {
 pub struct CreateArgs {
     pub init: bool,
     pub nvidia: bool,
+    pub no_entry: bool,
     pub home_path: Option<String>,
     pub image: String,
     pub name: CreateArgName,
@@ -976,6 +977,9 @@ impl Distrobox {
         if args.nvidia {
             cmd.arg("--nvidia");
         }
+        if args.no_entry {
+            cmd.arg("--no-entry");
+        }
         if let Some(home_path) = args.home_path {
             cmd.arg("--home").arg(home_path);
         }
@@ -1081,6 +1085,16 @@ impl Distrobox {
     }
     // ephemeral
     // generate-entry
+    pub async fn generate_entry(&self, name: &str) -> Result<String, Error> {
+        let mut cmd = self.dbcmd();
+        cmd.arg("generate-entry").arg(name);
+        self.cmd_output_string(cmd).await
+    }
+    pub async fn delete_entry(&self, name: &str) -> Result<String, Error> {
+        let mut cmd = self.dbcmd();
+        cmd.arg("generate-entry").arg("--delete").arg(name);
+        self.cmd_output_string(cmd).await
+    }
     // version
     pub async fn version(&self) -> Result<String, Error> {
         let mut cmd = self.dbcmd();
