@@ -196,8 +196,8 @@ msgid "Select Assemble File"
 msgstr "조립 파일 선택"
 
 #: src/dialogs/create_distrobox_dialog.rs:288
-msgid "From URL"
-msgstr "URL에서"
+msgid "Assemble from URL"
+msgstr "URL에서 조립하기"
 
 #: src/dialogs/create_distrobox_dialog.rs:289
 msgid "Create a container from a remote URL"

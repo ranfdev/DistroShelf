@@ -6,6 +6,7 @@ use std::cell::Cell;
 use tracing::error;
 
 use crate::backends::{self, CreateArgName, CreateArgs, Error};
+use crate::dialogs::create_distrobox_helpers::split_repo_tag_digest;
 use crate::fakers::Command;
 use crate::i18n::gettext;
 use crate::models::Container;
@@ -24,8 +25,6 @@ pub enum FileRowSelection {
     Folder,
 }
 mod imp {
-    use crate::dialogs::create_distrobox_helpers::split_repo_tag_digest;
-
     use super::*;
 
     #[derive(Default, Properties)]
@@ -37,7 +36,6 @@ mod imp {
         pub navigation_view: adw::NavigationView,
         pub toolbar_view: adw::ToolbarView,
         pub toast_overlay: adw::ToastOverlay,
-        pub content: gtk::Box,
         pub name_row: adw::EntryRow,
         #[property(get, set)]
         pub url_validated: Cell<bool>,
@@ -56,48 +54,10 @@ mod imp {
         pub init_row: adw::SwitchRow,
         pub volume_rows: Rc<RefCell<Vec<adw::EntryRow>>>,
         pub scrolled_window: gtk::ScrolledWindow,
-        #[property(get, set=Self::set_clone_src, nullable)]
+        #[property(get, set, nullable, construct_only)]
         pub clone_src: RefCell<Option<Container>>,
-        // transient widget used to show the source container info when cloning
-        pub clone_sidebar: RefCell<Option<SidebarRow>>,
-        pub cloning_content: gtk::Box,
         pub view_switcher: adw::InlineViewSwitcher,
-        pub clone_warning_banner: adw::Banner,
         pub downloaded_tags: RefCell<HashSet<String>>,
-    }
-
-    impl CreateDistroboxDialog {
-        fn set_clone_src(&self, value: Option<Container>) {
-            // store the value
-            self.clone_src.replace(value.clone());
-
-            if let Some(sidebar_row) = self.clone_sidebar.borrow_mut().take() {
-                self.cloning_content.remove(&sidebar_row);
-            }
-
-            if let Some(container) = value {
-                self.image_row.set_visible(false);
-                self.cloning_content.set_visible(true);
-                self.view_switcher.set_visible(false);
-                let sidebar_row = SidebarRow::new(&container);
-                // insert at the top of the cloning_content box
-                self.cloning_content.append(&sidebar_row);
-                self.clone_sidebar.replace(Some(sidebar_row));
-
-                // Show warning if container is running
-                if container.is_running() {
-                    self.clone_warning_banner.set_revealed(true);
-                } else {
-                    self.clone_warning_banner.set_revealed(false);
-                }
-            } else {
-                // no clone source, ensure image row is visible
-                self.image_row.set_visible(true);
-                self.cloning_content.set_visible(false);
-                self.view_switcher.set_visible(true);
-                self.clone_warning_banner.set_revealed(false);
-            }
-        }
     }
 
     #[derived_properties]
@@ -113,387 +73,30 @@ mod imp {
             // Create view switcher and stack
             let view_stack = adw::ViewStack::new();
 
-            self.content.set_margin_start(12);
-            self.content.set_margin_end(12);
-            self.content.set_margin_top(12);
-            self.content.set_margin_bottom(12);
-            self.content.set_spacing(12);
-            self.content.set_orientation(gtk::Orientation::Vertical);
-
-            // Create cloning_content box with header and sidebar
-            self.cloning_content
-                .set_orientation(gtk::Orientation::Vertical);
-            self.cloning_content.set_spacing(12);
-            self.cloning_content.set_visible(false);
-
-            // Create header box with "Cloning" label
-            let cloning_header = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-            cloning_header.set_homogeneous(false);
-
-            let cloning_label = gtk::Label::new(Some(&gettext("Cloning")));
-            cloning_label.set_halign(gtk::Align::Start);
-            cloning_label.add_css_class("title-3");
-
-            cloning_header.set_hexpand(true);
-            cloning_header.append(&cloning_label);
-
-            self.cloning_content.append(&cloning_header);
-
-            // Add warning banner for running containers
-            self.clone_warning_banner
-                .set_title(&gettext("Cloning the container requires stopping it first"));
-            self.clone_warning_banner.set_revealed(false);
-            self.cloning_content.append(&self.clone_warning_banner);
-
-            self.content.append(&self.cloning_content);
-
-            let preferences_group = adw::PreferencesGroup::new();
-            preferences_group.set_title(&gettext("Settings"));
-            self.name_row.set_title(&gettext("Name"));
-
-            self.image_row.set_title(&gettext("Base Image"));
-            self.image_row.set_subtitle(&gettext("Select an image..."));
-            self.image_row.set_activatable(true);
-            self.image_row
-                .add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
-
-            let obj = self.obj().clone();
-            self.image_row.connect_activated(clone!(
-                #[weak]
-                obj,
-                move |_| {
-                    // Read the current subtitle and derive an initial search string
-                    let subtitle: String = obj.imp().image_row.property("subtitle");
-                    let default_sub = gettext("Select an image...");
-
-                    let initial_search_repo: &str =
-                        split_repo_tag_digest(if subtitle == default_sub {
-                            ""
-                        } else {
-                            &subtitle
-                        })
-                        .0;
-                    // A repo is docker.io/library/xyz by default, we only want to search by 'xyz'
-                    let initial_search = initial_search_repo
-                        .rsplit('/')
-                        .next()
-                        .unwrap_or(initial_search_repo);
-
-                    let picker = obj.build_image_picker_view(Some(initial_search));
-                    obj.imp().navigation_view.push(&picker);
-                }
-            ));
-
-            let obj = self.obj().clone();
-            let home_row = self.obj().build_file_row(
-                &gettext("Select Home Directory"),
-                FileRowSelection::Folder,
-                None, // No filter for folders
-                move |path| {
-                    obj.set_home_folder(Some(path.display().to_string()));
-                },
-            );
-            self.home_row_expander
-                .set_title(&gettext("Custom Home Directory"));
-            self.home_row_expander.set_show_enable_switch(true);
-            self.home_row_expander.set_enable_expansion(false);
-            self.home_row_expander.add_row(&home_row);
-            let obj = self.obj().clone();
-            self.home_row_expander
-                .connect_enable_expansion_notify(clone!(
-                    #[weak]
-                    home_row,
-                    move |expander| {
-                        if !expander.enables_expansion() {
-                            obj.set_home_folder(None::<&str>);
-                        }
-                        home_row.set_subtitle(obj.home_folder().as_deref().unwrap_or(""));
-                    }
-                ));
-
-            self.nvidia_row.set_title(&gettext("NVIDIA Support"));
-
-            self.init_row.set_title(&gettext("Init process"));
-
-            preferences_group.add(&self.name_row);
-            preferences_group.add(&self.image_row);
-            preferences_group.add(&self.home_row_expander);
-            preferences_group.add(&self.nvidia_row);
-            preferences_group.add(&self.init_row);
-
-            let volumes_group = self.obj().build_volumes_group();
-            self.content.append(&preferences_group);
-            self.content.append(&volumes_group);
-
-            let create_btn = gtk::Button::with_label(&gettext("Create"));
-            create_btn.set_halign(gtk::Align::Center);
-            create_btn.set_sensitive(false); // Initially disabled until name is valid
-
-            let obj = self.obj();
-            create_btn.connect_clicked(clone!(
-                #[weak]
-                obj,
-                move |_| {
-                    glib::MainContext::ref_thread_default().spawn_local(async move {
-                        let res = obj.extract_create_args().await;
-                        obj.update_errors(&res);
-                        if let Ok(create_args) = res {
-                            // If cloning from a source, delegate to clone_container, otherwise create normally
-                            if let Some(src) = obj.clone_src() {
-                                src.stop();
-                                obj.root_store().clone_container(&src.name(), create_args);
-                            } else {
-                                obj.root_store().create_container(create_args);
-                            }
-                            obj.close();
-                        }
-                    });
-                }
-            ));
-            create_btn.add_css_class("suggested-action");
-            create_btn.add_css_class("pill");
-            create_btn.set_margin_top(12);
-
-            self.content.append(&create_btn);
-
-            // Add name validation for Create button sensitivity
-            let guided_create_btn = create_btn.clone();
-            self.name_row.connect_changed(clone!(
-                #[weak]
-                guided_create_btn,
-                move |entry| {
-                    let text = entry.text();
-                    let is_valid = !text.is_empty() && backends::CreateArgName::new(&text).is_ok();
-                    guided_create_btn.set_sensitive(is_valid);
-                }
-            ));
-
-            // Prefill wiring: debounce name changes to suggest an image when user hasn't interacted
-            let obj_for_prefill = self.obj().clone();
-            let name_row = obj_for_prefill.imp().name_row.clone();
-            name_row.connect_changed(clone!(
-                #[weak]
-                obj_for_prefill,
-                move |entry| {
-                    let imp = obj_for_prefill.imp();
-                    let prefill_gen = imp.prefill_generation.get().wrapping_add(1);
-                    imp.prefill_generation.set(prefill_gen);
-                    let text = entry.text().to_string();
-                    let obj_inner = obj_for_prefill.clone();
-                    glib::MainContext::ref_thread_default().spawn_local(clone!(
-                        #[weak]
-                        obj_inner,
-                        async move {
-                            glib::timeout_future(std::time::Duration::from_millis(300)).await;
-                            let imp = obj_inner.imp();
-                            if imp.prefill_generation.get() != prefill_gen {
-                                return;
-                            }
-                            // don't prefill if cloning from a source
-                            if imp.clone_src.borrow().is_some() {
-                                return;
-                            }
-                            if text.is_empty() {
-                                if imp.selected_image.borrow().is_empty() {
-                                    imp.image_row.set_subtitle(&gettext("Select an image..."));
-                                }
-                            } else {
-                                let candidates = imp
-                                    .images_model
-                                    .snapshot()
-                                    .into_iter()
-                                    .filter_map(|item| {
-                                        item.downcast::<gtk::StringObject>()
-                                            .ok()
-                                            .map(|sobj| sobj.string().to_string())
-                                    })
-                                    .collect::<Vec<_>>();
-
-                                let (_filter, suggested_opt) =
-                                    crate::dialogs::create_distrobox_helpers::derive_image_prefill(
-                                        &text,
-                                        Some(&candidates),
-                                    );
-                                if let Some(suggested) = suggested_opt {
-                                    // set subtitle as tentative prefill (do not overwrite confirmed selection)
-                                    if imp.selected_image.borrow().is_empty() {
-                                        imp.image_row.set_subtitle(&suggested);
-                                    }
-                                }
-                            }
-                        }
-                    ));
-                }
-            ));
-
-            // Create page for assemble from file
-            let assemble_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
-            assemble_page.set_margin_start(12);
-            assemble_page.set_margin_end(12);
-            assemble_page.set_margin_top(12);
-            assemble_page.set_margin_bottom(12);
-
-            let assemble_group = adw::PreferencesGroup::new();
-            assemble_group.set_title(&gettext("Assemble from File"));
-            assemble_group
-                .set_description(Some(&gettext("Create a container from an assemble file")));
-
-            let ini_filter = gtk::FileFilter::new();
-            ini_filter.set_name(Some(&gettext("INI Files")));
-            ini_filter.add_pattern("*.ini");
-
-            let obj = self.obj().clone();
-            let file_row = self.obj().build_file_row(
-                &gettext("Select Assemble File"),
-                FileRowSelection::File,
-                Some(&ini_filter),
-                move |path| {
-                    obj.set_assemble_file(Some(path.display().to_string()));
-                },
-            );
-            assemble_group.add(&file_row);
-            assemble_page.append(&assemble_group);
-
-            // Add create button for assemble file
-            let create_btn = gtk::Button::with_label(&gettext("Create"));
-            create_btn.set_halign(gtk::Align::Center);
-            create_btn.add_css_class("suggested-action");
-            create_btn.add_css_class("pill");
-            create_btn.set_margin_top(12);
-            create_btn.set_sensitive(false);
-            assemble_page.append(&create_btn);
-
-            // Handle create click
-            let obj = self.obj();
-            create_btn.connect_clicked(clone!(
-                #[weak]
-                obj,
-                move |_| {
-                    if let Some(path) = obj.assemble_file() {
-                        obj.root_store().assemble_container(path.as_ref());
-                        obj.close();
-                    }
-                }
-            ));
-
-            // Enable button when file is selected
-            self.obj().connect_assemble_file_notify(move |obj| {
-                create_btn.set_sensitive(obj.assemble_file().is_some());
-            });
-
-            // Create page for URL creation
-            let url_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
-            url_page.set_margin_start(12);
-            url_page.set_margin_end(12);
-            url_page.set_margin_top(12);
-            url_page.set_margin_bottom(12);
-
-            let url_group = adw::PreferencesGroup::new();
-            url_group.set_title(&gettext("From URL"));
-            url_group.set_description(Some(&gettext("Create a container from a remote URL")));
-
-            let url_row = adw::EntryRow::new();
-            url_row.set_title(&gettext("URL"));
-            url_row.set_text("https://example.com/container.ini");
-            url_row.set_show_apply_button(true);
-
-            url_group.add(&url_row);
-            url_page.append(&url_group);
-
-            // Add create button for URL
-            let create_btn = gtk::Button::with_label(&gettext("Create"));
-            create_btn.set_halign(gtk::Align::Center);
-            create_btn.add_css_class("suggested-action");
-            create_btn.add_css_class("pill");
-            create_btn.set_margin_top(12);
-            create_btn.set_sensitive(false);
-            url_page.append(&create_btn);
-
-            // Store reference for use in multiple closures
-            let url_create_btn = create_btn.clone();
-            let obj_for_url = self.obj().clone();
-
-            url_row.connect_changed(clone!(
-                #[weak]
-                obj_for_url,
-                #[weak]
-                url_create_btn,
-                move |entry| {
-                    obj_for_url.set_assemble_url(Some(entry.text()));
-                    obj_for_url.set_url_validated(false);
-                    url_create_btn.set_sensitive(false);
-                    // Clear error CSS when user types
-                    entry.remove_css_class("error");
-                }
-            ));
-
-            url_row.connect_apply(clone!(
-                #[weak]
-                obj_for_url,
-                #[weak]
-                url_create_btn,
-                move |entry| {
-                    let url = entry.text().to_string();
-                    if url.is_empty() {
-                        return;
-                    }
-
-                    // Reset validation state
-                    obj_for_url.set_url_validated(false);
-                    url_create_btn.set_sensitive(false);
-
-                    glib::MainContext::ref_thread_default().spawn_local(clone!(
-                        #[weak]
-                        obj_for_url,
-                        #[weak]
-                        url_create_btn,
-                        #[weak]
-                        entry,
-                        async move {
-                            let is_valid = obj_for_url.validate_url(&url).await;
-                            obj_for_url.set_url_validated(is_valid);
-                            url_create_btn.set_sensitive(is_valid);
-
-                            if !is_valid {
-                                let toast = adw::Toast::new(&gettext("Could not connect to URL"));
-                                obj_for_url.imp().toast_overlay.add_toast(toast);
-                                entry.add_css_class("error");
-                            } else {
-                                entry.remove_css_class("error");
-                            }
-                        }
-                    ));
-                }
-            ));
-
-            // Handle create click
-            let obj = self.obj();
-            create_btn.connect_clicked(clone!(
-                #[weak]
-                obj,
-                move |_| {
-                    obj.root_store()
-                        .assemble_container(obj.assemble_url().as_ref().unwrap());
-                    obj.close();
-                }
-            ));
+            let guided_page = self.obj().build_guided_page();
+            let assemble_page = self.obj().build_assemble_from_file_page();
+            let url_page = self.obj().build_assemble_from_url_page();
 
             // Add pages to view stack
-            view_stack.add_titled(&self.content, Some("create"), "Guided");
+            view_stack.add_titled(&guided_page, Some("create"), "Guided");
             view_stack.add_titled(&assemble_page, Some("assemble-file"), "From File");
             view_stack.add_titled(&url_page, Some("assemble-url"), "From URL");
 
             // Create a box to hold the view switcher and content
             let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
-            // Add inline view switcher
-            self.view_switcher.set_stack(Some(&view_stack));
-            self.view_switcher.set_margin_start(12);
-            self.view_switcher.set_margin_end(12);
-            self.view_switcher.set_margin_top(12);
-            self.view_switcher.set_margin_bottom(12);
+            // Add inline view switcher only if not cloning
+            // When cloning from an existing container, we skip the view switcher and go directly to guided page
+            if self.clone_src.borrow().is_none() {
+                self.view_switcher.set_stack(Some(&view_stack));
+                self.view_switcher.set_margin_start(12);
+                self.view_switcher.set_margin_end(12);
+                self.view_switcher.set_margin_top(12);
+                self.view_switcher.set_margin_bottom(12);
 
-            content_box.append(&self.view_switcher);
+                content_box.append(&self.view_switcher);
+            }
+
             content_box.append(&view_stack);
 
             // Wrap content_box in a scrolled window
@@ -531,9 +134,10 @@ glib::wrapper! {
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 impl CreateDistroboxDialog {
-    pub fn new(root_store: RootStore) -> Self {
+    pub fn new(root_store: RootStore, clone_src: Option<Container>) -> Self {
         let this: Self = glib::Object::builder()
             .property("root-store", root_store)
+            .property("clone-src", clone_src)
             .build();
 
         this.root_store().images_query().connect_success(clone!(
@@ -567,6 +171,369 @@ impl CreateDistroboxDialog {
         this.root_store().downloaded_images_query().refetch();
 
         this
+    }
+
+    pub fn build_guided_page(&self) -> adw::NavigationPage {
+        let imp = self.imp();
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        content.set_margin_start(12);
+        content.set_margin_end(12);
+        content.set_margin_top(12);
+        content.set_margin_bottom(12);
+        let page = adw::NavigationPage::new(&content, &gettext("Guided"));
+
+        // Create cloning_content box with header and sidebar
+        // Only show cloning UI if we're cloning from an existing container
+        if let Some(container) = self.clone_src() {
+            imp.image_row.set_visible(false);
+
+            let cloning_content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+            content.append(&cloning_content);
+
+            let cloning_header = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+            cloning_header.set_homogeneous(false);
+
+            let cloning_label = gtk::Label::new(Some(&gettext("Cloning")));
+            cloning_label.set_halign(gtk::Align::Start);
+            cloning_label.add_css_class("title-3");
+
+            cloning_header.set_hexpand(true);
+            cloning_header.append(&cloning_label);
+            cloning_content.append(&cloning_header);
+
+            let sidebar_row = SidebarRow::new(&container);
+            cloning_content.append(&sidebar_row);
+
+            // Show warning if container is running
+            if container.is_running() {
+                let clone_warning_banner = adw::Banner::new(&gettext("Cloning the container requires stopping it first"));
+                clone_warning_banner.set_revealed(true);
+                cloning_content.append(&clone_warning_banner);
+            }
+        }
+
+        let preferences_group = adw::PreferencesGroup::new();
+        preferences_group.set_title(&gettext("Settings"));
+        imp.name_row.set_title(&gettext("Name"));
+
+        imp.image_row.set_title(&gettext("Base Image"));
+        imp.image_row.set_subtitle(&gettext("Select an image..."));
+        imp.image_row.set_activatable(true);
+        imp.image_row
+            .add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+
+        imp.image_row.connect_activated(clone!(
+            #[weak(rename_to=this)]
+            self,
+            move |_| {
+                // Read the current subtitle and derive an initial search string
+                let subtitle: String = this.imp().image_row.property("subtitle");
+                let default_sub = gettext("Select an image...");
+
+                let initial_search_repo: &str = split_repo_tag_digest(if subtitle == default_sub {
+                    ""
+                } else {
+                    &subtitle
+                })
+                .0;
+                // A repo is docker.io/library/xyz by default, we only want to search by 'xyz'
+                let initial_search = initial_search_repo
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or(initial_search_repo);
+
+                let picker = this.build_image_picker_view(Some(initial_search));
+                this.imp().navigation_view.push(&picker);
+            }
+        ));
+
+        let this = self.clone();
+        let home_row = self.build_file_row(
+            &gettext("Select Home Directory"),
+            FileRowSelection::Folder,
+            None, // No filter for folders
+            move |path| {
+                this.set_home_folder(Some(path.display().to_string()));
+            },
+        );
+        imp.home_row_expander
+            .set_title(&gettext("Custom Home Directory"));
+        imp.home_row_expander.set_show_enable_switch(true);
+        imp.home_row_expander.set_enable_expansion(false);
+        imp.home_row_expander.add_row(&home_row);
+        imp.home_row_expander
+            .connect_enable_expansion_notify(clone!(
+                #[weak(rename_to=this)]
+                self,
+                move |expander| {
+                    if !expander.enables_expansion() {
+                        this.set_home_folder(None::<&str>);
+                    }
+                    home_row.set_subtitle(this.home_folder().as_deref().unwrap_or(""));
+                }
+            ));
+
+        imp.nvidia_row.set_title(&gettext("NVIDIA Support"));
+
+        imp.init_row.set_title(&gettext("Init process"));
+
+        preferences_group.add(&imp.name_row);
+        preferences_group.add(&imp.image_row);
+        preferences_group.add(&imp.home_row_expander);
+        preferences_group.add(&imp.nvidia_row);
+        preferences_group.add(&imp.init_row);
+
+        let volumes_group = self.build_volumes_group();
+        content.append(&preferences_group);
+        content.append(&volumes_group);
+
+        let create_btn = self.build_create_btn();
+        create_btn.set_sensitive(false);
+
+        create_btn.connect_clicked(clone!(
+            #[weak(rename_to=this)]
+            self,
+            move |_| {
+                glib::MainContext::ref_thread_default().spawn_local(async move {
+                    let res = this.extract_create_args().await;
+                    this.update_errors(&res);
+                    if let Ok(create_args) = res {
+                        // If cloning from a source, delegate to clone_container, otherwise create normally
+                        if let Some(src) = this.clone_src() {
+                            src.stop();
+                            this.root_store().clone_container(&src.name(), create_args);
+                        } else {
+                            this.root_store().create_container(create_args);
+                        }
+                        this.close();
+                    }
+                });
+            }
+        ));
+
+        content.append(&create_btn);
+
+        // Add name validation for Create button sensitivity
+        imp.name_row.connect_changed(clone!(
+            #[weak]
+            create_btn,
+            move |entry| {
+                let text = entry.text();
+                let is_valid = !text.is_empty() && backends::CreateArgName::new(&text).is_ok();
+                create_btn.set_sensitive(is_valid);
+            }
+        ));
+
+        // Prefill wiring: debounce name changes to suggest an image when user hasn't interacted
+        imp.name_row.connect_changed(clone!(
+            #[weak(rename_to=this)]
+            self,
+            move |entry| {
+                let imp = this.imp();
+                let prefill_gen = imp.prefill_generation.get().wrapping_add(1);
+                imp.prefill_generation.set(prefill_gen);
+                let text = entry.text().to_string();
+                let obj_inner = this.clone();
+                glib::MainContext::ref_thread_default().spawn_local(clone!(
+                    #[weak]
+                    obj_inner,
+                    async move {
+                        glib::timeout_future(std::time::Duration::from_millis(300)).await;
+                        let imp = obj_inner.imp();
+                        if imp.prefill_generation.get() != prefill_gen {
+                            return;
+                        }
+                        // don't prefill if cloning from a source
+                        if imp.clone_src.borrow().is_some() {
+                            return;
+                        }
+                        if text.is_empty() {
+                            if imp.selected_image.borrow().is_empty() {
+                                imp.image_row.set_subtitle(&gettext("Select an image..."));
+                            }
+                        } else {
+                            let candidates = imp
+                                .images_model
+                                .snapshot()
+                                .into_iter()
+                                .filter_map(|item| {
+                                    item.downcast::<gtk::StringObject>()
+                                        .ok()
+                                        .map(|sobj| sobj.string().to_string())
+                                })
+                                .collect::<Vec<_>>();
+
+                            let (_filter, suggested_opt) =
+                                crate::dialogs::create_distrobox_helpers::derive_image_prefill(
+                                    &text,
+                                    Some(&candidates),
+                                );
+                            if let Some(suggested) = suggested_opt {
+                                // set subtitle as tentative prefill (do not overwrite confirmed selection)
+                                if imp.selected_image.borrow().is_empty() {
+                                    imp.image_row.set_subtitle(&suggested);
+                                }
+                            }
+                        }
+                    }
+                ));
+            }
+        ));
+
+        page
+    }
+    pub fn build_assemble_from_file_page(&self) -> adw::NavigationPage {
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        content.set_margin_start(12);
+        content.set_margin_end(12);
+        content.set_margin_top(12);
+        content.set_margin_bottom(12);
+
+        let page = adw::NavigationPage::new(&content, &gettext("Assemble from File"));
+
+        let assemble_group = adw::PreferencesGroup::new();
+        assemble_group.set_title(&gettext("Assemble from File"));
+        assemble_group.set_description(Some(&gettext("Create a container from an assemble file")));
+
+        let ini_filter = gtk::FileFilter::new();
+        ini_filter.set_name(Some(&gettext("INI Files")));
+        ini_filter.add_pattern("*.ini");
+
+        let this = self.clone();
+        let file_row = self.build_file_row(
+            &gettext("Select Assemble File"),
+            FileRowSelection::File,
+            Some(&ini_filter),
+            move |path| {
+                this.set_assemble_file(Some(path.display().to_string()));
+            },
+        );
+        assemble_group.add(&file_row);
+        content.append(&assemble_group);
+
+        let create_btn = self.build_create_btn();
+        create_btn.set_sensitive(false);
+        content.append(&create_btn);
+
+        // Handle create click
+        create_btn.connect_clicked(clone!(
+            #[weak(rename_to=this)]
+            self,
+            move |_| {
+                if let Some(path) = this.assemble_file() {
+                    this.root_store().assemble_container(path.as_ref());
+                    this.close();
+                }
+            }
+        ));
+
+        // Enable button when file is selected
+        self.connect_assemble_file_notify(move |obj| {
+            create_btn.set_sensitive(obj.assemble_file().is_some());
+        });
+        page
+    }
+
+    pub fn build_assemble_from_url_page(&self) -> adw::NavigationPage {
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        content.set_margin_start(12);
+        content.set_margin_end(12);
+        content.set_margin_top(12);
+        content.set_margin_bottom(12);
+
+        let page = adw::NavigationPage::new(&content, &gettext("Assemble from URL"));
+
+        let url_group = adw::PreferencesGroup::new();
+        url_group.set_title(&gettext("Assemble from URL"));
+        url_group.set_description(Some(&gettext("Create a container from a remote URL")));
+
+        let url_row = adw::EntryRow::new();
+        url_row.set_title(&gettext("URL"));
+        url_row.set_text("https://example.com/container.ini");
+        url_row.set_show_apply_button(true);
+
+        url_group.add(&url_row);
+        content.append(&url_group);
+
+        // Add create button for URL
+        let create_btn = self.build_create_btn();
+        create_btn.set_sensitive(false);
+        content.append(&create_btn);
+
+        url_row.connect_changed(clone!(
+            #[weak(rename_to=this)]
+            self,
+            #[weak]
+            create_btn,
+            move |entry| {
+                this.set_assemble_url(Some(entry.text()));
+                this.set_url_validated(false);
+                create_btn.set_sensitive(false);
+                // Clear error CSS when user types
+                entry.remove_css_class("error");
+            }
+        ));
+
+        url_row.connect_apply(clone!(
+            #[weak(rename_to=this)]
+            self,
+            #[weak]
+            create_btn,
+            move |entry| {
+                let url = entry.text().to_string();
+                if url.is_empty() {
+                    return;
+                }
+
+                // Reset validation state
+                this.set_url_validated(false);
+                create_btn.set_sensitive(false);
+
+                glib::MainContext::ref_thread_default().spawn_local(clone!(
+                    #[weak]
+                    this,
+                    #[weak]
+                    create_btn,
+                    #[weak]
+                    entry,
+                    async move {
+                        let is_valid = this.validate_url(&url).await;
+                        this.set_url_validated(is_valid);
+                        create_btn.set_sensitive(is_valid);
+
+                        if !is_valid {
+                            let toast = adw::Toast::new(&gettext("Could not connect to URL"));
+                            this.imp().toast_overlay.add_toast(toast);
+                            entry.add_css_class("error");
+                        } else {
+                            entry.remove_css_class("error");
+                        }
+                    }
+                ));
+            }
+        ));
+
+        // Handle create click
+        create_btn.connect_clicked(clone!(
+            #[weak(rename_to=this)]
+            self,
+            move |_| {
+                this.root_store()
+                    .assemble_container(this.assemble_url().as_ref().unwrap());
+                this.close();
+            }
+        ));
+
+        page
+    }
+
+    pub fn build_create_btn(&self) -> gtk::Button {
+        let create_btn = gtk::Button::with_label(&gettext("Create"));
+        create_btn.set_halign(gtk::Align::Center);
+        create_btn.add_css_class("suggested-action");
+        create_btn.add_css_class("pill");
+        create_btn.set_margin_top(12);
+        create_btn
     }
 
     pub fn build_file_row(
@@ -887,7 +854,6 @@ impl CreateDistroboxDialog {
             init: imp.init_row.is_active(),
             volumes,
         };
-        dbg!(&create_args);
 
         Ok(create_args)
     }

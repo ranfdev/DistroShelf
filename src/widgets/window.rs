@@ -219,10 +219,7 @@ impl DistroShelfWindow {
                         ExportableAppsDialog::new(&container).upcast()
                     }
                     DialogType::CreateDistrobox => {
-                        let dialog = CreateDistroboxDialog::new(this_clone.root_store());
-                        if let Some(clone_src) = params.clone_source {
-                            dialog.set_clone_src(Some(clone_src));
-                        }
+                        let dialog = CreateDistroboxDialog::new(this_clone.root_store(), params.clone_source);
                         dialog.upcast()
                     }
                     DialogType::TaskManager => TaskManagerDialog::new(root_store).upcast(),

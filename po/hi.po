@@ -195,8 +195,8 @@ msgid "Select Assemble File"
 msgstr "असेंबल फ़ाइल चुनें"
 
 #: src/dialogs/create_distrobox_dialog.rs:288
-msgid "From URL"
-msgstr "URL से"
+msgid "Assemble from URL"
+msgstr "URL से असेंबल करें"
 
 #: src/dialogs/create_distrobox_dialog.rs:289
 msgid "Create a container from a remote URL"

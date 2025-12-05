@@ -191,7 +191,7 @@ msgid "Select Assemble File"
 msgstr ""
 
 #: src/dialogs/create_distrobox_dialog.rs:288
-msgid "From URL"
+msgid "Assemble from URL"
 msgstr ""
 
 #: src/dialogs/create_distrobox_dialog.rs:289
