@@ -313,14 +313,28 @@ impl CreateDistroboxDialog {
 
         content.append(&create_btn);
 
-        // Add name validation for Create button sensitivity
+        // Add name validation for Create button sensitivity and duplicate name check
         imp.name_row.connect_changed(clone!(
             #[weak]
             create_btn,
+            #[weak(rename_to=this)]
+            self,
             move |entry| {
                 let text = entry.text();
                 let is_valid = !text.is_empty() && backends::CreateArgName::new(&text).is_ok();
-                create_btn.set_sensitive(is_valid);
+                
+                // Check for duplicate container names
+                let mut has_duplicate = false;
+                if is_valid {
+                    for container in this.root_store().containers().iter() {
+                        if container.name() == text.as_str() {
+                            has_duplicate = true;
+                            break;
+                        }
+                    }
+                }
+                
+                create_btn.set_sensitive(is_valid && !has_duplicate);
             }
         ));
 
