@@ -5,6 +5,9 @@ use gtk::glib;
 use gtk::prelude::*;
 mod typed_list_store;
 pub use typed_list_store::TypedListStore;
+mod terminal_colors;
+#[allow(unused_imports)]
+pub use terminal_colors::ColorPalette;
 
 pub fn reconcile_properties<T: IsA<glib::Object>>(dest: &T, src: &T, properties: &[&str]) {
     for prop in dest.list_properties() {

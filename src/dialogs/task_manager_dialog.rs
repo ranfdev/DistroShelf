@@ -6,8 +6,9 @@ use gtk::glib::clone;
 use crate::gtk_utils::reaction;
 use crate::i18n::gettext;
 use crate::models::{DistroboxTask, RootStore};
+use crate::widgets::TaskOutputTerminal;
 
-use gtk::glib::{Properties, derived_properties};
+use gtk::glib::Properties;
 use std::cell::RefCell;
 
 mod imp {
@@ -32,13 +33,13 @@ mod imp {
         pub selected_task_view: adw::ToolbarView,
     }
 
-    #[derived_properties]
+    #[glib::derived_properties]
     impl ObjectImpl for TaskManagerDialog {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
             obj.set_title(&gettext("Running Tasks"));
-            obj.set_content_width(360);
+            obj.set_content_width(640);
             obj.set_content_height(640);
 
             let header_bar = adw::HeaderBar::new();
@@ -259,25 +260,21 @@ impl TaskManagerDialog {
             update_status_ui(task);
         });
 
-        let text_view = gtk::TextView::builder()
-            .buffer(&task.output())
-            .editable(false)
-            .cursor_visible(false)
-            .wrap_mode(gtk::WrapMode::Word)
-            .css_classes(vec!["output".to_string()])
-            .top_margin(12)
-            .bottom_margin(12)
-            .left_margin(12)
-            .right_margin(12)
-            .build();
+        // Create VTE terminal for output display
+        let vte_terminal = TaskOutputTerminal::new();
+        
+        // Restore historical output from TextBuffer if it exists
+        let output_buffer = task.output();
+        let buffer_text = output_buffer.text(&output_buffer.start_iter(), &output_buffer.end_iter(), false);
+        if !buffer_text.is_empty() {
+            vte_terminal.write_buffer(&buffer_text);
+        }
+        
+        task.set_vte_terminal(Some(vte_terminal.clone()));
 
-        let scrolled_window = gtk::ScrolledWindow::builder()
-            .child(&text_view)
-            .propagate_natural_height(true)
-            .height_request(300)
-            .vexpand(true)
-            .build();
-        content.append(&scrolled_window);
+        
+        
+        content.append(&vte_terminal);
 
         let button_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         button_row.set_hexpand(true);

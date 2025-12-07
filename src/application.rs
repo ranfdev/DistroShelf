@@ -157,6 +157,13 @@ mod imp {
                     animation: pop-warning 1s;
                     animation-iteration-count: 3;
                 }}
+
+                .task-output-terminal {{
+                    padding: 8px;
+                    /* A larger radius isn't rendered properly in VTE, because the background of therminal is drawn over it */
+                    border-radius: 4px;
+                    border: 2px solid @borders;
+                }}
             "));
             // We give the CssProvided to the default screen so the CSS rules we added
             // can be applied to our window.

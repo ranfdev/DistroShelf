@@ -7,6 +7,7 @@ use gtk::{
 use vte4::prelude::*;
 
 use crate::i18n::gettext;
+use crate::gtk_utils::ColorPalette;
 use crate::models::Container;
 
 mod imp {
@@ -74,6 +75,14 @@ impl IntegratedTerminal {
         let imp = self.imp();
         let terminal = &imp.terminal;
         let reload_button = &imp.reload_button;
+
+        // Configure terminal appearance
+        terminal.set_scroll_on_output(true);
+        terminal.set_scroll_on_keystroke(true);
+
+        // Apply the current theme's color palette
+        let palette = ColorPalette::current();
+        palette.apply_to_terminal(terminal);
 
         // Create context menu actions
         let action_group = gio::SimpleActionGroup::new();

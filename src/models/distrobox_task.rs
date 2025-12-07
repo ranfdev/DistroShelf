@@ -9,6 +9,7 @@ use std::future::Future;
 use tracing::{debug, info, warn};
 
 use crate::fakers::Child;
+use crate::widgets::TaskOutputTerminal;
 
 /// Status of a DistroboxTask
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
@@ -39,6 +40,7 @@ mod imp {
         pub status: RefCell<TaskStatus>,
         pub error: RefCell<Option<anyhow::Error>>, // set only if status is Failed
         pub cancellable: RefCell<Option<gtk::gio::Cancellable>>,
+        pub vte_terminal: RefCell<Option<TaskOutputTerminal>>, // Optional VTE terminal
     }
 
     #[glib::derived_properties]
@@ -114,8 +116,14 @@ impl DistroboxTask {
         let mut err_lines = BufReader::new(stderr).lines();
 
         let insert_line = |line: String| {
+            // Write to TextBuffer
             self.output().insert(&mut self.output().end_iter(), &line);
             self.output().insert(&mut self.output().end_iter(), "\n");
+            
+            // Write to VTE terminal if available
+            if let Some(vte) = self.imp().vte_terminal.borrow().as_ref() {
+                vte.write_line(&line);
+            }
         };
 
         let mut cancel_rx = cancel_rx.fuse();
@@ -190,5 +198,15 @@ impl DistroboxTask {
     }
     pub fn error_message(&self) -> Option<String> {
         self.imp().error.borrow().as_ref().map(|e| e.to_string())
+    }
+
+    /// Set the VTE terminal for this task to write output to
+    pub fn set_vte_terminal(&self, terminal: Option<TaskOutputTerminal>) {
+        *self.imp().vte_terminal.borrow_mut() = terminal;
+    }
+
+    /// Get the current VTE terminal if one is attached
+    pub fn vte_terminal(&self) -> Option<TaskOutputTerminal> {
+        self.imp().vte_terminal.borrow().clone()
     }
 }
