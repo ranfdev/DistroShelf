@@ -71,6 +71,16 @@
   </screenshots>
 
   <releases>
+    <release version="1.3.0" date="2025-12-07">
+      <description translate="no">
+        <ul>
+          <li>New: Real VTE-based task output terminal — a read-only embedded terminal widget to view command output (ANSI aware), with copy/paste support and color palette matching the theme.</li>
+          <li>Improved: Integrated terminal now uses a unified ColorPalette for consistent appearance across light/dark themes.</li>
+          <li>Fix: Prevent creating containers with duplicate names.</li>
+          <li>Fix: Properly display command stderr output in task output streams.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.0" date="2025-12-02">
       <description translate="no">
         <ul>
