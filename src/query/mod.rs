@@ -27,14 +27,6 @@ pub struct QueryInner<T> {
 
     retry_strategy: Option<Box<dyn Fn(u32) -> Option<Duration>>>,
     retry_count: u32,
-
-    /// Shared state for strategy implementations
-    /// Source ID for pending debounce timer
-    debounce_source_id: Option<glib::SourceId>,
-    /// Instant of the last throttled fetch execution
-    last_throttle_time: Option<Instant>,
-    /// Source ID for pending trailing throttle timer
-    throttle_trailing_source_id: Option<glib::SourceId>,
 }
 
 impl<T> QueryInner<T> {
@@ -60,9 +52,6 @@ impl<T> QueryInner<T> {
             timeout,
             retry_strategy: None,
             retry_count: 0,
-            debounce_source_id: None,
-            last_throttle_time: None,
-            throttle_trailing_source_id: None,
         }
     }
 
@@ -190,16 +179,6 @@ impl<T> Drop for Query<T> {
                 source_id.remove();
             }
 
-            // Remove any pending debounce timer
-            if let Some(source_id) = self.inner.borrow_mut().debounce_source_id.take() {
-                source_id.remove();
-            }
-
-            // Remove any pending throttle trailing timer
-            if let Some(source_id) = self.inner.borrow_mut().throttle_trailing_source_id.take() {
-                source_id.remove();
-            }
-
             // Abort any active fetch task to ensure cleanup
             if let Some(handle) = self.inner.borrow_mut().fetch_task_handle.take() {
                 debug!(resource_key = %self.inner.borrow().key, "Dropping last reference to Query, aborting active fetch task");
@@ -243,30 +222,36 @@ where
     /// Strategy: Debounce fetch calls
     /// Waits for `duration` after the last call before executing.
     /// If another call arrives before the timer fires, the timer resets.
+    /// 
+    /// State is managed internally by the strategy and not stored in Query.
     pub fn debounce(duration: Duration) -> impl FnOnce(&Query<T>) {
+        // Strategy state: managed by the closure itself
+        let debounce_state: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
+        
         move |query: &Query<T>| {
             let key = { query.inner.borrow().key.clone() };
 
             // Cancel any existing debounce timer
-            if let Some(source_id) = query.inner.borrow_mut().debounce_source_id.take() {
+            if let Some(source_id) = debounce_state.borrow_mut().take() {
                 debug!(resource_key = %key, "Cancelling previous debounce timer");
                 source_id.remove();
             }
 
             let weak = Rc::downgrade(&query.inner);
+            let state_for_callback = debounce_state.clone();
             let source_id = glib::timeout_add_local_once(duration, move || {
                 if let Some(inner) = weak.upgrade() {
                     let query = Query { inner };
                     let key = { query.inner.borrow().key.clone() };
                     debug!(resource_key = %key, "Debounce timer fired, executing fetch");
                     // Clear the source_id since timer has fired
-                    query.inner.borrow_mut().debounce_source_id = None;
+                    *state_for_callback.borrow_mut() = None;
                     query.fetch();
                 }
             });
 
             debug!(resource_key = %key, duration_ms = duration.as_millis(), "Scheduled debounced fetch");
-            query.inner.borrow_mut().debounce_source_id = Some(source_id);
+            *debounce_state.borrow_mut() = Some(source_id);
         }
     }
 
@@ -274,12 +259,19 @@ where
     /// Executes at most once per `interval`.
     /// If `trailing` is true, a trailing fetch will be scheduled after the interval
     /// if calls arrived during the throttle period.
+    /// 
+    /// State is managed internally by the strategy and not stored in Query.
     pub fn throttle(interval: Duration, trailing: bool) -> impl FnOnce(&Query<T>) {
+        // Strategy state: managed by the closure itself
+        let throttle_state: Rc<RefCell<(Option<Instant>, Option<glib::SourceId>)>> = 
+            Rc::new(RefCell::new((None, None)));
+        
         move |query: &Query<T>| {
             let key = { query.inner.borrow().key.clone() };
             let now = Instant::now();
 
-            let last_throttle_time = { query.inner.borrow().last_throttle_time };
+            let last_throttle_time = { throttle_state.borrow().0 };
+            
             let should_fetch = match last_throttle_time {
                 None => true,
                 Some(last_time) => now.duration_since(last_time) >= interval,
@@ -287,19 +279,17 @@ where
 
             if should_fetch {
                 // Cancel any pending trailing timer since we're fetching now
-                if let Some(source_id) = query.inner.borrow_mut().throttle_trailing_source_id.take()
-                {
+                if let Some(source_id) = throttle_state.borrow_mut().1.take() {
                     debug!(resource_key = %key, "Cancelling trailing throttle timer (immediate fetch)");
                     source_id.remove();
                 }
 
                 debug!(resource_key = %key, "Throttle allows fetch, executing immediately");
-                query.inner.borrow_mut().last_throttle_time = Some(now);
+                *throttle_state.borrow_mut() = (Some(now), None);
                 query.fetch();
             } else if trailing {
                 // Schedule a trailing fetch if not already scheduled
-                let has_pending_trailing =
-                    { query.inner.borrow().throttle_trailing_source_id.is_some() };
+                let has_pending_trailing = { throttle_state.borrow().1.is_some() };
 
                 if !has_pending_trailing {
                     let remaining = interval
@@ -307,20 +297,20 @@ where
                         .unwrap_or(Duration::ZERO);
 
                     let weak = Rc::downgrade(&query.inner);
+                    let state_for_callback = throttle_state.clone();
                     let source_id = glib::timeout_add_local_once(remaining, move || {
                         if let Some(inner) = weak.upgrade() {
                             let query = Query { inner };
                             let key = { query.inner.borrow().key.clone() };
                             debug!(resource_key = %key, "Trailing throttle timer fired, executing fetch");
                             // Clear the source_id and update throttle time
-                            query.inner.borrow_mut().throttle_trailing_source_id = None;
-                            query.inner.borrow_mut().last_throttle_time = Some(Instant::now());
+                            *state_for_callback.borrow_mut() = (Some(Instant::now()), None);
                             query.fetch();
                         }
                     });
 
                     debug!(resource_key = %key, remaining_ms = remaining.as_millis(), "Scheduled trailing throttle fetch");
-                    query.inner.borrow_mut().throttle_trailing_source_id = Some(source_id);
+                    throttle_state.borrow_mut().1 = Some(source_id);
                 } else {
                     debug!(resource_key = %key, "Throttled: trailing timer already pending");
                 }
