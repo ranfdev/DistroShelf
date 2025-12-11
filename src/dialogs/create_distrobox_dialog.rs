@@ -2,7 +2,6 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::gio::File;
 use gtk::{gio, glib};
-use std::cell::Cell;
 use std::time::Duration;
 use tracing::error;
 
@@ -39,16 +38,11 @@ mod imp {
         pub toolbar_view: adw::ToolbarView,
         pub toast_overlay: adw::ToastOverlay,
         pub name_row: adw::EntryRow,
-        #[property(get, set)]
-        pub url_validated: Cell<bool>,
         pub image_row: adw::ActionRow,
         pub images_model: gtk::StringList,
         pub selected_image: RefCell<String>,
         pub prefill_query: RefCell<Option<Query<Option<String>>>>,
-        pub url_validation_query: RefCell<Option<Query<bool>>>,
         pub ini_content_query: RefCell<Option<Query<String>>>,
-        #[property(get, set)]
-        pub ini_approved: Cell<bool>,
         pub home_row_expander: adw::ExpanderRow,
         #[property(get, set, nullable)]
         pub home_folder: RefCell<Option<String>>,
@@ -479,17 +473,14 @@ impl CreateDistroboxDialog {
         let url_row = adw::EntryRow::new();
         url_row.set_title(&gettext("URL"));
         url_row.set_text("https://example.com/container.ini");
-        url_row.set_show_apply_button(true);
 
         url_group.add(&url_row);
         content.append(&url_group);
 
-        // Create preview expandable row
-        let preview_expander = adw::ExpanderRow::new();
-        preview_expander.set_title(&gettext("File Preview"));
-        preview_expander.set_subtitle(&gettext("Loading..."));
-        preview_expander.set_enable_expansion(false);
-        preview_expander.set_visible(false);
+        // Create preview section with always-visible text view
+        let preview_label = gtk::Label::new(Some(&gettext("Configuration Preview")));
+        preview_label.set_halign(gtk::Align::Start);
+        preview_label.add_css_class("heading");
 
         // Create TextView for content display
         let text_view = gtk::TextView::new();
@@ -497,10 +488,6 @@ impl CreateDistroboxDialog {
         text_view.set_cursor_visible(false);
         text_view.set_monospace(true);
         text_view.set_wrap_mode(gtk::WrapMode::None);
-        text_view.set_margin_start(12);
-        text_view.set_margin_end(12);
-        text_view.set_margin_top(6);
-        text_view.set_margin_bottom(6);
 
         // Wrap TextView in ScrolledWindow
         let scrolled_window = gtk::ScrolledWindow::new();
@@ -509,28 +496,11 @@ impl CreateDistroboxDialog {
         scrolled_window.set_max_content_height(400);
         scrolled_window.set_vexpand(true);
 
-        // Create a box to hold the scrolled window
-        let preview_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let preview_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        preview_box.append(&preview_label);
         preview_box.append(&scrolled_window);
-        preview_expander.add_row(&preview_box);
 
-        // Create security warning InfoBar
-        let warning_infobar = adw::Banner::new(&gettext("Review the file contents carefully before proceeding. Only create containers from trusted sources."));
-        warning_infobar.set_revealed(false);
-        warning_infobar.set_button_label(Some(&gettext("Re-download")));
-
-        // Create approval checkbox
-        let approval_checkbox = gtk::CheckButton::new();
-        approval_checkbox.set_label(Some(&gettext("I have reviewed the file and trust this source")));
-        approval_checkbox.set_margin_start(12);
-        approval_checkbox.set_margin_end(12);
-        approval_checkbox.set_margin_top(6);
-        approval_checkbox.set_margin_bottom(6);
-        approval_checkbox.set_visible(false);
-
-        content.append(&preview_expander);
-        content.append(&warning_infobar);
-        content.append(&approval_checkbox);
+        content.append(&preview_box);
 
         // Add create button for URL
         let create_btn = self.build_create_btn();
@@ -559,45 +529,26 @@ impl CreateDistroboxDialog {
 
         // Wire ini_content_query success handler
         ini_content_query.connect_success(clone!(
-            #[weak(rename_to=this)]
-            self,
-            #[weak]
-            preview_expander,
             #[weak]
             text_view,
             #[weak]
-            warning_infobar,
-            #[weak]
-            approval_checkbox,
+            create_btn,
             move |content| {
-                // Show preview section
-                preview_expander.set_visible(true);
-                preview_expander.set_enable_expansion(true);
-                preview_expander.set_subtitle(&gettext("Downloaded successfully"));
-                preview_expander.set_expanded(true); // Auto-expand on first successful download
-
                 // Set content in TextView
                 text_view.buffer().set_text(content);
 
-                // Show warning and approval checkbox
-                warning_infobar.set_revealed(true);
-                approval_checkbox.set_visible(true);
-
-                // Show success toast
-                let toast = adw::Toast::new(&gettext("File downloaded successfully"));
-                this.imp().toast_overlay.add_toast(toast);
+                // Enable create button
+                create_btn.set_sensitive(true);
             }
         ));
 
         // Wire ini_content_query loading handler
         ini_content_query.connect_loading(clone!(
             #[weak]
-            preview_expander,
+            create_btn,
             move |is_loading| {
                 if is_loading {
-                    preview_expander.set_visible(true);
-                    preview_expander.set_subtitle(&gettext("Downloading..."));
-                    preview_expander.set_enable_expansion(false);
+                    create_btn.set_sensitive(false);
                 }
             }
         ));
@@ -607,17 +558,12 @@ impl CreateDistroboxDialog {
             #[weak(rename_to=this)]
             self,
             #[weak]
-            preview_expander,
+            create_btn,
             #[weak]
-            warning_infobar,
-            #[weak]
-            approval_checkbox,
+            url_row,
             move |error| {
-                preview_expander.set_visible(true);
-                preview_expander.set_subtitle(&gettext("Failed to download"));
-                preview_expander.set_enable_expansion(false);
-                warning_infobar.set_revealed(false);
-                approval_checkbox.set_visible(false);
+                create_btn.set_sensitive(false);
+                url_row.add_css_class("error");
 
                 let toast = adw::Toast::new(&format!("{}: {}", gettext("Download failed"), error));
                 this.imp().toast_overlay.add_toast(toast);
@@ -626,124 +572,24 @@ impl CreateDistroboxDialog {
 
         *self.imp().ini_content_query.borrow_mut() = Some(ini_content_query.clone());
 
-        // Create URL validation query with debouncing
-        let url_validation_query: Query<bool> = Query::new(
-            "url-validation".to_string(),
-            clone!(
-                #[weak(rename_to=this)]
-                self,
-                #[upgrade_or_panic]
-                move || async move {
-                    if let Some(url_text) = this.assemble_url() {
-                        if url_text.is_empty() {
-                            return Ok(false);
-                        }
-                        this.validate_url(&url_text).await
-                    } else {
-                        Ok(false)
-                    }
-                }
-            ),
-        ).with_timeout(Duration::from_secs(10));
-
-        url_validation_query.connect_success(clone!(
-            #[weak(rename_to=this)]
-            self,
-            #[weak]
-            url_row,
-            #[strong]
-            ini_content_query,
-            move |is_valid| {
-                this.set_url_validated(*is_valid);
-
-                if !is_valid {
-                    let toast = adw::Toast::new(&gettext("Could not connect to URL"));
-                    this.imp().toast_overlay.add_toast(toast);
-                    url_row.add_css_class("error");
-                } else {
-                    url_row.remove_css_class("error");
-                    // Trigger download when URL is valid
-                    ini_content_query.refetch();
-                }
-            }
-        ));
-
-        url_validation_query.connect_error(clone!(
-            #[weak]
-            url_row,
-            move |_| {
-                url_row.add_css_class("error");
-            }
-        ));
-
-        *self.imp().url_validation_query.borrow_mut() = Some(url_validation_query.clone());
-
         url_row.connect_changed(clone!(
             #[weak(rename_to=this)]
             self,
             #[weak]
             create_btn,
             #[weak]
-            preview_expander,
-            #[weak]
-            warning_infobar,
-            #[weak]
-            approval_checkbox,
-            #[strong]
-            url_validation_query,
-            move |entry| {
-                this.set_assemble_url(Some(entry.text()));
-                this.set_url_validated(false);
-                this.set_ini_approved(false);
-                create_btn.set_sensitive(false);
-                // Clear error CSS when user types
-                entry.remove_css_class("error");
-                
-                // Reset UI state on URL change
-                preview_expander.set_visible(false);
-                warning_infobar.set_revealed(false);
-                approval_checkbox.set_visible(false);
-                approval_checkbox.set_active(false);
-                
-                // Debounced validation
-                url_validation_query.refetch_with(Query::debounce(Duration::from_millis(500)));
-            }
-        ));
-
-        // Also validate immediately on Apply button press
-        url_row.connect_apply(clone!(
-            #[strong]
-            url_validation_query,
-            move |_| {
-                url_validation_query.refetch_with(Query::immediate());
-            }
-        ));
-
-        // Handle approval checkbox changes
-        approval_checkbox.connect_toggled(clone!(
-            #[weak(rename_to=this)]
-            self,
-            #[weak]
-            create_btn,
-            move |checkbox| {
-                let is_approved = checkbox.is_active();
-                this.set_ini_approved(is_approved);
-                // Update create button sensitivity
-                let is_valid = this.url_validated();
-                create_btn.set_sensitive(is_valid && is_approved);
-            }
-        ));
-
-        // Handle re-download button in warning banner
-        warning_infobar.connect_button_clicked(clone!(
-            #[weak]
-            approval_checkbox,
+            text_view,
             #[strong]
             ini_content_query,
-            move |_| {
-                // Reset approval when re-downloading
-                approval_checkbox.set_active(false);
-                ini_content_query.refetch();
+            move |entry| {
+                this.set_assemble_url(Some(entry.text()));
+                create_btn.set_sensitive(false);
+                entry.remove_css_class("error");
+                
+                text_view.buffer().set_text("");
+                
+                // Debounced download (validation happens implicitly)
+                ini_content_query.refetch_with(Query::debounce(Duration::from_millis(500)));
             }
         ));
 
@@ -1165,22 +1011,6 @@ impl CreateDistroboxDialog {
             }
             _ => {}
         }
-    }
-
-    async fn validate_url(&self, url: &str) -> anyhow::Result<bool> {
-        // Use curl with HEAD request to validate URL
-        // CRITICAL: Use self.root_store().command_runner() for Flatpak compatibility
-        let command_runner = self.root_store().command_runner();
-        let mut cmd = Command::new("curl");
-        cmd.arg("-s"); // Silent
-        cmd.arg("-f"); // Fail on HTTP errors
-        cmd.arg("-I"); // HEAD request only
-        cmd.arg("--connect-timeout");
-        cmd.arg("5"); // 5 second connection timeout
-        cmd.arg(url);
-
-        let output = command_runner.output(cmd).await?;
-        Ok(output.status.success())
     }
 
     async fn download_ini_file(&self, url: &str) -> anyhow::Result<String> {

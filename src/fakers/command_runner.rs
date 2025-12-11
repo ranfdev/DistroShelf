@@ -99,8 +99,11 @@ impl CommandRunner {
 
     pub fn output(
         &self,
-        command: Command,
+        mut command: Command,
     ) -> Pin<Box<dyn Future<Output = io::Result<std::process::Output>>>> {
+        command.stdout = FdMode::Pipe;
+        command.stderr = FdMode::Pipe;
+
         let event_id = self.event_id();
         self.output_tracker
             .push(CommandRunnerEvent::Started(event_id, command.clone()));
