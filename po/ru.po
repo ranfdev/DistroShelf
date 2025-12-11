@@ -213,9 +213,8 @@ msgid "No file selected"
 msgstr "Файл не выбран"
 
 #: src/dialogs/create_distrobox_dialog.rs:494
-#, fuzzy
 msgid "Search or enter custom image..."
-msgstr "Поиск образа..."
+msgstr "Поиск или ввод пользовательского образа..."
 
 #: src/dialogs/create_distrobox_dialog.rs:554
 msgid "Custom"

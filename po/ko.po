@@ -212,9 +212,8 @@ msgid "No file selected"
 msgstr "선택된 파일 없음"
 
 #: src/dialogs/create_distrobox_dialog.rs:494
-#, fuzzy
 msgid "Search or enter custom image..."
-msgstr "이미지 검색..."
+msgstr "검색 또는 사용자 지정 이미지 입력..."
 
 #: src/dialogs/create_distrobox_dialog.rs:554
 msgid "Custom"
