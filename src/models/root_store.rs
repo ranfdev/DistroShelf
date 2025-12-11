@@ -26,7 +26,7 @@ use crate::models::Container;
 use crate::models::DistroboxTask;
 use crate::models::ViewType;
 use crate::models::{DialogParams, DialogType};
-use crate::query::{Query, RefetchStrategy};
+use crate::query::Query;
 
 use serde::Deserialize;
 
@@ -341,10 +341,8 @@ impl RootStore {
     }
 
     pub fn load_containers(&self) {
-        self.containers_query().refetch_with(RefetchStrategy::Throttle {
-            interval: Duration::from_secs(1),
-            trailing: true,
-        });
+        self.containers_query()
+            .refetch_with(Query::throttle(Duration::from_secs(1), true));
     }
 
     pub fn download_distrobox(&self) -> DistroboxTask {

@@ -83,7 +83,7 @@ Tracks command execution with output streaming (`src/distrobox_task.rs`):
 ```rust
 let task = DistroboxTask::new("my-container", "Upgrade", |task| async move {
     let child = runner.spawn(Command::new("distrobox-upgrade"))?;
-    task.handle_child_output(child).await?; // Streams output to task.output() TextBuffer
+    task.handle_child_output(child).await?; // Streams output to task.vte_terminal()
     Ok(())
 });
 // Status: "pending" -> "executing" -> "successful"/"failed"
@@ -131,27 +131,5 @@ App automatically detects Flatpak environment and configures `CommandRunner`:
 ### Desktop File Parsing
 Shell script in `src/backends/distrobox/POSIX_FIND_AND_CONCAT_DESKTOP_FILES.sh` finds and encodes desktop files from containers for app export. Uses hex-encoding to avoid shell escaping issues.
 
-## Project Structure
-
-### `src/widgets/` - UI Components
-GTK widgets and their corresponding `.ui` template files. Main window, container overview, integrated terminal, sidebar items, and various custom widgets.
-
-### `src/backends/` - External System Integration
-Abstractions for external tools and container runtimes. Includes distrobox CLI wrapper, container runtime trait (Podman/Docker), Flatpak detection, and desktop file parsing.
-
-### `src/dialogs/` - Modal Dialogs
-Dialog implementations for container creation, application export, task management, and preferences.
-
-### `src/store/` - State Management
-Central reactive state store (`root_store.rs`) holding all app state.
-
-### `src/fakers/` - Command Execution Abstraction
-CommandRunner trait and implementations for executing shell commands in both native and Flatpak environments.
-
-## Key Files
-- `src/store/root_store.rs` - Central state store
-- `src/backends/distrobox/distrobox.rs` - Distrobox CLI wrapper
-- `src/fakers/command_runner.rs` - Command execution abstraction
-- `src/query/mod.rs` - Async query system
-- `src/widgets/window.rs` - Main window implementation
-- `src/application.rs` - App initialization and store setup
+### GNOME Documentation Librarian Agent
+Call #tool:runSubagent with `gnome-doc-librarian` to fetch up-to-date documentation for GNOME libraries and components.
