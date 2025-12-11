@@ -848,6 +848,9 @@ impl Distrobox {
 
     /// Extracts the original binary path from a distrobox exported wrapper script.
     /// The wrapper script contains lines like: exec '/usr/bin/binary' "$@"
+    /// 
+    /// Uses the shared `extract_quoted_string` utility from desktop_file module for
+    /// consistent string parsing across the codebase.
     async fn extract_binary_path_from_wrapper(&self, wrapper_path: &str) -> Option<String> {
         // Read the wrapper script content
         let cmd = Command::new_with_args("cat", [wrapper_path]);
@@ -856,17 +859,15 @@ impl Distrobox {
         // Look for the pattern: exec ... '/path/to/binary' or exec '/path/to/binary'
         // The binary path is typically in single quotes in the else branch
         for line in output.lines() {
-            let line = line.trim();
+            let trimmed = line.trim();
             // Look for lines with exec that contain a quoted path
-            if line.starts_with("exec") {
-                // Try to extract path between single quotes
-                if let Some(start) = line.find('\'') {
-                    if let Some(end) = line[start + 1..].find('\'') {
-                        let path = &line[start + 1..start + 1 + end];
-                        // Validate it looks like a path
-                        if path.starts_with('/') && !path.contains("distrobox") {
-                            return Some(path.to_string());
-                        }
+            if trimmed.starts_with("exec") {
+                // Reuse the shared quoted string extraction logic from desktop_file module
+                if let Some(path) = extract_quoted_string(trimmed, '\'') {
+                    // Validate it looks like an absolute path to the actual binary
+                    // (not a distrobox wrapper command)
+                    if path.starts_with('/') && !path.contains("distrobox") {
+                        return Some(path);
                     }
                 }
             }

@@ -5,6 +5,22 @@ pub struct DesktopEntry {
     pub icon: String,
 }
 
+/// Extracts the first string enclosed in the specified quote character from a line of text.
+/// Returns the extracted string without quotes, or None if no quoted string is found.
+/// 
+/// This is useful for parsing shell scripts and config files that use quoted strings.
+/// 
+/// # Examples
+/// ```
+/// let line = "exec '/usr/bin/vim' \"$@\"";
+/// assert_eq!(extract_quoted_string(line, '\''), Some("/usr/bin/vim"));
+/// ```
+pub fn extract_quoted_string(line: &str, quote_char: char) -> Option<String> {
+    let start = line.find(quote_char)?;
+    let end = line[start + 1..].find(quote_char)?;
+    Some(line[start + 1..start + 1 + end].to_string())
+}
+
 pub fn parse_desktop_file(content: &str) -> anyhow::Result<DesktopEntry> {
     let mut name = None;
     let mut exec = None;
@@ -117,5 +133,35 @@ Icon=test-icon
         let entry = parse_desktop_file(content).unwrap();
         assert_eq!(&entry.name, "Test=App");
         assert_eq!(&entry.exec, "/usr/bin/test --param=value");
+    }
+
+    #[test]
+    fn test_extract_quoted_string_single_quotes() {
+        let line = "exec '/usr/bin/vim' \"$@\"";
+        assert_eq!(extract_quoted_string(line, '\''), Some("/usr/bin/vim".to_string()));
+    }
+
+    #[test]
+    fn test_extract_quoted_string_double_quotes() {
+        let line = r#"exec "distrobox-enter" -n test"#;
+        assert_eq!(extract_quoted_string(line, '"'), Some("distrobox-enter".to_string()));
+    }
+
+    #[test]
+    fn test_extract_quoted_string_no_quotes() {
+        let line = "exec /usr/bin/vim";
+        assert_eq!(extract_quoted_string(line, '\''), None);
+    }
+
+    #[test]
+    fn test_extract_quoted_string_incomplete_quotes() {
+        let line = "exec '/usr/bin/vim";
+        assert_eq!(extract_quoted_string(line, '\''), None);
+    }
+
+    #[test]
+    fn test_extract_quoted_string_empty() {
+        let line = "exec ''";
+        assert_eq!(extract_quoted_string(line, '\''), Some("".to_string()));
     }
 }
