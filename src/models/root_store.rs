@@ -254,6 +254,7 @@ impl RootStore {
                 Ok(containers)
             }
         });
+        this.containers_query().set_refetch_strategy(Query::throttle(Duration::from_secs(1), true));
 
         let this_clone = this.clone();
         this.containers_query().connect_success(move |containers| {
@@ -341,8 +342,7 @@ impl RootStore {
     }
 
     pub fn load_containers(&self) {
-        self.containers_query()
-            .refetch_with(Query::throttle(Duration::from_secs(1), true));
+        self.containers_query().refetch();
     }
 
     pub fn download_distrobox(&self) -> DistroboxTask {

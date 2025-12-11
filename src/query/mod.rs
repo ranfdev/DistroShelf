@@ -9,12 +9,10 @@ pub struct QueryInner<T> {
     key: String,
     /// The current data (if any successful fetch has occurred)
     pub data: Option<T>,
-    /// Whether a fetch is currently in progress
-    pub is_loading: bool,
-    /// The last error (if any)
-    pub error: Option<Rc<anyhow::Error>>,
     /// Timestamp of the last successful fetch
     pub last_fetched_at: Option<SystemTime>,
+    /// The last error (if any) - stored as Rc for signal emission
+    pub error: Option<Rc<anyhow::Error>>,
     query_fn: Option<
         Box<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<T>>>>>,
     >,
@@ -27,6 +25,8 @@ pub struct QueryInner<T> {
 
     retry_strategy: Option<Box<dyn Fn(u32) -> Option<Duration>>>,
     retry_count: u32,
+
+    refetch_strategy: Option<Rc<dyn Fn(&Query<T>) + 'static>>,
 }
 
 impl<T> QueryInner<T> {
@@ -42,7 +42,6 @@ impl<T> QueryInner<T> {
         Self {
             key,
             data: None,
-            is_loading: false,
             error: None,
             last_fetched_at: None,
             query_fn,
@@ -52,6 +51,7 @@ impl<T> QueryInner<T> {
             timeout,
             retry_strategy: None,
             retry_count: 0,
+            refetch_strategy: None,
         }
     }
 
@@ -213,7 +213,7 @@ where
     }
 
     /// Strategy: Execute fetch immediately
-    pub fn immediate() -> impl FnOnce(&Query<T>) {
+    pub fn immediate() -> impl Fn(&Query<T>) {
         |query: &Query<T>| {
             query.fetch();
         }
@@ -222,9 +222,7 @@ where
     /// Strategy: Debounce fetch calls
     /// Waits for `duration` after the last call before executing.
     /// If another call arrives before the timer fires, the timer resets.
-    /// 
-    /// State is managed internally by the strategy and not stored in Query.
-    pub fn debounce(duration: Duration) -> impl FnOnce(&Query<T>) {
+    pub fn debounce(duration: Duration) -> impl Fn(&Query<T>) {
         // Strategy state: managed by the closure itself
         let debounce_state: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
         
@@ -259,9 +257,7 @@ where
     /// Executes at most once per `interval`.
     /// If `trailing` is true, a trailing fetch will be scheduled after the interval
     /// if calls arrived during the throttle period.
-    /// 
-    /// State is managed internally by the strategy and not stored in Query.
-    pub fn throttle(interval: Duration, trailing: bool) -> impl FnOnce(&Query<T>) {
+    pub fn throttle(interval: Duration, trailing: bool) -> impl Fn(&Query<T>) {
         // Strategy state: managed by the closure itself
         let throttle_state: Rc<RefCell<(Option<Instant>, Option<glib::SourceId>)>> = 
             Rc::new(RefCell::new((None, None)));
@@ -353,23 +349,14 @@ where
         if let Some(interval) = options.refetch_interval {
             let weak = Rc::downgrade(&inner);
             let source_id = glib::timeout_add_seconds_local(interval, move || {
-                if let Some(query) = Self::from_weak(&weak) {
-                    query.fetch();
+                if let Some(inner) = weak.upgrade() {
+                    Self { inner }.fetch();
                 }
                 glib::ControlFlow::Continue
             });
             inner.borrow_mut().refetch_source_id = Some(source_id);
         }
         query
-    }
-
-    fn from_strong(strong: &Rc<RefCell<QueryInner<T>>>) -> Self {
-        Self {
-            inner: strong.clone(),
-        }
-    }
-    fn from_weak(weak: &std::rc::Weak<RefCell<QueryInner<T>>>) -> Option<Self> {
-        weak.upgrade().map(|inner| Self { inner })
     }
 
     /// Execute a fetch operation and handle the result
@@ -407,7 +394,6 @@ where
         match result {
             Ok(_data) => {
                 inner.borrow_mut().data = Some(_data.clone());
-                inner.borrow_mut().is_loading = false;
                 inner.borrow_mut().error = None;
                 query_obj.set_is_loading(false);
                 query_obj.set_is_success(true);
@@ -421,13 +407,12 @@ where
             }
             Err(error) => {
                 if inner.borrow().retry_strategy.is_some() {
-                    Self::from_strong(inner).retry();
+                    Self { inner: inner.clone() }.retry();
                     return;
                 }
                 let rc_error = Rc::new(error);
                 let error_msg = rc_error.to_string();
                 // Keep the previous data, just mark as error
-                inner.borrow_mut().is_loading = false;
                 inner.borrow_mut().error = Some(rc_error);
                 query_obj.set_is_loading(false);
                 query_obj.set_is_error(true);
@@ -451,11 +436,10 @@ where
             handle.abort();
         }
 
-        // Set loading inner, but preserve any previous data
+        // Set loading state, but preserve any previous data
         query_obj.set_is_loading(true);
         query_obj.set_is_error(false);
         query_obj.set_is_success(false);
-        self.inner.borrow_mut().is_loading = true;
         self.inner.borrow_mut().last_fetched_at = Some(SystemTime::now());
 
         let inner = self.inner.clone();
@@ -468,21 +452,21 @@ where
         self.inner.borrow_mut().fetch_task_handle = Some(handle);
     }
 
-    /// Refetch with immediate strategy (for backward compatibility)
-    pub fn refetch(&self) {
-        self.refetch_with(Self::immediate());
+    /// Set the refetch strategy for this query.
+    /// The strategy is a closure that determines when and how to execute the fetch.
+    /// Common strategies are `Query::immediate`, `Query::debounce`, and `Query::throttle`.
+    pub fn set_refetch_strategy(&self, strategy: impl Fn(&Query<T>) + 'static) {
+        self.inner.borrow_mut().refetch_strategy = Some(Rc::new(strategy));
     }
 
-    /// Refetch with a specific strategy
-    /// 
-    /// # Example
-    /// ```
-    /// query.refetch_with(Query::immediate());
-    /// query.refetch_with(Query::debounce(Duration::from_millis(300)));
-    /// query.refetch_with(Query::throttle(Duration::from_secs(1), true));
-    /// ```
-    pub fn refetch_with(&self, strategy: impl FnOnce(&Query<T>)) {
-        strategy(self);
+    /// Refetch using the configured strategy (or immediate if none set)
+    pub fn refetch(&self) {
+        let strategy = self.inner.borrow().refetch_strategy.clone();
+        if let Some(strategy) = strategy {
+            strategy(self);
+        } else {
+            self.fetch();
+        }
     }
 
     pub fn retry(&self) {
@@ -545,12 +529,6 @@ where
             let is_loading = query_obj.is_loading();
             f(is_loading);
         })
-    }
-
-    /// Bind a widget property to the query inner
-    pub fn bind_to_widget<W: IsA<gtk::Widget>>(&self, widget: &W, property: &str) {
-        let query_obj = { self.inner.borrow().query_obj.clone() };
-        query_obj.bind_property(property, widget, property).build();
     }
 
     pub fn data(&self) -> Option<T> {

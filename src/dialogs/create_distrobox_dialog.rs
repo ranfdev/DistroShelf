@@ -397,10 +397,11 @@ impl CreateDistroboxDialog {
             }
         ));
 
+        prefill_query.set_refetch_strategy(Query::debounce(Duration::from_millis(300)));
         *imp.prefill_query.borrow_mut() = Some(prefill_query.clone());
 
         imp.name_row.connect_changed(move |_| {
-            prefill_query.refetch_with(Query::debounce(Duration::from_millis(300)));
+            prefill_query.refetch();
         });
 
         page
@@ -570,6 +571,7 @@ impl CreateDistroboxDialog {
             }
         ));
 
+        ini_content_query.set_refetch_strategy(Query::debounce(Duration::from_millis(500)));
         *self.imp().ini_content_query.borrow_mut() = Some(ini_content_query.clone());
 
         url_row.connect_changed(clone!(
@@ -589,7 +591,7 @@ impl CreateDistroboxDialog {
                 text_view.buffer().set_text("");
                 
                 // Debounced download (validation happens implicitly)
-                ini_content_query.refetch_with(Query::debounce(Duration::from_millis(500)));
+                ini_content_query.refetch();
             }
         ));
 
