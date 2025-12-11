@@ -3,6 +3,7 @@ use adw::subclass::prelude::*;
 use gtk::gio::File;
 use gtk::{gio, glib};
 use std::cell::Cell;
+use std::time::Duration;
 use tracing::error;
 
 use crate::backends::{self, CreateArgName, CreateArgs, Error};
@@ -10,6 +11,7 @@ use crate::dialogs::create_distrobox_helpers::split_repo_tag_digest;
 use crate::fakers::Command;
 use crate::i18n::gettext;
 use crate::models::Container;
+use crate::query::Query;
 use crate::root_store::RootStore;
 use crate::widgets::{ImageRowItem, SidebarRow};
 
@@ -42,7 +44,8 @@ mod imp {
         pub image_row: adw::ActionRow,
         pub images_model: gtk::StringList,
         pub selected_image: RefCell<String>,
-        pub prefill_generation: std::cell::Cell<u64>,
+        pub prefill_query: RefCell<Option<Query<Option<String>>>>,
+        pub url_validation_query: RefCell<Option<Query<bool>>>,
         pub home_row_expander: adw::ExpanderRow,
         #[property(get, set, nullable)]
         pub home_folder: RefCell<Option<String>>,
@@ -339,60 +342,69 @@ impl CreateDistroboxDialog {
         ));
 
         // Prefill wiring: debounce name changes to suggest an image when user hasn't interacted
-        imp.name_row.connect_changed(clone!(
+        let prefill_query: Query<Option<String>> = Query::new(
+            "prefill-suggestions".to_string(),
+            clone!(
+                #[weak(rename_to=this)]
+                self,
+                #[upgrade_or_panic]
+                move || async move {
+                    let imp = this.imp();
+                    let text = imp.name_row.text().to_string();
+
+                    // don't prefill if cloning from a source
+                    if imp.clone_src.borrow().is_some() {
+                        return Ok(None);
+                    }
+
+                    if text.is_empty() {
+                        if imp.selected_image.borrow().is_empty() {
+                            return Ok(Some(gettext("Select an image...")));
+                        }
+                        return Ok(None);
+                    }
+
+                    let candidates = imp
+                        .images_model
+                        .snapshot()
+                        .into_iter()
+                        .filter_map(|item| {
+                            item.downcast::<gtk::StringObject>()
+                                .ok()
+                                .map(|sobj| sobj.string().to_string())
+                        })
+                        .collect::<Vec<_>>();
+
+                    let (_filter, suggested_opt) =
+                        crate::dialogs::create_distrobox_helpers::derive_image_prefill(
+                            &text,
+                            Some(&candidates),
+                        );
+
+                    Ok(suggested_opt)
+                }
+            ),
+        );
+
+        prefill_query.connect_success(clone!(
             #[weak(rename_to=this)]
             self,
-            move |entry| {
+            move |suggested_opt| {
                 let imp = this.imp();
-                let prefill_gen = imp.prefill_generation.get().wrapping_add(1);
-                imp.prefill_generation.set(prefill_gen);
-                let text = entry.text().to_string();
-                let obj_inner = this.clone();
-                glib::MainContext::ref_thread_default().spawn_local(clone!(
-                    #[weak]
-                    obj_inner,
-                    async move {
-                        glib::timeout_future(std::time::Duration::from_millis(300)).await;
-                        let imp = obj_inner.imp();
-                        if imp.prefill_generation.get() != prefill_gen {
-                            return;
-                        }
-                        // don't prefill if cloning from a source
-                        if imp.clone_src.borrow().is_some() {
-                            return;
-                        }
-                        if text.is_empty() {
-                            if imp.selected_image.borrow().is_empty() {
-                                imp.image_row.set_subtitle(&gettext("Select an image..."));
-                            }
-                        } else {
-                            let candidates = imp
-                                .images_model
-                                .snapshot()
-                                .into_iter()
-                                .filter_map(|item| {
-                                    item.downcast::<gtk::StringObject>()
-                                        .ok()
-                                        .map(|sobj| sobj.string().to_string())
-                                })
-                                .collect::<Vec<_>>();
-
-                            let (_filter, suggested_opt) =
-                                crate::dialogs::create_distrobox_helpers::derive_image_prefill(
-                                    &text,
-                                    Some(&candidates),
-                                );
-                            if let Some(suggested) = suggested_opt {
-                                // set subtitle as tentative prefill (do not overwrite confirmed selection)
-                                if imp.selected_image.borrow().is_empty() {
-                                    imp.image_row.set_subtitle(&suggested);
-                                }
-                            }
-                        }
+                if let Some(suggested) = suggested_opt.as_ref() {
+                    // set subtitle as tentative prefill (do not overwrite confirmed selection)
+                    if imp.selected_image.borrow().is_empty() {
+                        imp.image_row.set_subtitle(suggested);
                     }
-                ));
+                }
             }
         ));
+
+        *imp.prefill_query.borrow_mut() = Some(prefill_query.clone());
+
+        imp.name_row.connect_changed(move |_| {
+            prefill_query.refetch_with(Query::debounce(Duration::from_millis(300)));
+        });
 
         page
     }
@@ -474,56 +486,85 @@ impl CreateDistroboxDialog {
         create_btn.set_sensitive(false);
         content.append(&create_btn);
 
+        // Create URL validation query with debouncing
+        let url_validation_query: Query<bool> = Query::new(
+            "url-validation".to_string(),
+            clone!(
+                #[weak(rename_to=this)]
+                self,
+                #[upgrade_or_panic]
+                move || async move {
+                    if let Some(url_text) = this.assemble_url() {
+                        if url_text.is_empty() {
+                            return Ok(false);
+                        }
+                        this.validate_url(&url_text).await
+                    } else {
+                        Ok(false)
+                    }
+                }
+            ),
+        ).with_timeout(Duration::from_secs(10));
+
+        url_validation_query.connect_success(clone!(
+            #[weak(rename_to=this)]
+            self,
+            #[weak]
+            create_btn,
+            #[weak]
+            url_row,
+            move |is_valid| {
+                this.set_url_validated(*is_valid);
+                create_btn.set_sensitive(*is_valid);
+
+                if !is_valid {
+                    let toast = adw::Toast::new(&gettext("Could not connect to URL"));
+                    this.imp().toast_overlay.add_toast(toast);
+                    url_row.add_css_class("error");
+                } else {
+                    url_row.remove_css_class("error");
+                }
+            }
+        ));
+
+        url_validation_query.connect_error(clone!(
+            #[weak]
+            create_btn,
+            #[weak]
+            url_row,
+            move |_| {
+                create_btn.set_sensitive(false);
+                url_row.add_css_class("error");
+            }
+        ));
+
+        *self.imp().url_validation_query.borrow_mut() = Some(url_validation_query.clone());
+
         url_row.connect_changed(clone!(
             #[weak(rename_to=this)]
             self,
             #[weak]
             create_btn,
+            #[strong]
+            url_validation_query,
             move |entry| {
                 this.set_assemble_url(Some(entry.text()));
                 this.set_url_validated(false);
                 create_btn.set_sensitive(false);
                 // Clear error CSS when user types
                 entry.remove_css_class("error");
+                
+                // Debounced validation
+                url_validation_query.refetch_with(Query::debounce(Duration::from_millis(500)));
             }
         ));
 
+        // Also validate immediately on Apply button press
         url_row.connect_apply(clone!(
-            #[weak(rename_to=this)]
-            self,
-            #[weak]
-            create_btn,
-            move |entry| {
-                let url = entry.text().to_string();
-                if url.is_empty() {
-                    return;
-                }
-
-                // Reset validation state
-                this.set_url_validated(false);
-                create_btn.set_sensitive(false);
-
-                glib::MainContext::ref_thread_default().spawn_local(clone!(
-                    #[weak]
-                    this,
-                    #[weak]
-                    create_btn,
-                    #[weak]
-                    entry,
-                    async move {
-                        let is_valid = this.validate_url(&url).await;
-                        this.set_url_validated(is_valid);
-                        create_btn.set_sensitive(is_valid);
-
-                        if !is_valid {
-                            let toast = adw::Toast::new(&gettext("Could not connect to URL"));
-                            this.imp().toast_overlay.add_toast(toast);
-                            entry.add_css_class("error");
-                        } else {
-                            entry.remove_css_class("error");
-                        }
-                    }
-                ));
+            #[strong]
+            url_validation_query,
+            move |_| {
+                url_validation_query.refetch_with(Query::immediate());
             }
         ));
 
@@ -947,7 +988,7 @@ impl CreateDistroboxDialog {
         }
     }
 
-    async fn validate_url(&self, url: &str) -> bool {
+    async fn validate_url(&self, url: &str) -> anyhow::Result<bool> {
         // Use curl with HEAD request to validate URL
         // CRITICAL: Use self.root_store().command_runner() for Flatpak compatibility
         let command_runner = self.root_store().command_runner();
@@ -959,9 +1000,7 @@ impl CreateDistroboxDialog {
         cmd.arg("5"); // 5 second connection timeout
         cmd.arg(url);
 
-        match command_runner.output(cmd).await {
-            Ok(output) => output.status.success(),
-            Err(_) => false,
-        }
+        let output = command_runner.output(cmd).await?;
+        Ok(output.status.success())
     }
 }
