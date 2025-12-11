@@ -635,7 +635,7 @@ impl CreateDistroboxDialog {
         view.add_top_bar(&header);
 
         let search_entry = gtk::SearchEntry::new();
-        search_entry.set_placeholder_text(Some(&gettext("Search image...")));
+        search_entry.set_placeholder_text(Some(&gettext("Search or enter custom image...")));
         search_entry.set_hexpand(true);
         if let Some(text) = initial_search {
             search_entry.set_text(text);

@@ -211,7 +211,8 @@ msgid "No file selected"
 msgstr "ファイルが選択されていません"
 
 #: src/dialogs/create_distrobox_dialog.rs:494
-msgid "Search image..."
+#, fuzzy
+msgid "Search or enter custom image..."
 msgstr "イメージを検索..."
 
 #: src/dialogs/create_distrobox_dialog.rs:554

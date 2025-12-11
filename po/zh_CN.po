@@ -210,7 +210,8 @@ msgid "No file selected"
 msgstr "未选择文件"
 
 #: src/dialogs/create_distrobox_dialog.rs:494
-msgid "Search image..."
+#, fuzzy
+msgid "Search or enter custom image..."
 msgstr "搜索镜像..."
 
 #: src/dialogs/create_distrobox_dialog.rs:554
