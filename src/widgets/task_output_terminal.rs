@@ -108,7 +108,7 @@ impl TaskOutputTerminal {
     /// Write a line to the terminal with proper ANSI code handling
     pub fn write_line(&self, line: &str) {
         self.write_output(line);
-        self.write_output("\r\n");
+        self.write_output("\n");
     }
 
     /// Write output directly to the terminal
@@ -116,16 +116,13 @@ impl TaskOutputTerminal {
         let imp = self.imp();
         let terminal = &imp.terminal;
 
+        // Convert \n to \r\n to prevent staircase effect
+        // If the string already contains \r\n, this will result in \r\r\n which is harmless
+        // (double carriage return followed by newline)
+        let output = output.replace('\n', "\r\n");
+
         // Write directly to the terminal - VTE handles ANSI codes automatically
         terminal.feed(output.as_bytes());
-    }
-
-    /// Write buffer content to the terminal (for restoring historical output)
-    /// Converts LF line endings to CRLF for proper terminal display
-    pub fn write_buffer(&self, text: &str) {
-        // Convert \n to \r\n for proper terminal display
-        let text_with_cr = text.replace("\r\n", "\n").replace("\n", "\r\n");
-        self.write_output(&text_with_cr);
     }
 
     /// Clear the terminal output

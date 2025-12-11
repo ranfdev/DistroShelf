@@ -26,8 +26,8 @@ pub fn get_bundled_distrobox_dir() -> PathBuf {
 }
 
 fn log(task: &DistroboxTask, msg: &str) {
-    task.output().insert(&mut task.output().end_iter(), msg);
-    task.output().insert(&mut task.output().end_iter(), "\n");
+    task.append_output(msg);
+    task.append_output("\n");
 }
 
 pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {

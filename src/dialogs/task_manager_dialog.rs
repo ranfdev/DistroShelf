@@ -6,7 +6,6 @@ use gtk::glib::clone;
 use crate::gtk_utils::reaction;
 use crate::i18n::gettext;
 use crate::models::{DistroboxTask, RootStore};
-use crate::widgets::TaskOutputTerminal;
 
 use gtk::glib::Properties;
 use std::cell::RefCell;
@@ -260,19 +259,12 @@ impl TaskManagerDialog {
             update_status_ui(task);
         });
 
-        // Create VTE terminal for output display
-        let vte_terminal = TaskOutputTerminal::new();
+        // Get VTE terminal from task
+        let vte_terminal = task.vte_terminal();
         
-        // Restore historical output from TextBuffer if it exists
-        let output_buffer = task.output();
-        let buffer_text = output_buffer.text(&output_buffer.start_iter(), &output_buffer.end_iter(), false);
-        if !buffer_text.is_empty() {
-            vte_terminal.write_buffer(&buffer_text);
+        if vte_terminal.parent().is_some() {
+            vte_terminal.unparent();
         }
-        
-        task.set_vte_terminal(Some(vte_terminal.clone()));
-
-        
         
         content.append(&vte_terminal);
 

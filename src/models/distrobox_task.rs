@@ -1,4 +1,5 @@
-use futures::{AsyncBufReadExt, FutureExt, StreamExt, io::BufReader};
+use futures::{AsyncReadExt, FutureExt, StreamExt};
+use futures::io::AsyncRead;
 use glib::Properties;
 use glib::subclass::prelude::*;
 use gtk::glib;
@@ -7,9 +8,26 @@ use std::cell::Ref;
 use std::cell::RefCell;
 use std::future::Future;
 use tracing::{debug, info, warn};
+use vte4::prelude::*;
 
 use crate::fakers::Child;
 use crate::widgets::TaskOutputTerminal;
+
+fn byte_stream(
+    reader: Box<dyn AsyncRead + Send + Unpin>,
+) -> impl futures::stream::Stream<Item = Result<Vec<u8>, std::io::Error>> {
+    futures::stream::unfold(reader, |mut reader| async move {
+        let mut buf = vec![0u8; 4096];
+        match reader.read(&mut buf).await {
+            Ok(0) => None,
+            Ok(n) => {
+                buf.truncate(n);
+                Some((Ok(buf), reader))
+            }
+            Err(e) => Some((Err(e), reader)),
+        }
+    })
+}
 
 /// Status of a DistroboxTask
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
@@ -25,7 +43,7 @@ pub enum TaskStatus {
 mod imp {
     use super::*;
 
-    #[derive(Properties, Default)]
+    #[derive(Properties)]
     #[properties(wrapper_type = super::DistroboxTask)]
     pub struct DistroboxTask {
         #[property(get, construct_only)]
@@ -34,13 +52,25 @@ mod imp {
         name: RefCell<String>,
         #[property(get, set)]
         description: RefCell<String>,
-        #[property(get)]
-        output: gtk::TextBuffer,
         #[property(get, set, builder(TaskStatus::default()))]
         pub status: RefCell<TaskStatus>,
         pub error: RefCell<Option<anyhow::Error>>, // set only if status is Failed
         pub cancellable: RefCell<Option<gtk::gio::Cancellable>>,
-        pub vte_terminal: RefCell<Option<TaskOutputTerminal>>, // Optional VTE terminal
+        pub vte_terminal: RefCell<TaskOutputTerminal>,
+    }
+
+    impl Default for DistroboxTask {
+        fn default() -> Self {
+            Self {
+                target: Default::default(),
+                name: Default::default(),
+                description: Default::default(),
+                status: RefCell::new(TaskStatus::default()),
+                error: Default::default(),
+                cancellable: Default::default(),
+                vte_terminal: RefCell::new(TaskOutputTerminal::new()),
+            }
+        }
     }
 
     #[glib::derived_properties]
@@ -112,37 +142,34 @@ impl DistroboxTask {
 
         let stdout = child.take_stdout().unwrap();
         let stderr = child.take_stderr().unwrap();
-        let mut lines = BufReader::new(stdout).lines();
-        let mut err_lines = BufReader::new(stderr).lines();
+        let stdout_stream = byte_stream(stdout);
+        let stderr_stream = byte_stream(stderr);
 
-        let insert_line = |line: String| {
-            // Write to TextBuffer
-            self.output().insert(&mut self.output().end_iter(), &line);
-            self.output().insert(&mut self.output().end_iter(), "\n");
-            
-            // Write to VTE terminal if available
-            if let Some(vte) = self.imp().vte_terminal.borrow().as_ref() {
-                vte.write_line(&line);
+        let insert_chunk = |bytes: Vec<u8>| {
+            // Handle newline characters to prevent "staircase" effect
+            // We need to replace \n with \r\n
+            let mut processed_bytes = Vec::with_capacity(bytes.len());
+            for byte in bytes {
+                if byte == b'\n' {
+                    processed_bytes.push(b'\r');
+                }
+                processed_bytes.push(byte);
             }
+            self.imp().vte_terminal.borrow().terminal().feed(&processed_bytes);
         };
 
         let mut cancel_rx = cancel_rx.fuse();
 
+        let mut merged_stream = futures::stream::select_all(vec![
+            stdout_stream.boxed(),
+            stderr_stream.boxed(),
+        ]);
         loop {
             futures::select! {
-                line = lines.next().fuse() => {
-                    match line {
-                        Some(Ok(line)) => {
-                            insert_line(line);
-                        }
-                        Some(Err(e)) => return Err(e.into()),
-                        None => break,
-                    }
-                },
-                err_line = err_lines.next().fuse() => {
-                    match err_line {
-                        Some(Ok(line)) => {
-                            insert_line(line);
+                chunk = merged_stream.next().fuse() => {
+                    match chunk {
+                        Some(Ok(bytes)) => {
+                            insert_chunk(bytes);
                         }
                         Some(Err(e)) => return Err(e.into()),
                         None => break,
@@ -200,13 +227,13 @@ impl DistroboxTask {
         self.imp().error.borrow().as_ref().map(|e| e.to_string())
     }
 
-    /// Set the VTE terminal for this task to write output to
-    pub fn set_vte_terminal(&self, terminal: Option<TaskOutputTerminal>) {
-        *self.imp().vte_terminal.borrow_mut() = terminal;
+    /// Append text to the task output
+    pub fn append_output(&self, text: &str) {
+        self.imp().vte_terminal.borrow().write_output(text);
     }
 
-    /// Get the current VTE terminal if one is attached
-    pub fn vte_terminal(&self) -> Option<TaskOutputTerminal> {
+    /// Get the VTE terminal for this task
+    pub fn vte_terminal(&self) -> TaskOutputTerminal {
         self.imp().vte_terminal.borrow().clone()
     }
 }
