@@ -810,10 +810,27 @@ impl Distrobox {
                 if !exported_path_str.is_empty() {
                     let exported_path = exported_path_str.to_string();
 
-                    // Extract binary name from source path
+                    // If source_path is empty (due to a bug in distrobox's --list-binaries when
+                    // sudo_prefix is not set, common in Arch Linux containers), try to extract
+                    // the actual binary path from the exported wrapper script.
+                    let source_path = if source_path.is_empty() {
+                        self.extract_binary_path_from_wrapper(&exported_path)
+                            .await
+                            .unwrap_or_else(|| exported_path.clone())
+                    } else {
+                        source_path
+                    };
+
+                    // Extract binary name from source path, falling back to exported_path if source_path is still problematic.
                     let name = Path::new(&source_path)
                         .file_name()
                         .and_then(|n| n.to_str())
+                        .filter(|s| !s.is_empty())
+                        .or_else(|| {
+                            Path::new(&exported_path)
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                        })
                         .unwrap_or(&source_path)
                         .to_string();
 
@@ -827,6 +844,34 @@ impl Distrobox {
         }
 
         Ok(binaries)
+    }
+
+    /// Extracts the original binary path from a distrobox exported wrapper script.
+    /// The wrapper script contains lines like: exec '/usr/bin/binary' "$@"
+    async fn extract_binary_path_from_wrapper(&self, wrapper_path: &str) -> Option<String> {
+        // Read the wrapper script content
+        let cmd = Command::new_with_args("cat", [wrapper_path]);
+        let output = self.cmd_output_string(cmd).await.ok()?;
+
+        // Look for the pattern: exec ... '/path/to/binary' or exec '/path/to/binary'
+        // The binary path is typically in single quotes in the else branch
+        for line in output.lines() {
+            let line = line.trim();
+            // Look for lines with exec that contain a quoted path
+            if line.starts_with("exec") {
+                // Try to extract path between single quotes
+                if let Some(start) = line.find('\'') {
+                    if let Some(end) = line[start + 1..].find('\'') {
+                        let path = &line[start + 1..start + 1 + end];
+                        // Validate it looks like a path
+                        if path.starts_with('/') && !path.contains("distrobox") {
+                            return Some(path.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 
     pub fn launch_app(
@@ -1561,5 +1606,112 @@ Categories=Utility;Security;";
 
         let result = ContainerInfo::from_str("abc123 |  | Up | image");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn get_exported_binaries_parses_normal_output() -> Result<(), Error> {
+        block_on(async {
+            // Normal output with source path present
+            let list_output = "'/usr/bin/vim'       | /home/user/.local/bin/vim\n'/usr/bin/htop'      | /home/user/.local/bin/htop";
+            let db = Distrobox::new(
+                NullCommandRunnerBuilder::new()
+                    .cmd(
+                        &[
+                            "distrobox",
+                            "enter",
+                            "test-box",
+                            "--",
+                            "distrobox-export",
+                            "--list-binaries",
+                        ],
+                        list_output,
+                    )
+                    .build(),
+                default_cmd_factory(),
+            );
+            let binaries = db.get_exported_binaries("test-box").await?;
+            assert_eq!(binaries.len(), 2);
+            assert_eq!(binaries[0].name, "vim");
+            assert_eq!(binaries[0].source_path, "/usr/bin/vim");
+            assert_eq!(binaries[0].exported_path, "/home/user/.local/bin/vim");
+            assert_eq!(binaries[1].name, "htop");
+            assert_eq!(binaries[1].source_path, "/usr/bin/htop");
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn get_exported_binaries_handles_empty_source_path() -> Result<(), Error> {
+        block_on(async {
+            // Output with empty source path (distrobox bug when sudo_prefix is empty)
+            // In this case, the wrapper script should be read to extract the actual path
+            let list_output = "                    | /home/user/.local/bin/nvim";
+            let wrapper_content = r#"#!/bin/sh
+# distrobox_binary
+# name: archlinux
+if [ -z "${CONTAINER_ID}" ]; then
+	exec "distrobox-enter" -n archlinux -- '/usr/bin/nvim' "$@"
+elif [ -n "${CONTAINER_ID}" ] && [ "${CONTAINER_ID}" != "archlinux" ]; then
+	exec distrobox-host-exec '/home/user/.local/bin/nvim' "$@"
+else
+	exec '/usr/bin/nvim' "$@"
+fi"#;
+            let db = Distrobox::new(
+                NullCommandRunnerBuilder::new()
+                    .cmd(
+                        &[
+                            "distrobox",
+                            "enter",
+                            "archlinux",
+                            "--",
+                            "distrobox-export",
+                            "--list-binaries",
+                        ],
+                        list_output,
+                    )
+                    .cmd(&["cat", "/home/user/.local/bin/nvim"], wrapper_content)
+                    .build(),
+                default_cmd_factory(),
+            );
+            let binaries = db.get_exported_binaries("archlinux").await?;
+            assert_eq!(binaries.len(), 1);
+            assert_eq!(binaries[0].name, "nvim");
+            assert_eq!(binaries[0].source_path, "/usr/bin/nvim");
+            assert_eq!(binaries[0].exported_path, "/home/user/.local/bin/nvim");
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn get_exported_binaries_fallback_to_exported_path_name() -> Result<(), Error> {
+        block_on(async {
+            // Output with empty source path and wrapper script that can't be read
+            let list_output = "                    | /home/user/.local/bin/my-tool";
+            let db = Distrobox::new(
+                NullCommandRunnerBuilder::new()
+                    .cmd(
+                        &[
+                            "distrobox",
+                            "enter",
+                            "test-box",
+                            "--",
+                            "distrobox-export",
+                            "--list-binaries",
+                        ],
+                        list_output,
+                    )
+                    // No cat command registered, so it will fail to read the wrapper
+                    .build(),
+                default_cmd_factory(),
+            );
+            let binaries = db.get_exported_binaries("test-box").await?;
+            assert_eq!(binaries.len(), 1);
+            // Should fallback to extracting name from exported_path
+            assert_eq!(binaries[0].name, "my-tool");
+            // source_path will be same as exported_path when wrapper can't be read
+            assert_eq!(binaries[0].source_path, "/home/user/.local/bin/my-tool");
+            assert_eq!(binaries[0].exported_path, "/home/user/.local/bin/my-tool");
+            Ok(())
+        })
     }
 }
