@@ -102,7 +102,15 @@ impl TaskOutputTerminal {
 
         terminal.set_context_menu_model(Some(&menu_model));
 
-        self.set_child(Some(terminal));
+        // Create a ScrolledWindow to wrap the terminal
+        let scrolled_window = gtk::ScrolledWindow::builder()
+            .hscrollbar_policy(gtk::PolicyType::Automatic)
+            .vscrollbar_policy(gtk::PolicyType::Automatic)
+            .vexpand(true)
+            .child(terminal)
+            .build();
+
+        self.set_child(Some(&scrolled_window));
     }
 
     /// Write a line to the terminal with proper ANSI code handling
