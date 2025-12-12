@@ -3,7 +3,7 @@
 data/com.ranfdev.DistroShelf.desktop.in
 data/com.ranfdev.DistroShelf.gschema.xml
 data/com.ranfdev.DistroShelf.metainfo.xml.in
-data/gtk/help-overlay.ui
+data/gtk/shortcuts-dialog.ui
 src/dialogs/command_log_dialog.rs
 src/dialogs/create_distrobox_dialog.rs
 src/dialogs/exportable_apps_dialog.rs

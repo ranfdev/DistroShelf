@@ -31,7 +31,7 @@ use adw::subclass::prelude::*;
 use glib::{Properties, derived_properties};
 use gtk::gio::ActionEntry;
 use gtk::glib::clone;
-use gtk::{gdk, gio, glib};
+use gtk::{gio, glib};
 use std::cell::RefCell;
 use tracing::info;
 
@@ -88,58 +88,6 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
-            klass.add_binding_action(gdk::Key::F5, gdk::ModifierType::empty(), "win.refresh");
-            // klass.add_binding_action(gdk::Key::N, gdk::ModifierType::CONTROL_MASK, "win.create-distrobox");
-            klass.add_binding_action(
-                gdk::Key::U,
-                gdk::ModifierType::CONTROL_MASK,
-                "win.upgrade-container",
-            );
-            klass.add_binding_action(
-                gdk::Key::U,
-                gdk::ModifierType::CONTROL_MASK | gdk::ModifierType::SHIFT_MASK,
-                "win.upgrade-all",
-            );
-            klass.add_binding_action(
-                gdk::Key::I,
-                gdk::ModifierType::CONTROL_MASK,
-                "win.install-package",
-            );
-            klass.add_binding_action(
-                gdk::Key::comma,
-                gdk::ModifierType::CONTROL_MASK,
-                "win.preferences",
-            );
-            klass.add_binding_action(
-                gdk::Key::L,
-                gdk::ModifierType::CONTROL_MASK,
-                "win.command-log",
-            );
-            klass.add_binding_action(
-                gdk::Key::T,
-                gdk::ModifierType::CONTROL_MASK,
-                "win.open-terminal",
-            );
-            klass.add_binding_action(
-                gdk::Key::D,
-                gdk::ModifierType::CONTROL_MASK,
-                "win.clone-container",
-            );
-            klass.add_binding_action(
-                gdk::Key::E,
-                gdk::ModifierType::CONTROL_MASK,
-                "win.view-exportable-apps",
-            );
-            klass.add_binding_action(
-                gdk::Key::Delete,
-                gdk::ModifierType::CONTROL_MASK,
-                "win.delete-container",
-            );
-            klass.add_binding_action(
-                gdk::Key::S,
-                gdk::ModifierType::CONTROL_MASK,
-                "win.stop-container",
-            );
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {

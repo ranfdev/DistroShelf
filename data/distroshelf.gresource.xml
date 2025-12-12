@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/com/ranfdev/DistroShelf">
-    <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
+    <file preprocess="xml-stripblanks" alias="shortcuts-dialog.ui">gtk/shortcuts-dialog.ui</file>
     <file compressed="true" preprocess="xml-stripblanks" alias="metainfo.xml">com.ranfdev.DistroShelf.metainfo.xml</file>
   </gresource>
   <gresource prefix="/com/ranfdev/DistroShelf/icons/scalable/actions/">
