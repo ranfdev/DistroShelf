@@ -25,6 +25,81 @@ pub fn get_bundled_distrobox_dir() -> PathBuf {
     user_data_dir.join("distroshelf")
 }
 
+/// Resolves the best available bundled distrobox path.
+/// Returns the current version's path if it exists, otherwise finds the most recent older version.
+/// Returns None if no bundled version is found at all.
+pub fn resolve_bundled_distrobox_path() -> Option<PathBuf> {
+    let current = get_bundled_distrobox_path();
+    if current.exists() {
+        return Some(current);
+    }
+    find_latest_bundled_version()
+}
+
+/// Returns true if the user has a bundled distrobox but it's not the latest (DISTROBOX_VERSION).
+/// This means an update is available to download.
+pub fn is_bundled_update_available() -> bool {
+    let current = get_bundled_distrobox_path();
+    if current.exists() {
+        return false; // Already have the latest
+    }
+    // An update is available if there's an older version on disk but not the current one
+    find_latest_bundled_version().is_some()
+}
+
+/// Scans the bundled distrobox directory for version subdirectories and returns the path
+/// to the distrobox binary in the most recent version found.
+fn find_latest_bundled_version() -> Option<PathBuf> {
+    let parent = get_bundled_distrobox_dir();
+    let entries = std::fs::read_dir(&parent).ok()?;
+
+    let mut versions: Vec<(Vec<u32>, PathBuf)> = entries
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let name = entry.file_name();
+            let name_str = name.to_str()?;
+            let version_str = name_str.strip_prefix("distrobox-")?;
+            let binary_path = entry.path().join("distrobox");
+            if !binary_path.exists() {
+                return None;
+            }
+            let parts: Option<Vec<u32>> = version_str.split('.').map(|p| p.parse().ok()).collect();
+            Some((parts?, binary_path))
+        })
+        .collect();
+
+    versions.sort_by(|a, b| a.0.cmp(&b.0));
+    versions.last().map(|(_, path)| path.clone())
+}
+
+/// Removes all bundled distrobox version directories except the current one (DISTROBOX_VERSION).
+pub fn cleanup_old_bundled_versions() {
+    let parent = get_bundled_distrobox_dir();
+    let current_dir_name = format!("distrobox-{}", DISTROBOX_VERSION);
+
+    let entries = match std::fs::read_dir(&parent) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = match name.to_str() {
+            Some(s) => s.to_string(),
+            None => continue,
+        };
+        if name_str.starts_with("distrobox-") && name_str != current_dir_name {
+            if entry.path().is_dir() {
+                if let Err(e) = std::fs::remove_dir_all(entry.path()) {
+                    tracing::warn!("Failed to remove old bundled version {:?}: {}", entry.path(), e);
+                } else {
+                    tracing::info!("Removed old bundled version: {}", name_str);
+                }
+            }
+        }
+    }
+}
+
 fn log(task: &DistroboxTask, msg: &str) {
     task.append_output(msg);
     task.append_output("\n");
@@ -130,8 +205,13 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
 
         log(&task, "Distrobox installed successfully.");
 
+        // Clean up old bundled versions
+        log(&task, "Cleaning up old bundled versions...");
+        cleanup_old_bundled_versions();
+
         if let Some(root_store) = root_store_weak.upgrade() {
             root_store.distrobox_version().refetch();
+            root_store.update_bundled_update_available();
             root_store.set_current_dialog(crate::models::DialogType::None);
         }
 

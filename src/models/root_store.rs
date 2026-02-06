@@ -74,6 +74,9 @@ mod imp {
         #[property(get, set, builder(DialogType::default()))]
         current_dialog: RefCell<DialogType>,
 
+        #[property(get, set)]
+        bundled_update_available: std::cell::Cell<bool>,
+
         /// Parameters for the current dialog (not a GObject property)
         pub dialog_params: RefCell<DialogParams>,
     }
@@ -104,6 +107,7 @@ mod imp {
                 containers_query: Query::new("containers".into(), || async { Ok(vec![]) }),
                 tasks: TypedListStore::new(),
                 selected_task: Default::default(),
+                bundled_update_available: std::cell::Cell::new(false),
                 settings: gio::Settings::new("com.ranfdev.DistroShelf"),
             }
         }
@@ -125,17 +129,17 @@ mod imp {
                     move |settings, _key| {
                         let val = settings.string("distrobox-executable");
                         if val == "bundled" {
-                            // Check if bundled version exists
-                            let path = crate::distrobox_downloader::get_bundled_distrobox_path();
-                            if !path.exists() {
+                            if crate::distrobox_downloader::resolve_bundled_distrobox_path()
+                                .is_none()
+                            {
                                 obj.download_distrobox();
                             } else {
-                                // Just refetch version to update UI
                                 obj.distrobox_version().refetch();
                             }
                         } else {
                             obj.distrobox_version().refetch();
                         }
+                        obj.update_bundled_update_available();
                     }
                 ),
             );
@@ -172,9 +176,9 @@ impl RootStore {
         let cmd_factory: crate::backends::distrobox::command::CmdFactory = Box::new(move || {
             let distrobox_executable_val = this_clone.settings().string("distrobox-executable");
             let selected_program: String = if distrobox_executable_val == "bundled" {
-                crate::distrobox_downloader::get_bundled_distrobox_path()
-                    .to_string_lossy()
-                    .into_owned()
+                crate::distrobox_downloader::resolve_bundled_distrobox_path()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| "distrobox".into())
             } else {
                 "distrobox".into()
             };
@@ -206,6 +210,11 @@ impl RootStore {
         let this_clone = this.clone();
         this.distrobox_version().connect_error(move |_error| {
             this_clone.set_current_view(ViewType::Welcome);
+            this_clone.update_bundled_update_available();
+        });
+        let this_clone = this.clone();
+        this.distrobox_version().connect_success(move |_version| {
+            this_clone.update_bundled_update_available();
         });
         this.distrobox_version().refetch();
 
@@ -343,6 +352,16 @@ impl RootStore {
 
     pub fn load_containers(&self) {
         self.containers_query().refetch();
+    }
+
+    /// Recalculates and sets the `bundled_update_available` property.
+    /// Should be called after distrobox_version query completes, after a download, or when
+    /// the distrobox-executable setting changes.
+    pub fn update_bundled_update_available(&self) {
+        let settings_val = self.settings().string("distrobox-executable");
+        let available =
+            settings_val == "bundled" && crate::distrobox_downloader::is_bundled_update_available();
+        self.set_bundled_update_available(available);
     }
 
     pub fn download_distrobox(&self) -> DistroboxTask {

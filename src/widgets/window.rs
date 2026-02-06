@@ -325,12 +325,44 @@ impl DistroShelfWindow {
                     .set_visible_child_name(visible_child_name);
             });
 
-        // Add tasks button to the bottom of the sidebar
+        // Add tasks button and update button to the bottom of the sidebar
+        let sidebar_bottom_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
+        // "Update Distrobox" button — visible only when a bundled update is available
+        let update_button = gtk::Button::builder()
+            .label(&gettext("Update Distrobox"))
+            .build();
+        update_button.add_css_class("suggested-action");
+        update_button.add_css_class("pill");
+        update_button.set_margin_start(12);
+        update_button.set_margin_end(12);
+        update_button.set_margin_top(12);
+        update_button.set_visible(self.root_store().bundled_update_available());
+        update_button.connect_clicked(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_| {
+                this.root_store().download_distrobox();
+                this.root_store()
+                    .set_current_dialog(DialogType::TaskManager);
+            }
+        ));
+        self.root_store().connect_bundled_update_available_notify(clone!(
+            #[weak]
+            update_button,
+            move |root_store| {
+                update_button.set_visible(root_store.bundled_update_available());
+            }
+        ));
+        sidebar_bottom_box.append(&update_button);
+
         let tasks_button = TasksButton::new(&self.root_store());
         tasks_button.add_css_class("flat");
+        sidebar_bottom_box.append(&tasks_button);
+
         self.imp()
             .sidebar_bottom_slot
-            .set_child(Some(&tasks_button));
+            .set_child(Some(&sidebar_bottom_box));
     }
 
     pub fn add_toast(&self, toast: adw::Toast) {
