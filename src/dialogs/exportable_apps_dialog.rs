@@ -365,14 +365,57 @@ impl ExportableAppsDialog {
         reaction!(task.status(), move |status: crate::models::TaskStatus| {
             if status == crate::models::TaskStatus::Failed {
                 let error_ref = task.error();
-                let error_msg = if let Some(err) = error_ref.as_ref() {
-                    format!("Failed to export '{}': {}", binary_name_clone, err)
+                let heading = format!("{} '{}'", gettext("Failed to export"), binary_name_clone);
+
+                let (error_body, extra_child) = if let Some(err) = error_ref.as_ref() {
+                    if let Some(crate::backends::distrobox::Error::CommandFailed {
+                        stderr, ..
+                    }) = err.downcast_ref::<crate::backends::distrobox::Error>()
+                    {
+                        let label = gtk::Label::builder()
+                            .label(stderr.trim())
+                            .wrap(true)
+                            .margin_start(12)
+                            .margin_end(12)
+                            .margin_top(12)
+                            .margin_bottom(12)
+                            .selectable(true)
+                            .build();
+                        label.add_css_class("monospace");
+
+                        let scroll = gtk::ScrolledWindow::builder()
+                            .child(&label)
+                            .min_content_height(120)
+                            .max_content_height(350)
+                            .propagate_natural_height(true)
+                            .min_content_width(300)
+                            .build();
+                        scroll.add_css_class("card");
+
+                        (
+                            gettext("DistroShelf failed to export the binary because:"),
+                            Some(scroll.upcast::<gtk::Widget>()),
+                        )
+                    } else {
+                        (format!("{}", err), None)
+                    }
                 } else {
-                    format!("Failed to export '{}'", binary_name_clone)
+                    (gettext("Unknown error occurred"), None)
                 };
-                let toast = adw::Toast::new(&error_msg);
-                toast.set_timeout(5);
-                this.imp().toast_overlay.add_toast(toast);
+
+                let dialog = adw::AlertDialog::builder()
+                    .heading(&heading)
+                    .body(&error_body)
+                    .close_response("close")
+                    .default_response("close")
+                    .build();
+
+                if let Some(child) = extra_child {
+                    dialog.set_extra_child(Some(&child));
+                }
+
+                dialog.add_response("close", &gettext("Close"));
+                dialog.present(Some(&this));
             }
         });
     }
