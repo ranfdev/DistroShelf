@@ -126,14 +126,13 @@ mod imp {
                 if let Some(task) = task {
                     this.build_task_view(&task);
                     // If selected_task_view already has a parent from a previous detail page,
-                    // pop the old page and unparent the view to avoid GTK assertion:
+                    // unparent it directly to avoid GTK assertion:
                     // 'gtk_widget_get_parent (child) == NULL'
+                    // NOTE: Do NOT call navigation_view.pop() here — it triggers connect_popped
+                    // which clears selected_task and breaks the flow.
                     let stv = &this.imp().selected_task_view;
                     if stv.parent().is_some() {
-                        this.imp().navigation_view.pop();
-                        if stv.parent().is_some() {
-                            stv.unparent();
-                        }
+                        stv.unparent();
                     }
                     this.imp().navigation_view.push(&adw::NavigationPage::new(
                         stv,
