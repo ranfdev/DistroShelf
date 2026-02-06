@@ -346,6 +346,12 @@ impl RootStore {
     }
 
     pub fn download_distrobox(&self) -> DistroboxTask {
+        // Guard: if a download task is already in progress, return it instead of creating a duplicate
+        for task in self.tasks().iter() {
+            if task.name() == "Downloading Distrobox" && !task.ended() {
+                return task;
+            }
+        }
         let task = crate::distrobox_downloader::download_distrobox(self);
         self.tasks().append(&task);
         self.set_selected_task(Some(task.clone()));
