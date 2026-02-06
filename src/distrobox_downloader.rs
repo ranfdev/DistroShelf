@@ -7,10 +7,10 @@ use gtk::glib;
 use gtk::prelude::*;
 use std::path::PathBuf;
 
-pub const DISTROBOX_VERSION: &str = "1.8.2.1";
+pub const DISTROBOX_VERSION: &str = "1.8.2.4";
 // SHA256 of the tar.gz file from github
 pub const DISTROBOX_SHA256: &str =
-    "2c6b2ac9e0db04eb22edab1572b1e62284f5f651c292f536c59fb908d573d0a2";
+    "83eab6ba893dce56f0523a70ebfcf2a78f7785637a6895255777ef1b72d4eb89";
 
 pub fn get_bundled_distrobox_path() -> PathBuf {
     let user_data_dir = glib::user_data_dir();
