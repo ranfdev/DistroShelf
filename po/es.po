@@ -630,3 +630,7 @@ msgstr "_Acerca de"
 #: src/widgets/window.ui:240
 msgid "Discover _Distrobox"
 msgstr "Descubrir _Distrobox"
+
+#: src/widgets/window.rs
+msgid "Update Distrobox"
+msgstr "Actualizar Distrobox"

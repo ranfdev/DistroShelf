@@ -649,3 +649,7 @@ msgstr "关于(_A)"
 #: src/widgets/window.ui:240
 msgid "Discover _Distrobox"
 msgstr "发现 Distrobox(_D)"
+
+#: src/widgets/window.rs
+msgid "Update Distrobox"
+msgstr "更新 Distrobox"

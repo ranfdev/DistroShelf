@@ -648,3 +648,7 @@ msgstr ""
 #: src/widgets/window.ui:240
 msgid "Discover _Distrobox"
 msgstr ""
+
+#: src/widgets/window.rs
+msgid "Update Distrobox"
+msgstr "تحديث Distrobox"
