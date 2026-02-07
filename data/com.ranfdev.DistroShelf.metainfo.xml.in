@@ -71,6 +71,25 @@
   </screenshots>
 
   <releases>
+    <release version="1.4.0" date="2026-02-07">
+      <description translate="no">
+        <ul>
+          <li>New: Added .ini file preview with approval for assembly from URL.</li>
+          <li>New: Added keyboard shortcuts dialog.</li>
+          <li>New: Added "Update Distrobox" button in the sidebar when a bundled update is available.</li>
+          <li>Improved: Task terminal now has a scrolled window.</li>
+          <li>Improved: Clearer placeholder text in base image search box.</li>
+          <li>Improved: Export dialog uses alert dialogs with more context instead of toasts.</li>
+          <li>Improved: Updated bundled Distrobox to latest version.</li>
+          <li>Fix: Corrected mixed stdout/stderr output in terminals.</li>
+          <li>Fix: Archlinux binary paths now display correctly.</li>
+          <li>Fix: Prevented empty dialogs when using bundled Distrobox.</li>
+          <li>Fix: Added fallback to older bundled Distrobox when latest is not downloaded.</li>
+          <li>Fix: Restored task detail view clicking in the task manager (regression fix).</li>
+          <li>i18n: Updated translations for various UI strings.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.3.0" date="2025-12-07">
       <description translate="no">
         <ul>
