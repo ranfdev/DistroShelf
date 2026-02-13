@@ -9,8 +9,8 @@ msgstr ""
 "Project-Id-Version: distroshelf\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-11-29 18:14+0100\n"
-"PO-Revision-Date: 2026-02-13 12:56+0000\n"
-"Last-Translator: Loc Huynh <huynhloc.contact@gmail.com>\n"
+"PO-Revision-Date: 2026-02-13 13:04+0700\n"
+"Last-Translator: Loc Huynh <https://github.com/hthienloc>\n"
 "Language-Team: \n"
 "Language: vi\n"
 "MIME-Version: 1.0\n"
@@ -18,8 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Poedit 3.8\n"
 
-#: data/com.ranfdev.DistroShelf.desktop.in:2
-#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/widgets/window.ui:30
+#: data/com.ranfdev.DistroShelf.desktop.in:2 data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/widgets/window.ui:30
 msgid "DistroShelf"
 msgstr "DistroShelf"
 
@@ -33,7 +32,7 @@ msgstr "Trình mô phỏng terminal được chọn"
 
 #: data/com.ranfdev.DistroShelf.gschema.xml:7
 msgid "The terminal emulator selected by the user."
-msgstr "Trình mô phỏng thiết bị đầu cuối do người dùng chọn."
+msgstr "Trình mô phỏng terminal do người dùng chọn."
 
 #: data/com.ranfdev.DistroShelf.gschema.xml:11
 msgid "Window width"
@@ -64,11 +63,8 @@ msgid "Graphical interface for managing Distrobox containers"
 msgstr "Giao diện đồ họa để quản lý các vùng chứa Distrobox"
 
 #: data/com.ranfdev.DistroShelf.metainfo.xml.in:10
-msgid ""
-"DistroShelf is a graphical interface for managing Distrobox containers on "
-"Linux. It provides an easy way to:"
-msgstr ""
-"DistroShelf là giao diện đồ họa để quản lý bộ chứa Distrobox trên Linux. Nó cung cấp một cách dễ dàng để:"
+msgid "DistroShelf is a graphical interface for managing Distrobox containers on Linux. It provides an easy way to:"
+msgstr "DistroShelf là giao diện đồ họa để quản lý bộ chứa Distrobox trên Linux. Nó cung cấp một cách dễ dàng để:"
 
 #: data/com.ranfdev.DistroShelf.metainfo.xml.in:15
 msgid "Create and manage containers"
@@ -122,10 +118,7 @@ msgid "Command Log"
 msgstr "Nhật ký lệnh"
 
 #: src/dialogs/command_log_dialog.rs:62
-msgid ""
-"Executing a single task (eg: listing applications) may require multiple "
-"chains of commands. For debugging purposes, this log shows all commands "
-"executed by the application."
+msgid "Executing a single task (eg: listing applications) may require multiple chains of commands. For debugging purposes, this log shows all commands executed by the application."
 msgstr ""
 "Việc thực thi một tác vụ đơn lẻ (ví dụ: liệt kê các ứng dụng) có thể yêu cầu nhiều chuỗi lệnh. Vì mục đích debugging, nhật ký này hiển thị tất cả các lệnh được ứng dụng thực thi."
 
@@ -175,9 +168,7 @@ msgstr "Quá trình khởi tạo"
 
 #. Add create button for assemble file
 #. Add create button for URL
-#: src/dialogs/create_distrobox_dialog.rs:201
-#: src/dialogs/create_distrobox_dialog.rs:254
-#: src/dialogs/create_distrobox_dialog.rs:299
+#: src/dialogs/create_distrobox_dialog.rs:201 src/dialogs/create_distrobox_dialog.rs:254 src/dialogs/create_distrobox_dialog.rs:299
 msgid "Create"
 msgstr "Tạo"
 
@@ -246,18 +237,14 @@ msgid "Loading Exports"
 msgstr "Đang tải bản xuất"
 
 #: src/dialogs/exportable_apps_dialog.rs:65
-msgid ""
-"Please wait while we load the list of exportable apps and binaries. This may "
-"take some time if the distrobox wasn't running"
-msgstr ""
-"Vui lòng đợi trong khi chúng tôi tải danh sách các ứng dụng và tệp nhị phân có thể xuất. Việc này có thể mất chút thời gian nếu distrobox không chạy"
+msgid "Please wait while we load the list of exportable apps and binaries. This may take some time if the distrobox wasn't running"
+msgstr "Vui lòng đợi trong khi chúng tôi tải danh sách các ứng dụng và tệp nhị phân có thể xuất. Việc này có thể mất chút thời gian nếu distrobox không chạy"
 
 #: src/dialogs/exportable_apps_dialog.rs:76
 msgid "Exportable Apps"
 msgstr "Ứng dụng có thể xuất"
 
-#: src/dialogs/exportable_apps_dialog.rs:78
-#: src/dialogs/exportable_apps_dialog.rs:242
+#: src/dialogs/exportable_apps_dialog.rs:78 src/dialogs/exportable_apps_dialog.rs:242
 msgid "No exportable apps found"
 msgstr "Không tìm thấy ứng dụng nào có thể xuất được"
 
@@ -270,8 +257,7 @@ msgstr "Xuất nhị phân mới"
 msgid "Exported Binaries"
 msgstr "Tệp nhị phân đã xuất"
 
-#: src/dialogs/exportable_apps_dialog.rs:97
-#: src/dialogs/exportable_apps_dialog.rs:270
+#: src/dialogs/exportable_apps_dialog.rs:97 src/dialogs/exportable_apps_dialog.rs:270
 msgid "No exported binaries"
 msgstr "Không có tệp nhị phân được xuất"
 
@@ -281,12 +267,9 @@ msgstr "Nhị phân đã tồn tại trên máy chủ"
 
 #: src/dialogs/exportable_apps_dialog.rs:321
 msgid "The binary already exists on your host system. Do you want to continue?"
-msgstr ""
-"Tệp nhị phân đã tồn tại trên hệ thống máy chủ của bạn. Bạn có muốn tiếp tục không?"
+msgstr "Tệp nhị phân đã tồn tại trên hệ thống máy chủ của bạn. Bạn có muốn tiếp tục không?"
 
-#: src/dialogs/exportable_apps_dialog.rs:324
-#: src/dialogs/preferences_dialog.rs:274 src/dialogs/preferences_dialog.rs:369
-#: src/widgets/window.rs:420
+#: src/dialogs/exportable_apps_dialog.rs:324 src/dialogs/preferences_dialog.rs:274 src/dialogs/preferences_dialog.rs:369 src/widgets/window.rs:420
 msgid "Cancel"
 msgstr "Hủy"
 
@@ -303,8 +286,7 @@ msgid "Terminal Settings"
 msgstr "Cài đặt đầu cuối"
 
 #. Initialize delete button
-#: src/dialogs/preferences_dialog.rs:57 src/dialogs/preferences_dialog.rs:275
-#: src/widgets/window.rs:421
+#: src/dialogs/preferences_dialog.rs:57 src/dialogs/preferences_dialog.rs:275 src/widgets/window.rs:421
 msgid "Delete"
 msgstr "Xóa"
 
@@ -346,11 +328,8 @@ msgid "Delete this terminal?"
 msgstr "Xóa terminal này?"
 
 #: src/dialogs/preferences_dialog.rs:270
-msgid ""
-"This terminal will be removed from the terminal list. This action cannot be "
-"undone."
-msgstr ""
-"Thiết bị đầu cuối này sẽ bị xóa khỏi danh sách thiết bị đầu cuối. Không thể hoàn tác hành động này."
+msgid "This terminal will be removed from the terminal list. This action cannot be undone."
+msgstr "Terminal này sẽ bị xóa khỏi danh sách terminal. Không thể hoàn tác hành động này."
 
 #: src/dialogs/preferences_dialog.rs:308
 msgid "Terminal removed successfully"
@@ -384,7 +363,7 @@ msgid ""
 "The separator argument is used to pass commands to the terminal.\n"
 "Examples: '--' for GNOME Terminal, '-e' for xterm"
 msgstr ""
-"Đối số dấu phân cách được sử dụng để truyền lệnh đến thiết bị đầu cuối.\n"
+"Đối số dấu phân cách được sử dụng để truyền lệnh đến terminal.\n"
 "Ví dụ: '--' cho GNOME Terminal, '-e' cho xterm"
 
 #: src/dialogs/preferences_dialog.rs:372
@@ -398,7 +377,7 @@ msgstr "Tất cả các trường đều bắt buộc"
 #. Show success toast
 #: src/dialogs/preferences_dialog.rs:429
 msgid "Custom terminal added successfully"
-msgstr "Đã thêm thiết bị đầu cuối tùy chỉnh thành công"
+msgstr "Đã thêm terminal tùy chỉnh thành công"
 
 #: src/dialogs/preferences_dialog.rs:443
 msgid "Failed to save terminal"
@@ -510,11 +489,11 @@ msgstr "Dán"
 
 #: src/widgets/integrated_terminal.rs:115
 msgid "Reload Terminal"
-msgstr "Tải lại thiết bị đầu cuối"
+msgstr "Tải lại terminal"
 
 #: src/widgets/terminal_combo_row.rs:34
 msgid "Preferred Terminal"
-msgstr "Thiết bị đầu cuối ưa thích"
+msgstr "Terminal ưa thích"
 
 #: src/widgets/welcome_view.rs:157 src/widgets/welcome_view.rs:207
 msgid "available"
@@ -536,8 +515,7 @@ msgstr "Phiên bản hệ thống"
 msgid "Not found - Install from system or use bundled version"
 msgstr "Không tìm thấy - Cài đặt từ hệ thống hoặc sử dụng phiên bản đi kèm"
 
-#: src/widgets/welcome_view.rs:278 src/widgets/welcome_view.rs:279
-#: src/widgets/welcome_view.ui:32 src/widgets/welcome_view.ui:51
+#: src/widgets/welcome_view.rs:278 src/widgets/welcome_view.rs:279 src/widgets/welcome_view.ui:32 src/widgets/welcome_view.ui:51
 msgid "Checking…"
 msgstr "Đang kiểm tra…"
 
@@ -571,7 +549,7 @@ msgstr "Tiếp tục"
 
 #: src/widgets/welcome_view.ui:146
 msgid "Preferred terminal"
-msgstr "Thiết bị đầu cuối ưa thích"
+msgstr "Terminal ưa thích"
 
 #: src/widgets/welcome_view.ui:197
 msgid "Use Bundled Distrobox"
@@ -583,7 +561,7 @@ msgstr "Tìm hiểu thêm"
 
 #: src/widgets/window.rs:392
 msgid "Check your terminal settings."
-msgstr "Kiểm tra cài đặt thiết bị đầu cuối của bạn."
+msgstr "Kiểm tra cài đặt terminal của bạn."
 
 #: src/widgets/window.rs:409
 msgid "Delete this container?"
@@ -612,8 +590,7 @@ msgstr "Không tìm thấy Distrobox"
 
 #: src/widgets/window.ui:60
 msgid "Distrobox lets you run any Linux distribution inside your terminal."
-msgstr ""
-"Distrobox cho phép bạn chạy mọi bản phân phối Linux bên trong thiết bị đầu cuối của mình."
+msgstr "Distrobox cho phép bạn chạy mọi bản phân phối Linux bên trong terminal của mình."
 
 #: src/widgets/window.ui:126
 msgid "Container"
