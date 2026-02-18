@@ -240,6 +240,8 @@ impl CreateArgName {
 pub struct CreateArgs {
     pub init: bool,
     pub nvidia: bool,
+    pub root: bool,
+    pub hostname: Option<String>,
     pub home_path: Option<String>,
     pub image: String,
     pub name: CreateArgName,
@@ -1014,10 +1016,16 @@ impl Distrobox {
         if !args.name.0.is_empty() {
             cmd.arg("--name").arg(args.name.0);
         }
+        if let Some(hostname) = args.hostname {
+            cmd.arg("--hostname").arg(hostname);
+        }
         if args.init {
             cmd.arg("--init")
                 .arg("--additional-packages")
                 .arg("systemd");
+        }
+        if args.root {
+            cmd.arg("--root");
         }
         if args.nvidia {
             cmd.arg("--nvidia");
@@ -1355,6 +1363,8 @@ Categories=Utility;Security;";
             image: "docker.io/library/ubuntu:latest".into(),
             init: true,
             nvidia: true,
+            root: true,
+            hostname: Some("my-host".into()),
             home_path: Some("/home/me".into()),
             volumes: vec![
                 Volume::from_str("/mnt/sdb1:/mnt/sdb1")?,
@@ -1363,7 +1373,7 @@ Categories=Utility;Security;";
             ..Default::default()
         };
         smol::block_on(db.create(args))?;
-        let expected = "distrobox create --yes --image docker.io/library/ubuntu:latest --init --additional-packages systemd --nvidia --home /home/me --volume /mnt/sdb1:/mnt/sdb1 --volume /mnt/sdb4:/mnt/sdb4:ro";
+        let expected = "distrobox create --yes --image docker.io/library/ubuntu:latest --hostname my-host --init --additional-packages systemd --root --nvidia --home /home/me --volume /mnt/sdb1:/mnt/sdb1 --volume /mnt/sdb4:/mnt/sdb4:ro";
         assert_eq!(
             output_tracker.items()[0].command().unwrap().to_string(),
             expected

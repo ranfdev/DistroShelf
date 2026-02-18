@@ -18,12 +18,6 @@
         </child>
         <child>
           <object class="AdwShortcutsItem">
-            <property name="title" translatable="yes" context="shortcut window">Command Log</property>
-            <property name="action-name">win.command-log</property>
-          </object>
-        </child>
-        <child>
-          <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Quit</property>
             <property name="action-name">app.quit</property>
           </object>
@@ -49,12 +43,6 @@
           <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Upgrade All</property>
             <property name="action-name">win.upgrade-all</property>
-          </object>
-        </child>
-        <child>
-          <object class="AdwShortcutsItem">
-            <property name="title" translatable="yes" context="shortcut window">Clone Container</property>
-            <property name="action-name">win.clone-container</property>
           </object>
         </child>
         <child>

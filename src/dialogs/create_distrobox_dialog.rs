@@ -52,6 +52,8 @@ mod imp {
         pub assemble_url: RefCell<Option<String>>,
         pub nvidia_row: adw::SwitchRow,
         pub init_row: adw::SwitchRow,
+        pub hostname_row: adw::EntryRow,
+        pub root_row: adw::SwitchRow,
         pub volume_rows: Rc<RefCell<Vec<adw::EntryRow>>>,
         pub scrolled_window: gtk::ScrolledWindow,
         #[property(get, set, nullable, construct_only)]
@@ -277,14 +279,24 @@ impl CreateDistroboxDialog {
 
         imp.init_row.set_title(&gettext("Init process"));
 
+        imp.hostname_row.set_title(&gettext("Hostname"));
+
+        imp.root_row.set_title(&gettext("Privileged"));
+
         preferences_group.add(&imp.name_row);
         preferences_group.add(&imp.image_row);
         preferences_group.add(&imp.home_row_expander);
-        preferences_group.add(&imp.nvidia_row);
-        preferences_group.add(&imp.init_row);
+
+        let advanced_group = adw::PreferencesGroup::new();
+        advanced_group.set_title(&gettext("Advanced"));
+        advanced_group.add(&imp.hostname_row);
+        advanced_group.add(&imp.root_row);
+        advanced_group.add(&imp.nvidia_row);
+        advanced_group.add(&imp.init_row);
 
         let volumes_group = self.build_volumes_group();
         content.append(&preferences_group);
+        content.append(&advanced_group);
         content.append(&volumes_group);
 
         let create_btn = self.build_create_btn();
@@ -927,6 +939,14 @@ impl CreateDistroboxDialog {
             .collect::<Result<Vec<_>, _>>()?;
 
         let name = CreateArgName::new(&imp.name_row.text())?;
+        let hostname = {
+            let value = imp.hostname_row.text().trim().to_string();
+            if value.is_empty() {
+                None
+            } else {
+                Some(value)
+            }
+        };
 
         let create_args = CreateArgs {
             name,
@@ -934,6 +954,8 @@ impl CreateDistroboxDialog {
             nvidia: imp.nvidia_row.is_active(),
             home_path: self.home_folder(),
             init: imp.init_row.is_active(),
+            hostname,
+            root: imp.root_row.is_active(),
             volumes,
         };
 

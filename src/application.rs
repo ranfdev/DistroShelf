@@ -88,9 +88,7 @@ mod imp {
             obj.set_accels_for_action("win.upgrade-all", &["<primary><shift>u"]);
             obj.set_accels_for_action("win.install-package", &["<primary>i"]);
             obj.set_accels_for_action("win.preferences", &["<primary>comma"]);
-            obj.set_accels_for_action("win.command-log", &["<primary>l"]);
             obj.set_accels_for_action("win.open-terminal", &["<primary>period"]);
-            obj.set_accels_for_action("win.clone-container", &["<primary>d"]);
             obj.set_accels_for_action("win.view-exportable-apps", &["<primary>e"]);
             obj.set_accels_for_action("win.delete-container", &["<primary>Delete"]);
             obj.set_accels_for_action("win.stop-container", &["<primary>s"]);
