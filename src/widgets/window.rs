@@ -141,7 +141,6 @@ impl DistroShelfWindow {
                         .imp()
                         .content_state_stack
                         .set_visible_child_name("content");
-                    this_clone.imp().split_view.set_show_content(true);
                 } else {
                     this_clone
                         .imp()
@@ -301,6 +300,22 @@ impl DistroShelfWindow {
         factory.connect_setup(|_factory, item| {
             let list_item = item.downcast_ref::<gtk::ListItem>().unwrap();
             let sidebar_row = SidebarRow::new(&Container::default());
+
+            let click = gtk::GestureClick::new();
+            click.connect_released(clone!(
+                #[weak]
+                list_item,
+                #[weak]
+                sidebar_row,
+                move |_, _, _, _| {
+                    let _ = sidebar_row.activate_action(
+                        "list.activate-item",
+                        Some(&glib::Variant::from(list_item.position())),
+                    );
+                }
+            ));
+            sidebar_row.add_controller(click);
+
             list_item.set_child(Some(&sidebar_row));
         });
 
@@ -319,6 +334,13 @@ impl DistroShelfWindow {
 
         imp.sidebar_list_view.set_factory(Some(&factory));
         imp.sidebar_list_view.set_model(Some(&selection_model));
+        imp.sidebar_list_view.connect_activate(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |_, _| {
+                this.imp().split_view.set_show_content(true);
+            }
+        ));
         let this = self.clone();
         self.root_store()
             .containers()
