@@ -71,6 +71,14 @@
   </screenshots>
 
   <releases>
+    <release version="1.4.2" date="2026-02-24">
+      <description translate="no">
+        <ul>
+          <li>Fix: Added empty status page when no Distroboxes are selected.</li>
+          <li>Fix: Copy image URL to clipboard correctly.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.4.1" date="2026-02-23">
       <description translate="no">
         <ul>
