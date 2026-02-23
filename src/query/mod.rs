@@ -407,8 +407,10 @@ where
             }
             Err(error) => {
                 if inner.borrow().retry_strategy.is_some() {
-                    Self { inner: inner.clone() }.retry();
-                    return;
+                    let retry_count = Self { inner: inner.clone() }.retry();
+                    if let Some(_retry_count) = retry_count {
+                        return;
+                    }
                 }
                 let rc_error = Rc::new(error);
                 let error_msg = rc_error.to_string();
@@ -469,7 +471,7 @@ where
         }
     }
 
-    pub fn retry(&self) {
+    pub fn retry(&self) -> Option<u32> {
         self.inner.borrow_mut().retry_count += 1;
         let retry_count = { self.inner.borrow().retry_count };
         let key = { self.inner.borrow().key.clone() };
@@ -489,8 +491,10 @@ where
             });
 
             self.inner.borrow_mut().fetch_task_handle = Some(handle);
+            Some(retry_count)
         } else {
             warn!(resource_key = %key, retry_count = retry_count, "No more retries left, giving up on resource fetch");
+            None
         }
     }
 

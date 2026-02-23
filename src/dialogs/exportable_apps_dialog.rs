@@ -1,7 +1,8 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib::{BoxedAnyObject, clone};
-use gtk::{gio, glib, pango};
+use gtk::{gio, glib};
+use tracing::error;
 
 use crate::backends::{ExportableApp, ExportableBinary};
 use crate::fakers::Command;
@@ -28,7 +29,8 @@ mod imp {
         pub content: gtk::Box,
         pub scrolled_window: gtk::ScrolledWindow,
         pub stack: gtk::Stack,
-        pub error_label: gtk::Label,
+        pub apps_error_label: gtk::Label,
+        pub binaries_error_label: gtk::Label,
         pub list_box: gtk::ListBox,
         pub binaries_list_box: gtk::ListBox,
         pub binary_name_entry: adw::EntryRow,
@@ -55,9 +57,6 @@ mod imp {
 
             self.stack
                 .set_transition_type(gtk::StackTransitionType::Crossfade);
-            self.error_label.set_wrap_mode(pango::WrapMode::WordChar);
-            self.error_label.set_wrap(true);
-            self.stack.add_named(&self.error_label, Some("error"));
 
             let loading_page = adw::StatusPage::new();
             loading_page.set_title(&gettext("Loading Exports"));
@@ -78,6 +77,17 @@ mod imp {
             self.export_apps_group
                 .set_description(Some(&gettext("No exportable apps found")));
             self.export_apps_group.add(&self.list_box);
+
+            self.apps_error_label
+                .set_label(&gettext("Error loading exportable apps"));
+            self.apps_error_label.set_halign(gtk::Align::Start);
+            self.apps_error_label.set_wrap(true);
+            self.apps_error_label.add_css_class("error");
+            self.apps_error_label.set_margin_start(12);
+            self.apps_error_label.set_margin_end(12);
+            self.apps_error_label.set_margin_top(6);
+            self.apps_error_label.set_margin_bottom(12);
+            self.apps_error_label.set_visible(false);
 
             // Setup binary export input
             self.binary_name_entry
@@ -101,9 +111,22 @@ mod imp {
             self.export_binaries_group.add(&self.binary_name_entry);
             self.export_binaries_group.add(&self.binaries_list_box);
 
+            self.binaries_error_label
+                .set_label(&gettext("Error loading exported binaries"));
+            self.binaries_error_label.set_halign(gtk::Align::Start);
+            self.binaries_error_label.set_wrap(true);
+            self.binaries_error_label.add_css_class("error");
+            self.binaries_error_label.set_margin_start(12);
+            self.binaries_error_label.set_margin_end(12);
+            self.binaries_error_label.set_margin_top(6);
+            self.binaries_error_label.set_margin_bottom(12);
+            self.binaries_error_label.set_visible(false);
+
             let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
             content_box.append(&self.export_apps_group);
+            content_box.append(&self.apps_error_label);
             content_box.append(&self.export_binaries_group);
+            content_box.append(&self.binaries_error_label);
             self.stack.add_named(&content_box, Some("apps"));
 
             self.content.append(&self.scrolled_window);
@@ -217,8 +240,9 @@ impl ExportableAppsDialog {
         });
         let this_inner = this_clone.clone();
         apps.connect_error(move |error| {
-            this_inner.imp().error_label.set_label(&error.to_string());
-            this_inner.imp().stack.set_visible_child_name("error");
+            error!("Error loading exportable apps: {}", error);
+            this_inner.imp().apps_error_label.set_visible(true);
+            this_inner.imp().stack.set_visible_child_name("apps");
         });
         let binaries = this.container().binaries();
         let this_inner = this_clone.clone();
@@ -229,8 +253,9 @@ impl ExportableAppsDialog {
         });
         let this_inner = this_clone.clone();
         binaries.connect_error(move |error| {
-            this_inner.imp().error_label.set_label(&error.to_string());
-            this_inner.imp().stack.set_visible_child_name("error");
+            error!("Error loading exportable binaries: {}", error);
+            this_inner.imp().binaries_error_label.set_visible(true);
+            this_inner.imp().stack.set_visible_child_name("apps");
         });
 
         let this_clone = this.clone();
@@ -291,12 +316,19 @@ impl ExportableAppsDialog {
 
         let apps = this.container().apps();
         let render_apps_closure = render_apps.clone();
+        let this_for_apps_success = this.clone();
         apps.connect_success(move |apps_data| {
+            this_for_apps_success.imp().apps_error_label.set_visible(false);
             render_apps_closure(apps_data);
         });
         let binaries = this.container().binaries();
         let render_binaries_closure = render_binaries.clone();
+        let this_for_binaries_success = this.clone();
         binaries.connect_success(move |binaries_data| {
+            this_for_binaries_success
+                .imp()
+                .binaries_error_label
+                .set_visible(false);
             render_binaries_closure(binaries_data);
         });
 
