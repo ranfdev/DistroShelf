@@ -61,6 +61,8 @@ mod imp {
         #[template_child]
         pub content_page: TemplateChild<adw::NavigationPage>,
         #[template_child]
+        pub content_state_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
         pub split_view: TemplateChild<adw::NavigationSplitView>,
         #[template_child]
         pub toast_overlay: TemplateChild<adw::ToastOverlay>,
@@ -123,6 +125,9 @@ impl DistroShelfWindow {
         this.set_default_size(width, height);
 
         this.setup_gactions();
+        this.imp()
+            .content_state_stack
+            .set_visible_child_name("no_content");
         let this_clone = this.clone();
         this.root_store()
             .selected_container_model()
@@ -132,12 +137,16 @@ impl DistroShelfWindow {
                     .and_then(|obj| obj.downcast::<Container>().ok())
                 {
                     this_clone.update_container(&container);
+                    this_clone
+                        .imp()
+                        .content_state_stack
+                        .set_visible_child_name("content");
                     this_clone.imp().split_view.set_show_content(true);
                 } else {
                     this_clone
                         .imp()
-                        .content_page
-                        .set_child(None::<&gtk::Widget>);
+                        .content_state_stack
+                        .set_visible_child_name("no_content");
                 }
             });
         let this_clone = this.clone();
