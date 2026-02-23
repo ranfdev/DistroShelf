@@ -213,7 +213,7 @@ impl ContainerOverview {
         let this = self.clone();
         copy_btn.connect_clicked(move |_| {
             if let Some(display) = gdk::Display::default() {
-                let clipboard = display.primary_clipboard();
+                let clipboard = display.clipboard();
                 clipboard.set_text(&image_url);
 
                 let parent_window: Option<DistroShelfWindow> = this
