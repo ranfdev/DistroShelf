@@ -71,6 +71,13 @@
   </screenshots>
 
   <releases>
+    <release version="1.4.3" date="2026-02-24">
+      <description translate="no">
+        <ul>
+          <li>Fix: Show container view when selecting a container on small screens.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.4.2" date="2026-02-24">
       <description translate="no">
         <ul>
