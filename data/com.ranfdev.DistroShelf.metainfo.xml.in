@@ -71,6 +71,13 @@
   </screenshots>
 
   <releases>
+    <release version="1.4.1" date="2026-02-23">
+      <description translate="no">
+        <ul>
+          <li>Fix: Exported apps are now loaded correctly across distros</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.4.0" date="2026-02-07">
       <description translate="no">
         <ul>
