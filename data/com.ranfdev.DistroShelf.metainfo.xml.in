@@ -71,6 +71,13 @@
   </screenshots>
 
   <releases>
+    <release version="1.4.5" date="2026-02-24">
+      <description translate="no">
+        <ul>
+          <li>Fix: enable search path flag in integrated terminal.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.4.4" date="2026-02-24">
       <description translate="no">
         <ul>
