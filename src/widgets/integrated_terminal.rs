@@ -6,7 +6,7 @@ use gtk::{
 };
 use vte4::prelude::*;
 
-use crate::fakers::resolve_host_env_list_via_runner;
+use crate::fakers::{host_env_to_list, resolve_host_env};
 use crate::i18n::gettext;
 use crate::gtk_utils::ColorPalette;
 use crate::models::Container;
@@ -176,16 +176,19 @@ impl IntegratedTerminal {
                     .filter_map(|s| s.to_str())
                     .collect::<Vec<_>>();
 
-                let host_env = match resolve_host_env_list_via_runner(&command_runner).await {
+                let host_env = match resolve_host_env(&command_runner).await {
                     Ok(env) => env,
                     Err(err) => {
                         eprintln!("Failed to resolve host env for terminal: {}", err);
-                        Vec::new()
+                        std::collections::HashMap::new()
                     }
                 };
-                let host_env_refs = host_env.iter().map(String::as_str).collect::<Vec<_>>();
+                let host_env_list = host_env_to_list(&host_env);
+                let host_env_refs = host_env_list
+                    .iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>();
 
-                dbg!(&host_env_refs);
                 let fut = this.imp().terminal.spawn_future(
                     vte4::PtyFlags::DEFAULT,
                     None,
