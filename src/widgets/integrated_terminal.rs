@@ -6,7 +6,6 @@ use gtk::{
 };
 use vte4::prelude::*;
 
-use crate::fakers::{host_env_to_list, resolve_host_env};
 use crate::i18n::gettext;
 use crate::gtk_utils::ColorPalette;
 use crate::models::Container;
@@ -176,15 +175,11 @@ impl IntegratedTerminal {
                     .filter_map(|s| s.to_str())
                     .collect::<Vec<_>>();
 
-                let host_env = match resolve_host_env(&command_runner).await {
-                    Ok(env) => env,
-                    Err(err) => {
-                        eprintln!("Failed to resolve host env for terminal: {}", err);
-                        std::collections::HashMap::new()
-                    }
-                };
-                let host_env_list = host_env_to_list(&host_env);
-                let host_env_refs = host_env_list
+                // We don't need to resolve the environment from the host, I think `flatpak-spawn --host cmd` will already handle that for the subprocess we are spawning.
+                let env_list = std::env::vars()
+                    .map(|(key, value)| format!("{key}={value}"))
+                    .collect::<Vec<_>>();
+                let env_refs = env_list
                     .iter()
                     .map(String::as_str)
                     .collect::<Vec<_>>();
@@ -193,8 +188,8 @@ impl IntegratedTerminal {
                     vte4::PtyFlags::DEFAULT,
                     None,
                     &shell_args,
-                    &host_env_refs,
-                    glib::SpawnFlags::DEFAULT,
+                    &env_refs,
+                    glib::SpawnFlags::SEARCH_PATH,
                     || {},
                     10,
                 );
