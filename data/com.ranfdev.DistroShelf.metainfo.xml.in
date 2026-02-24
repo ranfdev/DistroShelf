@@ -71,6 +71,13 @@
   </screenshots>
 
   <releases>
+    <release version="1.4.4" date="2026-02-24">
+      <description translate="no">
+        <ul>
+          <li>Fix: lookup env from host when spawning integrated terminal (fixes build on NixOS).</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.4.3" date="2026-02-24">
       <description translate="no">
         <ul>
