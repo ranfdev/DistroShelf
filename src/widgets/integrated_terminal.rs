@@ -6,6 +6,7 @@ use gtk::{
 };
 use vte4::prelude::*;
 
+use crate::fakers::resolve_host_env_list_via_runner;
 use crate::i18n::gettext;
 use crate::gtk_utils::ColorPalette;
 use crate::models::Container;
@@ -159,27 +160,42 @@ impl IntegratedTerminal {
         }
 
         imp.reload_button.set_visible(false);
-        let root_store = self.container().root_store();
-
-        // Prepare the shell command via the Distrobox backend (uses injected factory)
-        let name = self.container().name();
-        let enter_cmd = root_store.distrobox().enter_cmd(&name);
-        let shell = root_store.command_runner().wrap_command(enter_cmd).to_vec();
-
-        let fut = imp.terminal.spawn_future(
-            vte4::PtyFlags::DEFAULT,
-            None,
-            &shell.iter().filter_map(|s| s.to_str()).collect::<Vec<_>>(),
-            &[],
-            glib::SpawnFlags::DEFAULT,
-            || {},
-            10,
-        );
-
         glib::MainContext::default().spawn_local(clone!(
             #[weak(rename_to=this)]
             self,
             async move {
+                let root_store = this.container().root_store();
+
+                // Prepare the shell command via the Distrobox backend (uses injected factory)
+                let name = this.container().name();
+                let enter_cmd = root_store.distrobox().enter_cmd(&name);
+                let command_runner = root_store.command_runner();
+                let shell = command_runner.wrap_command(enter_cmd).to_vec();
+                let shell_args = shell
+                    .iter()
+                    .filter_map(|s| s.to_str())
+                    .collect::<Vec<_>>();
+
+                let host_env = match resolve_host_env_list_via_runner(&command_runner).await {
+                    Ok(env) => env,
+                    Err(err) => {
+                        eprintln!("Failed to resolve host env for terminal: {}", err);
+                        Vec::new()
+                    }
+                };
+                let host_env_refs = host_env.iter().map(String::as_str).collect::<Vec<_>>();
+
+                dbg!(&host_env_refs);
+                let fut = this.imp().terminal.spawn_future(
+                    vte4::PtyFlags::DEFAULT,
+                    None,
+                    &shell_args,
+                    &host_env_refs,
+                    glib::SpawnFlags::DEFAULT,
+                    || {},
+                    10,
+                );
+
                 match fut.await {
                     Ok(pid) => {
                         this.imp().terminal_pid.set(Some(pid));
