@@ -249,7 +249,10 @@ impl DistroShelfApplication {
 
         command_runner.output_tracker().enable();
 
-        self.set_root_store(RootStore::new(command_runner));
+        let root_store = RootStore::new(command_runner.clone());
+        root_store.start_background_tasks();
+
+        self.set_root_store(root_store);
         let window =
             DistroShelfWindow::new(self.upcast_ref::<adw::Application>(), self.root_store());
         window.upcast()

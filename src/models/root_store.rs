@@ -156,6 +156,14 @@ mod imp {
 glib::wrapper! {
     pub struct RootStore(ObjectSubclass<imp::RootStore>);
 }
+
+#[derive(Debug, Clone)]
+enum SelectedTerminalResolution {
+    Empty,
+    Found(Terminal),
+    Missing(String),
+}
+
 impl RootStore {
     pub fn new(command_runner: CommandRunner) -> Self {
         let this: Self = glib::Object::builder().build();
@@ -169,6 +177,34 @@ impl RootStore {
         this.imp()
             .terminal_repository
             .replace(TerminalRepository::new(command_runner.clone()));
+
+        let this_clone = this.clone();
+        this.terminal_repository()
+            .flatpak_terminals_query()
+            .connect_success(move |_terminals| {
+                this_clone.ensure_selected_terminal_after_load();
+            });
+
+        let this_clone = this.clone();
+        this.terminal_repository()
+            .flatpak_terminals_query()
+            .connect_error(move |_error| {
+                this_clone.ensure_selected_terminal_after_load();
+            });
+
+        let this_clone = this.clone();
+        this.terminal_repository()
+            .json_terminals_query()
+            .connect_success(move |_terminals| {
+                this_clone.ensure_selected_terminal_after_load();
+            });
+
+        let this_clone = this.clone();
+        this.terminal_repository()
+            .json_terminals_query()
+            .connect_error(move |_error| {
+                this_clone.ensure_selected_terminal_after_load();
+            });
 
         // Build a CmdFactory that will be injected into the Distrobox backend. The factory
         // is created here (root_store) so the distrobox module does not depend on `gio::Settings`.
@@ -216,7 +252,6 @@ impl RootStore {
         this.distrobox_version().connect_success(move |_version| {
             this_clone.update_bundled_update_available();
         });
-        this.distrobox_version().refetch();
 
         let this_clone = this.clone();
         this.imp().images_query.set_fetcher(move || {
@@ -236,7 +271,6 @@ impl RootStore {
                     .ok_or_else(|| anyhow::anyhow!("No container runtime available"))
             }
         });
-        this.container_runtime().refetch();
 
         let this_clone = this.clone();
         this.imp().downloaded_images_query.set_fetcher(move || {
@@ -263,7 +297,8 @@ impl RootStore {
                 Ok(containers)
             }
         });
-        this.containers_query().set_refetch_strategy(Query::throttle(Duration::from_secs(1), true));
+        this.containers_query()
+            .set_refetch_strategy(Query::throttle(Duration::from_secs(1), true));
 
         let this_clone = this.clone();
         this.containers_query().connect_success(move |containers| {
@@ -277,20 +312,65 @@ impl RootStore {
             );
         });
 
-        if this.selected_terminal().is_none() {
-            let this = this.clone();
-            glib::MainContext::ref_thread_default().spawn_local(async move {
-                let Some(default_terminal) = this.terminal_repository().default_terminal().await
-                else {
-                    return;
-                };
-                this.set_selected_terminal_name(&default_terminal.name);
-            });
+        this
+    }
+
+    pub fn start_background_tasks(&self) {
+        self.distrobox_version().refetch();
+        self.container_runtime().refetch();
+        self.terminal_repository().load_all();
+
+        self.start_listening_podman_events();
+    }
+
+    fn selected_terminal_setting_is_empty(&self) -> bool {
+        let selected_terminal: String = self.settings().string("selected-terminal").into();
+        selected_terminal.is_empty()
+    }
+
+    fn terminal_sources_loading(&self) -> bool {
+        let terminal_repository = self.terminal_repository();
+        terminal_repository.json_terminals_query().is_loading()
+            || terminal_repository.flatpak_terminals_query().is_loading()
+    }
+
+    fn selected_terminal_resolution(&self) -> SelectedTerminalResolution {
+        // Old version stored the program, such as "gnome-terminal", now we store the name "GNOME console".
+        let name_or_program: String = self.settings().string("selected-terminal").into();
+        if name_or_program.is_empty() {
+            return SelectedTerminalResolution::Empty;
         }
 
-        // this.load_containers();
-        this.start_listening_podman_events();
-        this
+        let terminal_repository = self.terminal_repository();
+
+        terminal_repository
+            .terminal_by_name(&name_or_program)
+            .or_else(|| terminal_repository.terminal_by_program(&name_or_program))
+            .map(SelectedTerminalResolution::Found)
+            .unwrap_or_else(|| SelectedTerminalResolution::Missing(name_or_program))
+    }
+
+    fn ensure_selected_terminal_after_load(&self) {
+        if self.selected_terminal().is_some() {
+            return;
+        }
+
+        let terminal_repository = self.terminal_repository();
+        if terminal_repository.json_terminals_query().is_loading()
+            || terminal_repository.flatpak_terminals_query().is_loading()
+        {
+            return;
+        }
+
+        let this = self.clone();
+        glib::MainContext::ref_thread_default().spawn_local(async move {
+            let Some(default_terminal) = this.terminal_repository().default_terminal().await else {
+                return;
+            };
+            if this.selected_terminal().is_none() && this.selected_terminal_setting_is_empty() {
+                this.set_selected_terminal_name(&default_terminal.name);
+            }
+        });
     }
 
     pub fn distrobox(&self) -> &crate::backends::Distrobox {
@@ -541,9 +621,21 @@ impl RootStore {
         name: String,
         cmd: &Command,
     ) -> Result<(), anyhow::Error> {
-        let Some(supported_terminal) = self.selected_terminal() else {
-            error!("No terminal selected when trying to spawn terminal");
-            return Err(anyhow::anyhow!("No terminal selected"));
+        let supported_terminal = match self.selected_terminal_resolution() {
+            SelectedTerminalResolution::Found(terminal) => terminal,
+            SelectedTerminalResolution::Empty => {
+                error!("No terminal selected when trying to spawn terminal");
+                return Err(anyhow::anyhow!("No terminal selected"));
+            }
+            SelectedTerminalResolution::Missing(name_or_program) => {
+                if !self.terminal_sources_loading() {
+                    error!("Terminal not found: {}", name_or_program);
+                }
+                return Err(anyhow::anyhow!(
+                    "Selected terminal '{}' not found",
+                    name_or_program
+                ));
+            }
         };
         let mut spawn_cmd = Command::new(supported_terminal.program);
         spawn_cmd
@@ -564,28 +656,11 @@ impl RootStore {
         }
         Ok(())
     }
+
     pub fn selected_terminal(&self) -> Option<Terminal> {
-        // Old version stored the program, such as "gnome-terminal", now we store the name "GNOME console".
-        let name_or_program: String = self.settings().string("selected-terminal").into();
-
-        let by_name = self
-            .imp()
-            .terminal_repository
-            .borrow()
-            .terminal_by_name(&name_or_program);
-
-        if let Some(terminal) = by_name {
-            Some(terminal)
-        } else if let Some(terminal) = self
-            .imp()
-            .terminal_repository
-            .borrow()
-            .terminal_by_program(&name_or_program)
-        {
-            Some(terminal)
-        } else {
-            error!("Terminal not found: {}", name_or_program);
-            None
+        match self.selected_terminal_resolution() {
+            SelectedTerminalResolution::Found(terminal) => Some(terminal),
+            SelectedTerminalResolution::Empty | SelectedTerminalResolution::Missing(_) => None,
         }
     }
     pub fn set_selected_terminal_name(&self, name: &str) {
@@ -596,9 +671,21 @@ impl RootStore {
     }
 
     pub async fn validate_terminal(&self) -> Result<(), anyhow::Error> {
-        let Some(terminal) = self.selected_terminal() else {
-            error!("No terminal selected for validation");
-            return Err(anyhow::anyhow!("No terminal selected"));
+        let terminal = match self.selected_terminal_resolution() {
+            SelectedTerminalResolution::Found(terminal) => terminal,
+            SelectedTerminalResolution::Empty => {
+                error!("No terminal selected for validation");
+                return Err(anyhow::anyhow!("No terminal selected"));
+            }
+            SelectedTerminalResolution::Missing(name_or_program) => {
+                if !self.terminal_sources_loading() {
+                    error!("Terminal not found: {}", name_or_program);
+                }
+                return Err(anyhow::anyhow!(
+                    "Selected terminal '{}' not found",
+                    name_or_program
+                ));
+            }
         };
         info!(terminal = %terminal.program, "Validating terminal");
 
@@ -755,10 +842,31 @@ impl Default for RootStore {
 
 #[cfg(test)]
 mod tests {
+    use std::future::pending;
     use std::io;
+    use std::time::{Duration, Instant};
 
     use super::*;
     use crate::fakers::NullCommandRunnerBuilder;
+
+    fn spin_main_context_until(timeout: Duration, mut condition: impl FnMut() -> bool) {
+        let context = glib::MainContext::ref_thread_default();
+        let deadline = Instant::now() + timeout;
+
+        while Instant::now() < deadline {
+            while context.pending() {
+                context.iteration(false);
+            }
+            if condition() {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+
+        while context.pending() {
+            context.iteration(false);
+        }
+    }
 
     #[gtk::test]
     fn test_resolve_path() {
@@ -796,6 +904,246 @@ mod tests {
             } else {
                 assert!(resolved_path.is_err());
             }
+        }
+    }
+
+    #[gtk::test]
+    fn test_selected_terminal_setting_is_empty() {
+        let store = RootStore::new(NullCommandRunnerBuilder::new().build());
+
+        store
+            .settings()
+            .set_string("selected-terminal", "")
+            .expect("failed to set selected-terminal setting");
+        assert!(store.selected_terminal_setting_is_empty());
+
+        store
+            .settings()
+            .set_string("selected-terminal", "GNOME Console")
+            .expect("failed to set selected-terminal setting");
+        assert!(!store.selected_terminal_setting_is_empty());
+    }
+
+    #[gtk::test]
+    fn test_ensure_selected_terminal_does_not_overwrite_non_empty_invalid_setting() {
+        let runner = NullCommandRunnerBuilder::new()
+            .cmd(
+                &[
+                    "gsettings",
+                    "get",
+                    "org.gnome.desktop.default-applications.terminal",
+                    "exec",
+                ],
+                "'konsole'\n",
+            )
+            .build();
+        let store = RootStore::new(runner);
+
+        store
+            .settings()
+            .set_string("selected-terminal", "Definitely Not A Real Terminal")
+            .expect("failed to set selected-terminal setting");
+
+        store.ensure_selected_terminal_after_load();
+
+        spin_main_context_until(Duration::from_millis(200), || {
+            !store.terminal_repository().json_terminals_query().is_loading()
+                && !store.terminal_repository().flatpak_terminals_query().is_loading()
+        });
+
+        let selected_terminal: String = store.settings().string("selected-terminal").into();
+        assert_eq!(selected_terminal, "Definitely Not A Real Terminal");
+    }
+
+    #[gtk::test]
+    fn test_ensure_selected_terminal_writes_fallback_when_setting_empty_and_sources_settled() {
+        let runner = NullCommandRunnerBuilder::new()
+            .cmd(
+                &[
+                    "gsettings",
+                    "get",
+                    "org.gnome.desktop.default-applications.terminal",
+                    "exec",
+                ],
+                "'konsole'\n",
+            )
+            .build();
+        let store = RootStore::new(runner);
+
+        store
+            .settings()
+            .set_string("selected-terminal", "")
+            .expect("failed to set selected-terminal setting");
+
+        store.ensure_selected_terminal_after_load();
+
+        spin_main_context_until(Duration::from_millis(300), || {
+            let selected: String = store.settings().string("selected-terminal").into();
+            selected == "Konsole"
+        });
+
+        let selected_terminal: String = store.settings().string("selected-terminal").into();
+        assert_eq!(selected_terminal, "Konsole");
+    }
+
+    #[gtk::test]
+    fn test_ensure_selected_terminal_skips_fallback_while_terminal_sources_loading() {
+        let runner = NullCommandRunnerBuilder::new()
+            .cmd(
+                &[
+                    "gsettings",
+                    "get",
+                    "org.gnome.desktop.default-applications.terminal",
+                    "exec",
+                ],
+                "'konsole'\n",
+            )
+            .build();
+        let store = RootStore::new(runner);
+
+        store
+            .settings()
+            .set_string("selected-terminal", "")
+            .expect("failed to set selected-terminal setting");
+
+        store
+            .terminal_repository()
+            .json_terminals_query()
+            .set_fetcher(|| async { pending::<anyhow::Result<Vec<Terminal>>>().await });
+        store.terminal_repository().json_terminals_query().refetch();
+
+        assert!(store.terminal_repository().json_terminals_query().is_loading());
+
+        store.ensure_selected_terminal_after_load();
+
+        spin_main_context_until(Duration::from_millis(150), || false);
+
+        let selected_terminal: String = store.settings().string("selected-terminal").into();
+        assert!(selected_terminal.is_empty());
+    }
+
+    #[gtk::test]
+    fn test_connect_error_completion_does_not_overwrite_non_empty_selected_terminal() {
+        let runner = NullCommandRunnerBuilder::new()
+            .cmd(
+                &[
+                    "gsettings",
+                    "get",
+                    "org.gnome.desktop.default-applications.terminal",
+                    "exec",
+                ],
+                "'konsole'\n",
+            )
+            .build();
+        let store = RootStore::new(runner);
+
+        store
+            .settings()
+            .set_string("selected-terminal", "Definitely Not A Real Terminal")
+            .expect("failed to set selected-terminal setting");
+
+        store
+            .terminal_repository()
+            .json_terminals_query()
+            .set_fetcher(|| async { Ok(vec![]) });
+        store
+            .terminal_repository()
+            .flatpak_terminals_query()
+            .set_fetcher(|| async {
+                glib::timeout_future(Duration::from_millis(40)).await;
+                Err(anyhow::anyhow!("flatpak terminals query failed"))
+            });
+
+        store.terminal_repository().load_all();
+
+        spin_main_context_until(Duration::from_millis(250), || {
+            !store.terminal_repository().json_terminals_query().is_loading()
+                && !store.terminal_repository().flatpak_terminals_query().is_loading()
+        });
+
+        let selected_terminal: String = store.settings().string("selected-terminal").into();
+        assert_eq!(selected_terminal, "Definitely Not A Real Terminal");
+    }
+
+    #[gtk::test]
+    fn test_connect_error_completion_writes_fallback_when_selected_terminal_empty() {
+        let runner = NullCommandRunnerBuilder::new()
+            .cmd(
+                &[
+                    "gsettings",
+                    "get",
+                    "org.gnome.desktop.default-applications.terminal",
+                    "exec",
+                ],
+                "'konsole'\n",
+            )
+            .build();
+        let store = RootStore::new(runner);
+
+        store
+            .settings()
+            .set_string("selected-terminal", "")
+            .expect("failed to set selected-terminal setting");
+
+        store
+            .terminal_repository()
+            .json_terminals_query()
+            .set_fetcher(|| async { Ok(vec![]) });
+        store
+            .terminal_repository()
+            .flatpak_terminals_query()
+            .set_fetcher(|| async {
+                glib::timeout_future(Duration::from_millis(40)).await;
+                Err(anyhow::anyhow!("flatpak terminals query failed"))
+            });
+
+        store.terminal_repository().load_all();
+
+        spin_main_context_until(Duration::from_millis(350), || {
+            let selected: String = store.settings().string("selected-terminal").into();
+            selected == "Konsole"
+        });
+
+        let selected_terminal: String = store.settings().string("selected-terminal").into();
+        assert_eq!(selected_terminal, "Konsole");
+    }
+
+    #[gtk::test]
+    fn test_selected_terminal_resolution_is_missing_while_sources_loading() {
+        let store = RootStore::new(NullCommandRunnerBuilder::new().build());
+
+        store
+            .settings()
+            .set_string("selected-terminal", "Definitely Not A Real Terminal")
+            .expect("failed to set selected-terminal setting");
+
+        store
+            .terminal_repository()
+            .json_terminals_query()
+            .set_fetcher(|| async { pending::<anyhow::Result<Vec<Terminal>>>().await });
+        store.terminal_repository().json_terminals_query().refetch();
+
+        assert!(store.terminal_sources_loading());
+        assert!(matches!(
+            store.selected_terminal_resolution(),
+            SelectedTerminalResolution::Missing(name) if name == "Definitely Not A Real Terminal"
+        ));
+    }
+
+    #[gtk::test]
+    fn test_selected_terminal_resolution_supports_legacy_program_setting() {
+        let store = RootStore::new(NullCommandRunnerBuilder::new().build());
+
+        store
+            .settings()
+            .set_string("selected-terminal", "konsole")
+            .expect("failed to set selected-terminal setting");
+
+        match store.selected_terminal_resolution() {
+            SelectedTerminalResolution::Found(terminal) => {
+                assert_eq!(terminal.name, "Konsole");
+            }
+            _ => panic!("expected selected terminal to resolve by legacy program name"),
         }
     }
 }

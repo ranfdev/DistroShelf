@@ -535,6 +535,10 @@ where
         })
     }
 
+    pub fn is_loading(&self) -> bool {
+        self.inner.borrow().query_obj.is_loading()
+    }
+
     pub fn data(&self) -> Option<T> {
         self.inner.borrow().data.clone()
     }

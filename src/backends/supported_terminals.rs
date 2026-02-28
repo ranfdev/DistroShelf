@@ -109,6 +109,7 @@ mod imp {
         pub list: RefCell<Vec<Terminal>>,
         pub custom_list_path: PathBuf,
         pub command_runner: OnceCell<CommandRunner>,
+        pub json_terminals_query: Query<Vec<Terminal>>,
         pub flatpak_terminals_query: Query<Vec<Terminal>>,
     }
 
@@ -119,6 +120,7 @@ mod imp {
                 list: RefCell::new(vec![]),
                 custom_list_path,
                 command_runner: OnceCell::new(),
+                json_terminals_query: Query::new("json_terminals".into(), || async { Ok(vec![]) }),
                 flatpak_terminals_query: Query::new("flatpak_terminals".into(), || async {
                     Ok(vec![])
                 }),
@@ -154,17 +156,28 @@ impl TerminalRepository {
             .unwrap();
 
         let mut list = SUPPORTED_TERMINALS.clone();
-        if let Ok(loaded_list) = Self::load_terminals_from_json(&this.imp().custom_list_path) {
-            list.extend(loaded_list);
-        } else {
-            warn!(
-                "Failed to load custom terminals from JSON file {:?}",
-                &this.imp().custom_list_path
-            );
-        }
-
         list.sort_by(|a, b| a.name.cmp(&b.name));
         this.imp().list.replace(list);
+
+        // Set up the json terminals query fetcher
+        let custom_list_path = this.imp().custom_list_path.clone();
+        this.imp().json_terminals_query.set_fetcher(move || {
+            let custom_list_path = custom_list_path.clone();
+            async move {
+                match Self::load_terminals_from_json(&custom_list_path) {
+                    Ok(terminals) => Ok(terminals),
+                    Err(e) if !custom_list_path.exists() => Ok(vec![]),
+                    Err(e) => {
+                        warn!(
+                            "Failed to load custom terminals from JSON file {:?}: {}",
+                            custom_list_path,
+                            e
+                        );
+                        Err(e)
+                    }
+                }
+            }
+        });
 
         // Set up the flatpak terminals query fetcher
         let runner = command_runner.clone();
@@ -173,11 +186,18 @@ impl TerminalRepository {
             async move { Self::fetch_flatpak_terminals(&runner).await }
         });
 
+        let this_clone = this.clone();
+        this.json_terminals_query().connect_success(move |terminals| {
+            this_clone.apply_custom_terminals(terminals.clone());
+            this_clone.emit_by_name::<()>("terminals-changed", &[]);
+        });
+
         // Connect to query success to update the terminal list
         let this_clone = this.clone();
         this.flatpak_terminals_query()
             .connect_success(move |terminals| {
-                this_clone.merge_flatpak_terminals(terminals.clone());
+                this_clone.apply_flatpak_terminals(terminals.clone());
+                this_clone.emit_by_name::<()>("terminals-changed", &[]);
             });
 
         this
@@ -205,27 +225,42 @@ impl TerminalRepository {
         Ok(found_terminals)
     }
 
-    fn merge_flatpak_terminals(&self, terminals: Vec<Terminal>) {
-        if terminals.is_empty() {
-            return;
-        }
-
+    fn apply_custom_terminals(&self, terminals: Vec<Terminal>) {
         let mut list = self.imp().list.borrow_mut();
-        // Build a set of existing terminal identifiers to avoid duplicates
-        let existing_ids: HashSet<String> = list.iter().map(|t| t.full_command_id()).collect();
+        list.retain(|terminal| terminal.read_only);
+        list.extend(terminals.into_iter().map(|mut terminal| {
+            terminal.read_only = false;
+            terminal
+        }));
+        list.sort_by(|a, b| a.name.cmp(&b.name));
+    }
 
-        // Only add terminals that don't already exist
+    fn apply_flatpak_terminals(&self, terminals: Vec<Terminal>) {
+        let mut list = self.imp().list.borrow_mut();
+
+        let flatpak_candidate_ids: HashSet<String> = FLATPAK_TERMINAL_CANDIDATES
+            .iter()
+            .map(|terminal| terminal.full_command_id())
+            .collect();
+        list.retain(|terminal| !flatpak_candidate_ids.contains(&terminal.full_command_id()));
+
+        let existing_ids: HashSet<String> = list.iter().map(|t| t.full_command_id()).collect();
         let new_terminals: Vec<Terminal> = terminals
             .into_iter()
             .filter(|t| !existing_ids.contains(&t.full_command_id()))
             .collect();
 
-        if !new_terminals.is_empty() {
-            list.extend(new_terminals);
-            list.sort_by(|a, b| a.name.cmp(&b.name));
-            drop(list);
-            self.emit_by_name::<()>("terminals-changed", &[]);
-        }
+        list.extend(new_terminals);
+        list.sort_by(|a, b| a.name.cmp(&b.name));
+    }
+
+    pub fn load_all(&self) {
+        self.json_terminals_query().refetch();
+        self.flatpak_terminals_query().refetch();
+    }
+
+    pub fn json_terminals_query(&self) -> Query<Vec<Terminal>> {
+        self.imp().json_terminals_query.clone()
     }
 
     pub fn flatpak_terminals_query(&self) -> Query<Vec<Terminal>> {

@@ -10,7 +10,7 @@ use glib::Properties;
 use glib::clone;
 use glib::subclass::Signal;
 use gtk::{StringObject, glib};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::sync::OnceLock;
 
 mod imp {
@@ -24,6 +24,7 @@ mod imp {
         #[property(get, set)]
         root_store: RefCell<RootStore>,
         pub selected_item_signal_handler: RefCell<Option<glib::SignalHandlerId>>,
+        pub is_rebuilding: Cell<bool>,
     }
 
     #[glib::derived_properties]
@@ -39,10 +40,25 @@ mod imp {
                 #[weak]
                 obj,
                 move |combo| {
+                    if obj.imp().is_rebuilding.get() {
+                        return;
+                    }
+
                     let Some(selected) = combo.selected_item().and_downcast::<StringObject>()
                     else {
                         return;
                     };
+
+                    let root_store = obj.root_store();
+                    let terminal_repository = root_store.terminal_repository();
+                    let selected_terminal_setting: String =
+                        root_store.settings().string("selected-terminal").into();
+                    let loading_terminals = terminal_repository.json_terminals_query().is_loading()
+                        || terminal_repository.flatpak_terminals_query().is_loading();
+
+                    if !selected_terminal_setting.is_empty() && loading_terminals {
+                        return;
+                    }
 
                     if let Some(terminal) = obj
                         .root_store()
@@ -167,6 +183,7 @@ impl TerminalComboRow {
         let terminal_list = gtk::StringList::new(&terminals);
 
         let signal_handler = self.imp().selected_item_signal_handler.borrow();
+        self.imp().is_rebuilding.set(true);
         self.block_signal(signal_handler.as_ref().unwrap());
         {
             self.set_model(Some(&terminal_list));
@@ -175,11 +192,59 @@ impl TerminalComboRow {
             }
         }
         self.unblock_signal(signal_handler.as_ref().unwrap());
+
+        glib::idle_add_local_once(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move || {
+                this.imp().is_rebuilding.set(false);
+            }
+        ));
     }
 }
 
 impl Default for TerminalComboRow {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::backends::supported_terminals::Terminal;
+    use crate::fakers::NullCommandRunnerBuilder;
+    use std::future::pending;
+
+    #[gtk::test]
+    fn test_selection_notify_does_not_overwrite_non_empty_setting_while_terminals_loading() {
+        let store = RootStore::new(NullCommandRunnerBuilder::new().build());
+
+        store
+            .settings()
+            .set_string("selected-terminal", "Ptyxis (Flatpak)")
+            .expect("failed to set selected-terminal setting");
+
+        store
+            .terminal_repository()
+            .flatpak_terminals_query()
+            .set_fetcher(|| async { pending::<anyhow::Result<Vec<Terminal>>>().await });
+        store.terminal_repository().flatpak_terminals_query().refetch();
+
+        assert!(store.terminal_repository().flatpak_terminals_query().is_loading());
+
+        let terminal_combo_row = TerminalComboRow::new_with_params(store.clone());
+        let Some(model) = terminal_combo_row
+            .model()
+            .and_then(|m| m.downcast::<gtk::StringList>().ok())
+        else {
+            panic!("terminal combo model should be a gtk::StringList");
+        };
+        assert!(model.n_items() > 1);
+
+        terminal_combo_row.set_selected(1);
+
+        let selected_terminal: String = store.settings().string("selected-terminal").into();
+        assert_eq!(selected_terminal, "Ptyxis (Flatpak)");
     }
 }
