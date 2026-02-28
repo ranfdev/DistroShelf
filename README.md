@@ -74,6 +74,19 @@ Supported terminals:
 
 Contributions are welcome! Please open an issue or pull request on GitHub.
 
+### Enable local pre-commit checks
+
+To block commits when formatting, clippy, or tests fail, enable the repository hook once:
+
+```bash
+./.githooks/install.sh
+```
+
+The pre-commit hook runs:
+- `cargo fmt --all -- --check`
+- `cargo clippy --all-targets --all-features`
+- `cargo test --all-features`
+
 ## License
 
 DistroShelf is licensed under the GPL-3.0-or-later license.
