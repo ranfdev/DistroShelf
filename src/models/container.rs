@@ -54,7 +54,7 @@ mod imp {
                 // Fetching apps often fails when the container is not running and distrobox has to start it,
                 // so we add retries
                 apps: Query::new("apps".into(), || async { Ok(TypedListStore::new()) })
-                    .with_timeout(Duration::from_secs(1))
+                    .with_timeout(Duration::from_secs(10))
                     .with_retry_strategy(|n| {
                         if n < 3 {
                             Some(Duration::from_secs(n as u64))
@@ -63,7 +63,7 @@ mod imp {
                         }
                     }),
                 binaries: Query::new("binaries".into(), || async { Ok(TypedListStore::new()) })
-                    .with_timeout(Duration::from_secs(1))
+                    .with_timeout(Duration::from_secs(10))
                     .with_retry_strategy(|n| {
                         if n < 3 {
                             Some(Duration::from_secs(n as u64))
