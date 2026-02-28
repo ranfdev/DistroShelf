@@ -1265,9 +1265,10 @@ Categories=Utility;Network;";
 
         let db = Distrobox::new(
             NullCommandRunnerBuilder::new()
-                .cmd(&["printenv", "HOME"], "/home/me")
-                .cmd(&["printenv", "XDG_DATA_HOME"], "")
-                .cmd(&["printenv", "HOME"], "/home/me")
+                .cmd(
+                    &["env", "-0"],
+                    "HOME=/home/me\0XDG_DATA_HOME=/home/me/.local/share\0",
+                )
                 .cmd(
                     &["ls", "/home/me/.local/share/applications"],
                     "ubuntu-vim.desktop\n",
@@ -1319,9 +1320,10 @@ Categories=Utility;Security;";
 
         let db = Distrobox::new(
             NullCommandRunnerBuilder::new()
-                .cmd(&["printenv", "HOME"], "/home/me")
-                .cmd(&["printenv", "XDG_DATA_HOME"], "")
-                .cmd(&["printenv", "HOME"], "/home/me")
+                .cmd(
+                    &["env", "-0"],
+                    "HOME=/home/me\0XDG_DATA_HOME=/home/me/.local/share\0",
+                )
                 .cmd(
                     &["ls", "/home/me/.local/share/applications"],
                     "ubuntu-Proton Authenticator.desktop\n",

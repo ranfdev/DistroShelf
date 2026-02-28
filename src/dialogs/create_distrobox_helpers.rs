@@ -164,7 +164,15 @@ pub fn derive_image_prefill(
                 }
             }
 
-            // 2) collect numeric-version tags
+            // 2) prefer digest-pinned candidates as provided by the source ordering
+            for img in &matching {
+                let (_repo, _tag_opt, digest_opt) = split_repo_tag_digest(img.as_str());
+                if digest_opt.is_some() {
+                    return (filter, Some((*img).clone()));
+                }
+            }
+
+            // 3) collect numeric-version tags
             let mut semvers: Vec<(&String, Vec<u64>)> = Vec::new();
             for img in &matching {
                 let (_repo, tag_opt, _digest) = split_repo_tag_digest(img.as_str());
@@ -193,7 +201,7 @@ pub fn derive_image_prefill(
                 return (filter, Some(semvers[0].0.clone()));
             }
 
-            // 3) fallback: pick first non-edge matching
+            // 4) fallback: pick first non-edge matching
             for img in &matching {
                 let (_repo, tag_opt, _digest) = split_repo_tag_digest(img.as_str());
                 if let Some(tag) = tag_opt {
