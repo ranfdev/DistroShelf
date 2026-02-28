@@ -166,6 +166,20 @@ mod imp {
 
             distrobox_group.add(&distrobox_source_row);
 
+            let no_entry_row = adw::SwitchRow::new();
+            no_entry_row.set_title(&gettext("Use --no-entry for new containers"));
+            no_entry_row.set_subtitle(&gettext(
+                "No .desktop app entry is created, so it won't appear in your app list.",
+            ));
+            no_entry_row.set_active(settings.boolean("distrobox-create-no-entry"));
+
+            let settings_for_no_entry = settings.clone();
+            no_entry_row.connect_active_notify(move |row| {
+                let _ = settings_for_no_entry.set_boolean("distrobox-create-no-entry", row.is_active());
+            });
+
+            distrobox_group.add(&no_entry_row);
+
             // Add version row
             let version_row = adw::ActionRow::new();
             version_row.set_title(&gettext("Distrobox Version"));

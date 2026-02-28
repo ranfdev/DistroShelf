@@ -956,6 +956,10 @@ impl CreateDistroboxDialog {
             init: imp.init_row.is_active(),
             hostname,
             root: imp.root_row.is_active(),
+            no_entry: self
+                .root_store()
+                .settings()
+                .boolean("distrobox-create-no-entry"),
             volumes,
         };
 

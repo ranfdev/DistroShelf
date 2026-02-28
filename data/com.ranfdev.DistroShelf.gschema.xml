@@ -21,5 +21,10 @@
 			<summary>Distrobox executable source</summary>
 			<description>The source of the distrobox executable. Can be 'host' or 'bundled'.</description>
 		</key>
+		<key name="distrobox-create-no-entry" type="b">
+			<default>true</default>
+			<summary>Use --no-entry when creating a distrobox</summary>
+			<description>When enabled, distrobox create commands include --no-entry by default.</description>
+		</key>
 	</schema>
 </schemalist>

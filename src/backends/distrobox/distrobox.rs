@@ -241,6 +241,7 @@ pub struct CreateArgs {
     pub init: bool,
     pub nvidia: bool,
     pub root: bool,
+    pub no_entry: bool,
     pub hostname: Option<String>,
     pub home_path: Option<String>,
     pub image: String,
@@ -1024,6 +1025,9 @@ impl Distrobox {
         if args.root {
             cmd.arg("--root");
         }
+        if args.no_entry {
+            cmd.arg("--no-entry");
+        }
         if args.nvidia {
             cmd.arg("--nvidia");
         }
@@ -1377,6 +1381,24 @@ Categories=Utility;Security;";
         );
         Ok(())
     }
+
+    #[test]
+    fn create_with_no_entry() -> Result<(), Error> {
+        let db = Distrobox::new(CommandRunner::new_null(), default_cmd_factory());
+        let output_tracker = db.cmd_runner.output_tracker();
+        let args = CreateArgs {
+            image: "docker.io/library/ubuntu:latest".into(),
+            no_entry: true,
+            ..Default::default()
+        };
+
+        smol::block_on(db.create(args))?;
+
+        let command = output_tracker.items()[0].command().unwrap().to_string();
+        assert!(command.contains(" --no-entry"));
+        Ok(())
+    }
+
     #[test]
     fn assemble() -> Result<(), Error> {
         let db = Distrobox::new(CommandRunner::new_null(), default_cmd_factory());
