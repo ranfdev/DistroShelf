@@ -45,7 +45,8 @@ pub async fn resolve_host_env(runner: &CommandRunner) -> io::Result<HashMap<Stri
         .collect())
 }
 
-pub fn host_env_to_list(env: &HashMap<String, String>) -> Vec<String> {
+#[cfg(test)]
+fn host_env_to_list(env: &HashMap<String, String>) -> Vec<String> {
     let mut list = env
         .iter()
         .map(|(key, value)| format!("{key}={value}"))
