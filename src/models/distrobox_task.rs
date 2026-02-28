@@ -140,8 +140,12 @@ impl DistroboxTask {
             })
         });
 
-        let stdout = child.take_stdout().unwrap();
-        let stderr = child.take_stderr().unwrap();
+        let stdout = child
+            .take_stdout()
+            .ok_or_else(|| anyhow::anyhow!("Failed to capture child stdout"))?;
+        let stderr = child
+            .take_stderr()
+            .ok_or_else(|| anyhow::anyhow!("Failed to capture child stderr"))?;
         let stdout_stream = byte_stream(stdout);
         let stderr_stream = byte_stream(stderr);
 
