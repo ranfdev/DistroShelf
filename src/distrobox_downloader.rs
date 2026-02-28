@@ -156,7 +156,7 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let calculated_hash = stdout.split_whitespace().next().unwrap_or("");
+        let calculated_hash = stdout.split_whitespace().next().unwrap_or_default();
 
         if calculated_hash != DISTROBOX_SHA256 {
             return Err(anyhow!(
