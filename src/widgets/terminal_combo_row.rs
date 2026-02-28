@@ -224,8 +224,8 @@ mod tests {
     use super::*;
     use crate::backends::supported_terminals::Terminal;
     use crate::fakers::NullCommandRunnerBuilder;
-    use std::panic::{AssertUnwindSafe, catch_unwind};
     use std::future::pending;
+    use std::panic::{AssertUnwindSafe, catch_unwind};
 
     #[gtk::test]
     fn test_selection_notify_does_not_overwrite_non_empty_setting_while_terminals_loading() {
