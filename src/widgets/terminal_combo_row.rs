@@ -224,6 +224,7 @@ mod tests {
     use super::*;
     use crate::backends::supported_terminals::Terminal;
     use crate::fakers::NullCommandRunnerBuilder;
+    use std::panic::{AssertUnwindSafe, catch_unwind};
     use std::future::pending;
 
     #[gtk::test]
@@ -264,5 +265,38 @@ mod tests {
 
         let selected_terminal: String = store.settings().string("selected-terminal").into();
         assert_eq!(selected_terminal, "Ptyxis (Flatpak)");
+    }
+
+    #[gtk::test]
+    fn test_set_selected_by_name_no_model_is_noop() {
+        let store = RootStore::new(NullCommandRunnerBuilder::new().build());
+        let terminal_combo_row = TerminalComboRow::new_with_params(store);
+
+        terminal_combo_row.set_model(Option::<&gtk::StringList>::None);
+        let selected_before = terminal_combo_row.selected();
+
+        terminal_combo_row.set_selected_by_name("Ptyxis (Flatpak)");
+
+        assert!(terminal_combo_row.model().is_none());
+        assert_eq!(terminal_combo_row.selected(), selected_before);
+    }
+
+    #[gtk::test]
+    fn test_rebuild_terminals_list_missing_signal_handler_invariant_path() {
+        let store = RootStore::new(NullCommandRunnerBuilder::new().build());
+        let terminal_combo_row = TerminalComboRow::new_with_params(store);
+        terminal_combo_row
+            .imp()
+            .selected_item_signal_handler
+            .replace(None);
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            terminal_combo_row.rebuild_terminals_list();
+        }));
+
+        #[cfg(debug_assertions)]
+        assert!(result.is_err());
+        #[cfg(not(debug_assertions))]
+        assert!(result.is_ok());
     }
 }
