@@ -71,6 +71,15 @@
   </screenshots>
 
   <releases>
+    <release version="1.4.6" date="2026-02-28">
+      <description translate="no">
+        <ul>
+          <li>Feature: Add --no-entry preference (now enabled by default)</li>
+          <li>Fix: embed more symbolic icons so that they show correctly on Bazzite</li>
+          <li>Fix: avoid overwriting preferred flatpak terminal selection on startup</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.4.5" date="2026-02-24">
       <description translate="no">
         <ul>
