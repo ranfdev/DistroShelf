@@ -135,8 +135,25 @@ mod imp {
             page.add(&terminal_group);
 
             // Distrobox Settings Group
+            let settings = gio::Settings::new("com.ranfdev.DistroShelf");
+
             let distrobox_group = adw::PreferencesGroup::new();
             distrobox_group.set_title(&gettext("Distrobox Settings"));
+
+            let no_entry_row = adw::SwitchRow::new();
+            no_entry_row.set_title(&gettext("Use --no-entry for new containers"));
+            no_entry_row.set_subtitle(&gettext(
+                "No .desktop app entry is created, so it won't appear in your app list.",
+            ));
+            no_entry_row.set_active(settings.boolean("distrobox-create-no-entry"));
+
+            let settings_for_no_entry = settings.clone();
+            no_entry_row.connect_active_notify(move |row| {
+                let _ =
+                    settings_for_no_entry.set_boolean("distrobox-create-no-entry", row.is_active());
+            });
+
+            distrobox_group.add(&no_entry_row);
 
             let distrobox_source_row = adw::ComboRow::new();
             distrobox_source_row.set_title(&gettext("Distrobox Source"));
@@ -144,8 +161,6 @@ mod imp {
                 gtk::StringList::new(&[&gettext("System (host)"), &gettext("Bundled Version")]);
             distrobox_source_row.set_model(Some(&model));
 
-            // Bind to settings
-            let settings = gio::Settings::new("com.ranfdev.DistroShelf");
             // We need to map string to index and vice versa
             // 0 -> host, 1 -> bundled
 
@@ -165,21 +180,6 @@ mod imp {
             });
 
             distrobox_group.add(&distrobox_source_row);
-
-            let no_entry_row = adw::SwitchRow::new();
-            no_entry_row.set_title(&gettext("Use --no-entry for new containers"));
-            no_entry_row.set_subtitle(&gettext(
-                "No .desktop app entry is created, so it won't appear in your app list.",
-            ));
-            no_entry_row.set_active(settings.boolean("distrobox-create-no-entry"));
-
-            let settings_for_no_entry = settings.clone();
-            no_entry_row.connect_active_notify(move |row| {
-                let _ =
-                    settings_for_no_entry.set_boolean("distrobox-create-no-entry", row.is_active());
-            });
-
-            distrobox_group.add(&no_entry_row);
 
             // Add version row
             let version_row = adw::ActionRow::new();
