@@ -451,8 +451,10 @@ impl RootStore {
                 return task;
             }
         }
-        let task = crate::distrobox_downloader::download_distrobox(self);
-        self.tasks().append(&task);
+        let root_store_weak = self.downgrade();
+        let task = self.create_task("system", "Downloading Distrobox", move |task| async move {
+            crate::distrobox_downloader::download_distrobox(task, root_store_weak).await
+        });
         self.set_selected_task(Some(task.clone()));
         task
     }
@@ -1162,5 +1164,19 @@ mod tests {
             }
             _ => panic!("expected selected terminal to resolve by legacy program name"),
         }
+    }
+
+    #[gtk::test]
+    fn test_download_distrobox_returns_existing_active_task() {
+        let store = RootStore::new(NullCommandRunnerBuilder::new().build());
+        let existing_task = DistroboxTask::new("system", "Downloading Distrobox", |_task| async {
+            pending::<anyhow::Result<()>>().await
+        });
+        store.tasks().append(&existing_task);
+
+        let returned_task = store.download_distrobox();
+
+        assert_eq!(returned_task, existing_task);
+        assert_eq!(store.tasks().iter().count(), 1);
     }
 }
