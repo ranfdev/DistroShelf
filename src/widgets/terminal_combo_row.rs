@@ -155,7 +155,9 @@ impl TerminalComboRow {
     }
 
     pub fn set_selected_by_name(&self, name: &str) {
-        let Some(terminals_strings) = self.model().unwrap().downcast::<gtk::StringList>().ok()
+        let Some(terminals_strings) = self
+            .model()
+            .and_then(|model| model.downcast::<gtk::StringList>().ok())
         else {
             return;
         };
@@ -183,15 +185,23 @@ impl TerminalComboRow {
         let terminal_list = gtk::StringList::new(&terminals);
 
         let signal_handler = self.imp().selected_item_signal_handler.borrow();
+        let Some(signal_handler) = signal_handler.as_ref() else {
+            debug_assert!(
+                false,
+                "selected_item_signal_handler should be initialized in constructed"
+            );
+            return;
+        };
+
         self.imp().is_rebuilding.set(true);
-        self.block_signal(signal_handler.as_ref().unwrap());
+        self.block_signal(signal_handler);
         {
             self.set_model(Some(&terminal_list));
             if let Some(selected_terminal) = self.root_store().selected_terminal() {
                 self.set_selected_by_name(&selected_terminal.name);
             }
         }
-        self.unblock_signal(signal_handler.as_ref().unwrap());
+        self.unblock_signal(signal_handler);
 
         glib::idle_add_local_once(clone!(
             #[weak(rename_to = this)]
