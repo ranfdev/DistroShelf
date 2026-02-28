@@ -132,7 +132,7 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
         let mut curl_cmd = Command::new("curl");
         curl_cmd.arg("-L");
         curl_cmd.arg("-o");
-        curl_cmd.arg(tarball_path.to_str().unwrap());
+        curl_cmd.arg(&tarball_path);
         curl_cmd.arg(&url);
         curl_cmd.stdout = crate::fakers::FdMode::Pipe;
         curl_cmd.stderr = crate::fakers::FdMode::Pipe;
@@ -146,7 +146,7 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
         // 2. Verify SHA256
         log(&task, "Verifying checksum...");
         let mut sha_cmd = Command::new("sha256sum");
-        sha_cmd.arg(tarball_path.to_str().unwrap());
+        sha_cmd.arg(&tarball_path);
         sha_cmd.stdout = crate::fakers::FdMode::Pipe;
         sha_cmd.stderr = crate::fakers::FdMode::Pipe;
 
@@ -171,9 +171,9 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
         log(&task, "Extracting...");
         let mut tar_cmd = Command::new("tar");
         tar_cmd.arg("xzf");
-        tar_cmd.arg(tarball_path.to_str().unwrap());
+        tar_cmd.arg(&tarball_path);
         tar_cmd.arg("-C");
-        tar_cmd.arg(download_dir.to_str().unwrap());
+        tar_cmd.arg(&download_dir);
         tar_cmd.stdout = crate::fakers::FdMode::Pipe;
         tar_cmd.stderr = crate::fakers::FdMode::Pipe;
 
@@ -194,7 +194,7 @@ pub fn download_distrobox(root_store: &RootStore) -> DistroboxTask {
 
         let mut chmod_cmd = Command::new("chmod");
         chmod_cmd.arg("+x");
-        chmod_cmd.arg(binary_path.to_str().unwrap());
+        chmod_cmd.arg(&binary_path);
         chmod_cmd.stdout = crate::fakers::FdMode::Pipe;
         chmod_cmd.stderr = crate::fakers::FdMode::Pipe;
 
