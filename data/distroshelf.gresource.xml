@@ -9,6 +9,8 @@
     <file preprocess="xml-stripblanks" alias="package-symbolic.svg">icons/package-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="container-symbolic.svg">icons/container-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="check-plain-symbolic.svg">icons/check-plain-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="software-update-available-symbolic.svg">icons/software-update-available-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="view-list-bullet-symbolic.svg">icons/view-list-bullet-symbolic.svg</file>
     
     <file preprocess="xml-stripblanks" alias="alma-symbolic.svg">icons/alma.svg</file>
     <file preprocess="xml-stripblanks" alias="arch-symbolic.svg">icons/arch.svg</file>
