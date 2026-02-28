@@ -96,7 +96,7 @@ impl ContainerOverview {
         // Usage stats row
         let usage_row = adw::ActionRow::new();
         usage_row.set_title(&gettext("Resources"));
-        usage_row.set_subtitle(&"CPU: 0.0% • Mem: 0.0MB / 0.0GB (0.0%)".to_string());
+        usage_row.set_subtitle("CPU: 0.0% • Mem: 0.0MB / 0.0GB (0.0%)");
         status_group.add(&usage_row);
 
         let usage_query = container.usage();

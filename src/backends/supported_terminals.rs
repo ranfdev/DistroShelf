@@ -215,10 +215,10 @@ impl TerminalRepository {
         let mut found_terminals = Vec::new();
         for terminal in FLATPAK_TERMINAL_CANDIDATES.iter() {
             // Extract app_id from extra_args (e.g., ["run", "org.gnome.Console"])
-            if let Some(app_id) = terminal.extra_args.get(1) {
-                if installed_apps.contains(app_id.as_str()) {
-                    found_terminals.push(terminal.clone());
-                }
+            if let Some(app_id) = terminal.extra_args.get(1)
+                && installed_apps.contains(app_id.as_str())
+            {
+                found_terminals.push(terminal.clone());
             }
         }
 

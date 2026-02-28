@@ -3,50 +3,56 @@ use gtk::glib;
 use gtk::glib::Properties;
 use gtk::glib::derived_properties;
 use gtk::glib::prelude::*;
-use std::cell::LazyCell;
-use std::cell::RefCell;
+use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::path::Path;
 
 use crate::fakers::Command;
 
-pub const DISTROS: LazyCell<HashMap<String, KnownDistro>, fn() -> HashMap<String, KnownDistro>> =
-    LazyCell::new(|| {
-        [
-            ("alma", "#dadada", PackageManager::Dnf),
-            ("alpine", "#2147ea", PackageManager::Apk),
-            ("amazon", "#de5412", PackageManager::Dnf),
-            ("arch", "#12aaff", PackageManager::Pacman),
-            ("centos", "#ff6600", PackageManager::Dnf),
-            ("clearlinux", "#56bbff", PackageManager::Unknown),
-            ("crystal", "#8839ef", PackageManager::Unknown),
-            ("debian", "#da5555", PackageManager::Apt),
-            ("deepin", "#0050ff", PackageManager::Apt),
-            ("fedora", "#3b6db3", PackageManager::Dnf),
-            ("gentoo", "#daaada", PackageManager::Unknown),
-            ("kali", "#000000", PackageManager::Apt),
-            ("mageia", "#b612b6", PackageManager::Dnf),
-            ("mint", "#6fbd20", PackageManager::Apt),
-            ("neon", "#27ae60", PackageManager::Apt),
-            ("opensuse", "#daff00", PackageManager::Zypper),
-            ("oracle", "#ff0000", PackageManager::Dnf),
-            ("redhat", "#ff6662", PackageManager::Dnf),
-            ("rhel", "#ff6662", PackageManager::Dnf),
-            ("rocky", "#91ff91", PackageManager::Dnf),
-            ("slackware", "#6145a7", PackageManager::Unknown),
-            ("ubuntu", "#FF4400", PackageManager::Apt),
-            ("vanilla", "#7f11e0", PackageManager::Unknown),
-            ("void", "#abff12", PackageManager::Unknown),
-        ]
-        .iter()
-        .map(|(name, color, package_manager)| {
-            (
-                name.to_string(),
-                KnownDistro::new(name, color, *package_manager),
-            )
-        })
-        .collect()
-    });
+fn build_distros() -> HashMap<String, KnownDistro> {
+    [
+        ("alma", "#dadada", PackageManager::Dnf),
+        ("alpine", "#2147ea", PackageManager::Apk),
+        ("amazon", "#de5412", PackageManager::Dnf),
+        ("arch", "#12aaff", PackageManager::Pacman),
+        ("centos", "#ff6600", PackageManager::Dnf),
+        ("clearlinux", "#56bbff", PackageManager::Unknown),
+        ("crystal", "#8839ef", PackageManager::Unknown),
+        ("debian", "#da5555", PackageManager::Apt),
+        ("deepin", "#0050ff", PackageManager::Apt),
+        ("fedora", "#3b6db3", PackageManager::Dnf),
+        ("gentoo", "#daaada", PackageManager::Unknown),
+        ("kali", "#000000", PackageManager::Apt),
+        ("mageia", "#b612b6", PackageManager::Dnf),
+        ("mint", "#6fbd20", PackageManager::Apt),
+        ("neon", "#27ae60", PackageManager::Apt),
+        ("opensuse", "#daff00", PackageManager::Zypper),
+        ("oracle", "#ff0000", PackageManager::Dnf),
+        ("redhat", "#ff6662", PackageManager::Dnf),
+        ("rhel", "#ff6662", PackageManager::Dnf),
+        ("rocky", "#91ff91", PackageManager::Dnf),
+        ("slackware", "#6145a7", PackageManager::Unknown),
+        ("ubuntu", "#FF4400", PackageManager::Apt),
+        ("vanilla", "#7f11e0", PackageManager::Unknown),
+        ("void", "#abff12", PackageManager::Unknown),
+    ]
+    .iter()
+    .map(|(name, color, package_manager)| {
+        (
+            name.to_string(),
+            KnownDistro::new(name, color, *package_manager),
+        )
+    })
+    .collect()
+}
+
+thread_local! {
+    static DISTROS_CACHE: OnceCell<HashMap<String, KnownDistro>> = const { OnceCell::new() };
+}
+
+fn with_distros<R>(f: impl FnOnce(&HashMap<String, KnownDistro>) -> R) -> R {
+    DISTROS_CACHE.with(|distros| f(distros.get_or_init(build_distros)))
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, glib::Enum, Default)]
 #[enum_type(name = "DbxPackageManager")]
@@ -119,25 +125,28 @@ fn zypper_install_cmd(file: &Path) -> Command {
 }
 
 pub fn known_distro_by_image(url: &str) -> Option<KnownDistro> {
-    DISTROS
-        .values()
-        .find(|distro| url.contains(&distro.name()))
-        .cloned()
+    with_distros(|distros| {
+        distros
+            .values()
+            .find(|distro| url.contains(&distro.name()))
+            .cloned()
+    })
 }
 
 pub fn generate_css() -> String {
-    let mut out = String::new();
-    let distros = DISTROS;
-    for distro in distros.values() {
-        let name = distro.name();
-        let color = distro.color();
-        out.push_str(&format!(
-            ".distro-{name} {{
+    with_distros(|distros| {
+        let mut out = String::new();
+        for distro in distros.values() {
+            let name = distro.name();
+            let color = distro.color();
+            out.push_str(&format!(
+                ".distro-{name} {{
     --distro-color: {color};
 }}\n"
-        ));
-    }
-    out
+            ));
+        }
+        out
+    })
 }
 
 mod imp {
@@ -305,11 +314,12 @@ mod tests {
 
     #[test]
     fn test_distros_map_contains_common_distros() {
-        assert!(DISTROS.contains_key("ubuntu"));
-        assert!(DISTROS.contains_key("fedora"));
-        assert!(DISTROS.contains_key("arch"));
-        assert!(DISTROS.contains_key("debian"));
-        assert!(DISTROS.contains_key("alpine"));
+        let distros = build_distros();
+        assert!(distros.contains_key("ubuntu"));
+        assert!(distros.contains_key("fedora"));
+        assert!(distros.contains_key("arch"));
+        assert!(distros.contains_key("debian"));
+        assert!(distros.contains_key("alpine"));
     }
 
     #[test]

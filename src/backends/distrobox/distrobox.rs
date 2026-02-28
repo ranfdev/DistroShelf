@@ -103,6 +103,8 @@ pub struct Distrobox {
     cmd_factory: CmdFactory,
 }
 
+type CommandResponse = (Command, Rc<dyn Fn() -> io::Result<String>>);
+
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub enum Status {
     Up(String),
@@ -530,11 +532,11 @@ impl DistroboxCommandRunnerResponse {
         commands
     }
 
-    fn wrap_err_fn(output: (Command, String)) -> (Command, Rc<dyn Fn() -> io::Result<String>>) {
+    fn wrap_err_fn(output: (Command, String)) -> CommandResponse {
         (output.0, Rc::new(move || Ok(output.1.clone())))
     }
 
-    pub fn to_commands(self) -> Vec<(Command, Rc<dyn Fn() -> Result<String, io::Error>>)> {
+    pub fn into_commands(self) -> Vec<CommandResponse> {
         match self {
             Self::Version => {
                 let working_response = Self::build_version_response();
@@ -575,7 +577,7 @@ impl Distrobox {
     pub fn null_command_runner(responses: &[DistroboxCommandRunnerResponse]) -> CommandRunner {
         let mut builder = NullCommandRunnerBuilder::new();
         for res in responses {
-            for (cmd, out) in res.clone().to_commands() {
+            for (cmd, out) in res.clone().into_commands() {
                 builder.cmd_full(cmd, move || out());
             }
         }
@@ -1427,7 +1429,7 @@ Categories=Utility;Security;";
 
     #[test]
     fn stub_responses() {
-        let cmd_outputs = DistroboxCommandRunnerResponse::new_list_common_distros().to_commands();
+        let cmd_outputs = DistroboxCommandRunnerResponse::new_list_common_distros().into_commands();
         assert_eq!(
             cmd_outputs[0].1().unwrap(),
             "ID           | NAME                 | STATUS             | IMAGE  
@@ -1452,14 +1454,17 @@ Categories=Utility;Security;";
     fn stub_exported_apps_generates_valid_toml() {
         // Verify that new_common_exported_apps generates valid TOML that can be parsed
         let exported_apps = DistroboxCommandRunnerResponse::new_common_exported_apps();
-        let commands = exported_apps.to_commands();
+        let commands = exported_apps.into_commands();
 
         // Find the command that should contain TOML output (distrobox enter ... sh -c ...)
         let toml_command = commands
             .iter()
             .find(|(cmd, _)| {
                 cmd.program.to_string_lossy().contains("distrobox")
-                    && cmd.args.iter().any(|arg| arg.to_string_lossy() == "enter")
+                    && cmd
+                        .args
+                        .iter()
+                        .any(|arg: &std::ffi::OsString| arg.to_string_lossy() == "enter")
             })
             .expect("Should have a TOML-generating command");
 

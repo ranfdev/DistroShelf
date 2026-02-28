@@ -20,6 +20,9 @@ use futures::{
     io::{AsyncRead, AsyncWrite, Cursor},
 };
 
+type ResponseFn = Rc<dyn Fn() -> Result<String, io::Error>>;
+type ResponseMap = HashMap<Vec<String>, ResponseFn>;
+
 #[derive(Debug, Clone)]
 pub enum CommandRunnerEvent {
     Spawned(usize, Command),
@@ -178,7 +181,7 @@ impl InnerCommandRunner for RealCommandRunner {
 
 #[derive(Default, Clone)]
 pub struct NullCommandRunnerBuilder {
-    responses: HashMap<Vec<String>, Rc<dyn Fn() -> Result<String, io::Error>>>,
+    responses: ResponseMap,
     #[allow(dead_code)]
     fallback_exit_status: ExitStatus,
 }
@@ -220,7 +223,7 @@ impl NullCommandRunnerBuilder {
 
 #[derive(Default, Clone)]
 pub struct NullCommandRunner {
-    responses: HashMap<Vec<String>, Rc<dyn Fn() -> Result<String, io::Error>>>,
+    responses: ResponseMap,
     #[allow(dead_code)]
     fallback_exit_status: ExitStatus,
 }

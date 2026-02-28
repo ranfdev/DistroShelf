@@ -27,22 +27,22 @@ fn compare_version_vec(a: &[u64], b: &[u64]) -> std::cmp::Ordering {
 pub fn split_repo_tag_digest(s: &str) -> (&str, Option<&str>, Option<&str>) {
     // Return (repo, tag_opt, digest_opt)
     let last_slash = s.rfind('/');
-    if let Some(at_pos) = s.rfind('@') {
-        if last_slash.map_or(true, |ls| at_pos > ls) {
-            // If there is a tag before the @ (colon after last slash), strip it from repo
-            let before_at = &s[..at_pos];
-            if let Some(col_pos) = before_at.rfind(':') {
-                if last_slash.map_or(true, |ls| col_pos > ls) {
-                    return (&before_at[..col_pos], None, Some(&s[at_pos + 1..]));
-                }
-            }
-            return (before_at, None, Some(&s[at_pos + 1..]));
+    if let Some(at_pos) = s.rfind('@')
+        && last_slash.is_none_or(|ls| at_pos > ls)
+    {
+        // If there is a tag before the @ (colon after last slash), strip it from repo
+        let before_at = &s[..at_pos];
+        if let Some(col_pos) = before_at.rfind(':')
+            && last_slash.is_none_or(|ls| col_pos > ls)
+        {
+            return (&before_at[..col_pos], None, Some(&s[at_pos + 1..]));
         }
+        return (before_at, None, Some(&s[at_pos + 1..]));
     }
-    if let Some(col_pos) = s.rfind(':') {
-        if last_slash.map_or(true, |ls| col_pos > ls) {
-            return (&s[..col_pos], Some(&s[col_pos + 1..]), None);
-        }
+    if let Some(col_pos) = s.rfind(':')
+        && last_slash.is_none_or(|ls| col_pos > ls)
+    {
+        return (&s[..col_pos], Some(&s[col_pos + 1..]), None);
     }
     (s, None, None)
 }
@@ -157,10 +157,10 @@ pub fn derive_image_prefill(
             // 1) try to find latest (case-insensitive)
             for img in &matching {
                 let (_repo, tag_opt, _digest) = split_repo_tag_digest(img.as_str());
-                if let Some(tag) = tag_opt {
-                    if tag.eq_ignore_ascii_case("latest") {
-                        return (filter, Some((*img).clone()));
-                    }
+                if let Some(tag) = tag_opt
+                    && tag.eq_ignore_ascii_case("latest")
+                {
+                    return (filter, Some((*img).clone()));
                 }
             }
 
@@ -185,7 +185,7 @@ pub fn derive_image_prefill(
                     if let Some(cap) = VERSION_RE.captures(&tag_l) {
                         let ver = &cap["ver"];
                         let nums: Vec<u64> = ver
-                            .split(|c| c == '.' || c == '_' || c == '-')
+                            .split(['.', '_', '-'])
                             .filter_map(|p| p.parse::<u64>().ok())
                             .collect();
                         if !nums.is_empty() {
@@ -204,10 +204,10 @@ pub fn derive_image_prefill(
             // 4) fallback: pick first non-edge matching
             for img in &matching {
                 let (_repo, tag_opt, _digest) = split_repo_tag_digest(img.as_str());
-                if let Some(tag) = tag_opt {
-                    if tag.eq_ignore_ascii_case("edge") {
-                        continue;
-                    }
+                if let Some(tag) = tag_opt
+                    && tag.eq_ignore_ascii_case("edge")
+                {
+                    continue;
                 }
                 return (filter, Some((*img).clone()));
             }

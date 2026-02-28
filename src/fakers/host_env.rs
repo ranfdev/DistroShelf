@@ -8,23 +8,23 @@ pub async fn resolve_host_env(runner: &CommandRunner) -> io::Result<HashMap<Stri
     let mut cmd = Command::new("env");
     cmd.arg("-0");
 
-    if let Ok(output) = runner.output(cmd).await {
-        if output.status.success() {
-            let vars = output
-                .stdout
-                .split(|b| *b == 0)
-                .filter_map(|entry| {
-                    if entry.is_empty() {
-                        return None;
-                    }
-                    let s = String::from_utf8_lossy(entry).to_string();
-                    s.split_once('=')
-                        .map(|(k, v)| (k.to_string(), v.to_string()))
-                })
-                .collect::<HashMap<_, _>>();
-            if !vars.is_empty() {
-                return Ok(vars);
-            }
+    if let Ok(output) = runner.output(cmd).await
+        && output.status.success()
+    {
+        let vars = output
+            .stdout
+            .split(|b| *b == 0)
+            .filter_map(|entry| {
+                if entry.is_empty() {
+                    return None;
+                }
+                let s = String::from_utf8_lossy(entry).to_string();
+                s.split_once('=')
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+            })
+            .collect::<HashMap<_, _>>();
+        if !vars.is_empty() {
+            return Ok(vars);
         }
     }
 

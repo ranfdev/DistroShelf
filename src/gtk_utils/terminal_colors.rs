@@ -1,4 +1,3 @@
-use adw;
 /// Terminal color scheme utilities for VTE4 with libadwaita theme support
 /// Provides ANSI color palettes that respect the system light/dark theme preference
 use gtk::gdk;

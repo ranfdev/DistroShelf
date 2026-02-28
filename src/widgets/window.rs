@@ -201,15 +201,14 @@ impl DistroShelfWindow {
         this.imp()
             .view_stack
             .connect_visible_child_notify(move |stack| {
-                if stack.visible_child_name().as_deref() == Some("terminal") {
-                    if let Some(terminal) = this_clone
+                if stack.visible_child_name().as_deref() == Some("terminal")
+                    && let Some(terminal) = this_clone
                         .imp()
                         .current_integrated_terminal
                         .borrow()
                         .as_ref()
-                    {
-                        terminal.spawn_terminal();
-                    }
+                {
+                    terminal.spawn_terminal();
                 }
             });
 
@@ -364,7 +363,7 @@ impl DistroShelfWindow {
 
         // "Update Distrobox" button — visible only when a bundled update is available
         let update_button = gtk::Button::builder()
-            .label(&gettext("Update Distrobox"))
+            .label(gettext("Update Distrobox"))
             .build();
         update_button.add_css_class("suggested-action");
         update_button.add_css_class("pill");
@@ -412,7 +411,7 @@ impl DistroShelfWindow {
             .spawn_terminal();
         let this = self.clone();
         task.connect_status_notify(move |task| {
-            if let Some(_) = &*task.error() {
+            if task.error().is_some() {
                 let toast = adw::Toast::new(&gettext("Check your terminal settings."));
                 toast.set_button_label(Some(&gettext("Preferences")));
                 toast.connect_button_clicked(clone!(

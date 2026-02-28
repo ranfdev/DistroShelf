@@ -304,8 +304,8 @@ impl PreferencesDialog {
             .string();
 
         let dialog = adw::AlertDialog::builder()
-            .heading(&gettext("Delete this terminal?"))
-            .body(&gettext("This terminal will be removed from the terminal list. This action cannot be undone."))
+            .heading(gettext("Delete this terminal?"))
+            .body(gettext("This terminal will be removed from the terminal list. This action cannot be undone."))
             .close_response("cancel")
             .default_response("cancel")
             .build();
@@ -328,9 +328,9 @@ impl PreferencesDialog {
                     {
                         Ok(_) => {
                             glib::MainContext::ref_thread_default().spawn_local(async move {
-                                if let Some(terminal_combo_row) =
-                                    this.imp().terminal_combo_row.borrow().as_ref()
-                                {
+                                let terminal_combo_row =
+                                    this.imp().terminal_combo_row.borrow().as_ref().cloned();
+                                if let Some(terminal_combo_row) = terminal_combo_row {
                                     terminal_combo_row.rebuild_terminals_list();
                                     terminal_combo_row.set_selected_by_name(
                                         &this

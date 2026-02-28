@@ -195,9 +195,9 @@ impl ExportableAppsDialog {
         if binary_name_or_path.contains('/') {
             // For paths, we need to check on the host using a command
             // We'll use 'test -e' which returns 0 if the file exists
-            let expanded_path = if binary_name_or_path.starts_with("~/") {
+            let expanded_path = if let Some(stripped) = binary_name_or_path.strip_prefix("~/") {
                 // Expand home on host - use $HOME variable
-                format!("$HOME/{}", &binary_name_or_path[2..])
+                format!("$HOME/{stripped}")
             } else {
                 binary_name_or_path.to_string()
             };
@@ -352,12 +352,12 @@ impl ExportableAppsDialog {
 
                         if exists {
                             // Show confirmation dialog
+                            let confirmation_body = gettext(
+                                "The binary already exists on your host system. Do you want to continue?",
+                            );
                             let dialog = adw::AlertDialog::new(
                                 Some(&gettext("Binary Already Exists on Host")),
-                                Some(&format!(
-                                    "{}",
-                                    gettext("The binary already exists on your host system. Do you want to continue?"),
-                                )),
+                                Some(&confirmation_body),
                             );
                             dialog.add_response("cancel", &gettext("Cancel"));
                             dialog.add_response("export", &gettext("Export Anyway"));

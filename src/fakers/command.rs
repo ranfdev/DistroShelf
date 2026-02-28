@@ -90,10 +90,10 @@ impl Command {
 
     // removes the first occurrence of an arg by name and its value
     pub fn remove_flag_value_arg(&mut self, name: &str) -> &mut Command {
-        self.args.iter().position(|x| x == name).map(|index| {
+        if let Some(index) = self.args.iter().position(|x| x == name) {
             self.args.remove(index);
             self.args.remove(index); // same index, as the vector has shifted
-        });
+        }
         self
     }
     pub fn remove_flag_arg(&mut self, name: &str) -> &mut Command {

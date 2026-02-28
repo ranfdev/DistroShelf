@@ -972,7 +972,7 @@ impl CreateDistroboxDialog {
         )));
 
         let add_volume_button = adw::ButtonRow::builder()
-            .title(&gettext("Add Volume"))
+            .title(gettext("Add Volume"))
             .build();
         add_volume_button.connect_activated(clone!(
             #[weak(rename_to=this)]

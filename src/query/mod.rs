@@ -5,6 +5,10 @@ use std::rc::Rc;
 use std::time::{Duration, Instant, SystemTime};
 use tracing::{debug, info, warn};
 
+type QueryFuture<T> = std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<T>>>>;
+type QueryFetcher<T> = Box<dyn Fn() -> QueryFuture<T>>;
+type RefetchStrategy<T> = Rc<dyn Fn(&Query<T>) + 'static>;
+
 pub struct QueryInner<T> {
     key: String,
     /// The current data (if any successful fetch has occurred)
@@ -13,9 +17,7 @@ pub struct QueryInner<T> {
     pub last_fetched_at: Option<SystemTime>,
     /// The last error (if any) - stored as Rc for signal emission
     pub error: Option<Rc<anyhow::Error>>,
-    query_fn: Option<
-        Box<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<T>>>>>,
-    >,
+    query_fn: Option<QueryFetcher<T>>,
     refetch_source_id: Option<glib::SourceId>,
     /// Active fetch task handle - cancellable when dropped
     fetch_task_handle: Option<glib::JoinHandle<()>>,
@@ -26,19 +28,11 @@ pub struct QueryInner<T> {
     retry_strategy: Option<Box<dyn Fn(u32) -> Option<Duration>>>,
     retry_count: u32,
 
-    refetch_strategy: Option<Rc<dyn Fn(&Query<T>) + 'static>>,
+    refetch_strategy: Option<RefetchStrategy<T>>,
 }
 
 impl<T> QueryInner<T> {
-    pub fn new(
-        key: String,
-        query_fn: Option<
-            Box<
-                dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<T>>>>,
-            >,
-        >,
-        timeout: Option<Duration>,
-    ) -> Self {
+    pub fn new(key: String, query_fn: Option<QueryFetcher<T>>, timeout: Option<Duration>) -> Self {
         Self {
             key,
             data: None,

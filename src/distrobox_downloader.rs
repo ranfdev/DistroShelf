@@ -88,17 +88,18 @@ pub fn cleanup_old_bundled_versions() {
             Some(s) => s.to_string(),
             None => continue,
         };
-        if name_str.starts_with("distrobox-") && name_str != current_dir_name {
-            if entry.path().is_dir() {
-                if let Err(e) = std::fs::remove_dir_all(entry.path()) {
-                    tracing::warn!(
-                        "Failed to remove old bundled version {:?}: {}",
-                        entry.path(),
-                        e
-                    );
-                } else {
-                    tracing::info!("Removed old bundled version: {}", name_str);
-                }
+        if name_str.starts_with("distrobox-")
+            && name_str != current_dir_name
+            && entry.path().is_dir()
+        {
+            if let Err(e) = std::fs::remove_dir_all(entry.path()) {
+                tracing::warn!(
+                    "Failed to remove old bundled version {:?}: {}",
+                    entry.path(),
+                    e
+                );
+            } else {
+                tracing::info!("Removed old bundled version: {}", name_str);
             }
         }
     }
