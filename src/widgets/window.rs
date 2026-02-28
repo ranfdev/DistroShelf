@@ -175,7 +175,10 @@ impl DistroShelfWindow {
                         ExportableAppsDialog::new(&container).upcast()
                     }
                     DialogType::CreateDistrobox => {
-                        let dialog = CreateDistroboxDialog::new(this_clone.root_store(), params.clone_source);
+                        let dialog = CreateDistroboxDialog::new(
+                            this_clone.root_store(),
+                            params.clone_source,
+                        );
                         dialog.upcast()
                     }
                     DialogType::TaskManager => TaskManagerDialog::new(root_store).upcast(),
@@ -378,13 +381,14 @@ impl DistroShelfWindow {
                     .set_current_dialog(DialogType::TaskManager);
             }
         ));
-        self.root_store().connect_bundled_update_available_notify(clone!(
-            #[weak]
-            update_button,
-            move |root_store| {
-                update_button.set_visible(root_store.bundled_update_available());
-            }
-        ));
+        self.root_store()
+            .connect_bundled_update_available_notify(clone!(
+                #[weak]
+                update_button,
+                move |root_store| {
+                    update_button.set_visible(root_store.bundled_update_available());
+                }
+            ));
         sidebar_bottom_box.append(&update_button);
 
         let tasks_button = TasksButton::new(&self.root_store());

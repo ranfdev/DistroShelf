@@ -239,9 +239,17 @@ mod tests {
             .terminal_repository()
             .flatpak_terminals_query()
             .set_fetcher(|| async { pending::<anyhow::Result<Vec<Terminal>>>().await });
-        store.terminal_repository().flatpak_terminals_query().refetch();
+        store
+            .terminal_repository()
+            .flatpak_terminals_query()
+            .refetch();
 
-        assert!(store.terminal_repository().flatpak_terminals_query().is_loading());
+        assert!(
+            store
+                .terminal_repository()
+                .flatpak_terminals_query()
+                .is_loading()
+        );
 
         let terminal_combo_row = TerminalComboRow::new_with_params(store.clone());
         let Some(model) = terminal_combo_row

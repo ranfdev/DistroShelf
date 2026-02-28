@@ -170,8 +170,7 @@ impl TerminalRepository {
                     Err(e) => {
                         warn!(
                             "Failed to load custom terminals from JSON file {:?}: {}",
-                            custom_list_path,
-                            e
+                            custom_list_path, e
                         );
                         Err(e)
                     }
@@ -187,10 +186,11 @@ impl TerminalRepository {
         });
 
         let this_clone = this.clone();
-        this.json_terminals_query().connect_success(move |terminals| {
-            this_clone.apply_custom_terminals(terminals.clone());
-            this_clone.emit_by_name::<()>("terminals-changed", &[]);
-        });
+        this.json_terminals_query()
+            .connect_success(move |terminals| {
+                this_clone.apply_custom_terminals(terminals.clone());
+                this_clone.emit_by_name::<()>("terminals-changed", &[]);
+            });
 
         // Connect to query success to update the terminal list
         let this_clone = this.clone();

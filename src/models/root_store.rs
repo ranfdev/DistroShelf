@@ -947,8 +947,14 @@ mod tests {
         store.ensure_selected_terminal_after_load();
 
         spin_main_context_until(Duration::from_millis(200), || {
-            !store.terminal_repository().json_terminals_query().is_loading()
-                && !store.terminal_repository().flatpak_terminals_query().is_loading()
+            !store
+                .terminal_repository()
+                .json_terminals_query()
+                .is_loading()
+                && !store
+                    .terminal_repository()
+                    .flatpak_terminals_query()
+                    .is_loading()
         });
 
         let selected_terminal: String = store.settings().string("selected-terminal").into();
@@ -1012,7 +1018,12 @@ mod tests {
             .set_fetcher(|| async { pending::<anyhow::Result<Vec<Terminal>>>().await });
         store.terminal_repository().json_terminals_query().refetch();
 
-        assert!(store.terminal_repository().json_terminals_query().is_loading());
+        assert!(
+            store
+                .terminal_repository()
+                .json_terminals_query()
+                .is_loading()
+        );
 
         store.ensure_selected_terminal_after_load();
 
@@ -1057,8 +1068,14 @@ mod tests {
         store.terminal_repository().load_all();
 
         spin_main_context_until(Duration::from_millis(250), || {
-            !store.terminal_repository().json_terminals_query().is_loading()
-                && !store.terminal_repository().flatpak_terminals_query().is_loading()
+            !store
+                .terminal_repository()
+                .json_terminals_query()
+                .is_loading()
+                && !store
+                    .terminal_repository()
+                    .flatpak_terminals_query()
+                    .is_loading()
         });
 
         let selected_terminal: String = store.settings().string("selected-terminal").into();

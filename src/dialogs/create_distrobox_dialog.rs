@@ -208,7 +208,8 @@ impl CreateDistroboxDialog {
 
             // Show warning if container is running
             if container.is_running() {
-                let clone_warning_banner = adw::Banner::new(&gettext("Cloning the container requires stopping it first"));
+                let clone_warning_banner =
+                    adw::Banner::new(&gettext("Cloning the container requires stopping it first"));
                 clone_warning_banner.set_revealed(true);
                 cloning_content.append(&clone_warning_banner);
             }
@@ -334,7 +335,7 @@ impl CreateDistroboxDialog {
             move |entry| {
                 let text = entry.text();
                 let is_valid = !text.is_empty() && backends::CreateArgName::new(&text).is_ok();
-                
+
                 // Check for duplicate container names
                 let mut has_duplicate = false;
                 if is_valid {
@@ -345,7 +346,7 @@ impl CreateDistroboxDialog {
                         }
                     }
                 }
-                
+
                 create_btn.set_sensitive(is_valid && !has_duplicate);
             }
         ));
@@ -538,7 +539,8 @@ impl CreateDistroboxDialog {
                     }
                 }
             ),
-        ).with_timeout(Duration::from_secs(10));
+        )
+        .with_timeout(Duration::from_secs(10));
 
         // Wire ini_content_query success handler
         ini_content_query.connect_success(clone!(
@@ -599,9 +601,9 @@ impl CreateDistroboxDialog {
                 this.set_assemble_url(Some(entry.text()));
                 create_btn.set_sensitive(false);
                 entry.remove_css_class("error");
-                
+
                 text_view.buffer().set_text("");
-                
+
                 // Debounced download (validation happens implicitly)
                 ini_content_query.refetch();
             }
@@ -941,11 +943,7 @@ impl CreateDistroboxDialog {
         let name = CreateArgName::new(&imp.name_row.text())?;
         let hostname = {
             let value = imp.hostname_row.text().trim().to_string();
-            if value.is_empty() {
-                None
-            } else {
-                Some(value)
-            }
+            if value.is_empty() { None } else { Some(value) }
         };
 
         let create_args = CreateArgs {
@@ -1056,7 +1054,7 @@ impl CreateDistroboxDialog {
         cmd.arg(url);
 
         let output = command_runner.output(cmd).await?;
-        
+
         if !output.status.success() {
             return Err(anyhow::anyhow!("Failed to download file: HTTP error"));
         }

@@ -1,5 +1,5 @@
-use futures::{AsyncReadExt, FutureExt, StreamExt};
 use futures::io::AsyncRead;
+use futures::{AsyncReadExt, FutureExt, StreamExt};
 use glib::Properties;
 use glib::subclass::prelude::*;
 use gtk::glib;
@@ -159,15 +159,17 @@ impl DistroboxTask {
                 }
                 processed_bytes.push(byte);
             }
-            self.imp().vte_terminal.borrow().terminal().feed(&processed_bytes);
+            self.imp()
+                .vte_terminal
+                .borrow()
+                .terminal()
+                .feed(&processed_bytes);
         };
 
         let mut cancel_rx = cancel_rx.fuse();
 
-        let mut merged_stream = futures::stream::select_all(vec![
-            stdout_stream.boxed(),
-            stderr_stream.boxed(),
-        ]);
+        let mut merged_stream =
+            futures::stream::select_all(vec![stdout_stream.boxed(), stderr_stream.boxed()]);
         loop {
             futures::select! {
                 chunk = merged_stream.next().fuse() => {

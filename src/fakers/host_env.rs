@@ -18,7 +18,8 @@ pub async fn resolve_host_env(runner: &CommandRunner) -> io::Result<HashMap<Stri
                         return None;
                     }
                     let s = String::from_utf8_lossy(entry).to_string();
-                    s.split_once('=').map(|(k, v)| (k.to_string(), v.to_string()))
+                    s.split_once('=')
+                        .map(|(k, v)| (k.to_string(), v.to_string()))
                 })
                 .collect::<HashMap<_, _>>();
             if !vars.is_empty() {
@@ -30,7 +31,9 @@ pub async fn resolve_host_env(runner: &CommandRunner) -> io::Result<HashMap<Stri
     // Fallback: newline-separated output.
     let output = runner.output(Command::new("env")).await?;
     if !output.status.success() {
-        return Err(io::Error::other("failed to resolve host environment via `env`"));
+        return Err(io::Error::other(
+            "failed to resolve host environment via `env`",
+        ));
     }
 
     Ok(String::from_utf8_lossy(&output.stdout)
@@ -69,7 +72,9 @@ mod tests {
         let mut builder = NullCommandRunnerBuilder::new();
         let mut cmd = Command::new("env");
         cmd.arg("-0");
-        builder.cmd_full(cmd, || Ok("HOME=/fake/home\0PATH=/nix/store/bin\0".to_string()));
+        builder.cmd_full(cmd, || {
+            Ok("HOME=/fake/home\0PATH=/nix/store/bin\0".to_string())
+        });
         let runner = builder.build();
 
         let res = block_on(resolve_host_env(&runner)).unwrap();

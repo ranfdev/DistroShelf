@@ -175,7 +175,8 @@ mod imp {
 
             let settings_for_no_entry = settings.clone();
             no_entry_row.connect_active_notify(move |row| {
-                let _ = settings_for_no_entry.set_boolean("distrobox-create-no-entry", row.is_active());
+                let _ =
+                    settings_for_no_entry.set_boolean("distrobox-create-no-entry", row.is_active());
             });
 
             distrobox_group.add(&no_entry_row);

@@ -7,9 +7,9 @@ pub struct DesktopEntry {
 
 /// Extracts the first string enclosed in the specified quote character from a line of text.
 /// Returns the extracted string without quotes, or None if no quoted string is found.
-/// 
+///
 /// This is useful for parsing shell scripts and config files that use quoted strings.
-/// 
+///
 /// # Examples
 /// ```
 /// let line = "exec '/usr/bin/vim' \"$@\"";
@@ -138,13 +138,19 @@ Icon=test-icon
     #[test]
     fn test_extract_quoted_string_single_quotes() {
         let line = "exec '/usr/bin/vim' \"$@\"";
-        assert_eq!(extract_quoted_string(line, '\''), Some("/usr/bin/vim".to_string()));
+        assert_eq!(
+            extract_quoted_string(line, '\''),
+            Some("/usr/bin/vim".to_string())
+        );
     }
 
     #[test]
     fn test_extract_quoted_string_double_quotes() {
         let line = r#"exec "distrobox-enter" -n test"#;
-        assert_eq!(extract_quoted_string(line, '"'), Some("distrobox-enter".to_string()));
+        assert_eq!(
+            extract_quoted_string(line, '"'),
+            Some("distrobox-enter".to_string())
+        );
     }
 
     #[test]

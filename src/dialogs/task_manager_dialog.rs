@@ -134,10 +134,9 @@ mod imp {
                     if stv.parent().is_some() {
                         stv.unparent();
                     }
-                    this.imp().navigation_view.push(&adw::NavigationPage::new(
-                        stv,
-                        "Task Details",
-                    ));
+                    this.imp()
+                        .navigation_view
+                        .push(&adw::NavigationPage::new(stv, "Task Details"));
                 }
             });
             let this = self.obj().clone();
@@ -270,11 +269,11 @@ impl TaskManagerDialog {
 
         // Get VTE terminal from task
         let vte_terminal = task.vte_terminal();
-        
+
         if vte_terminal.parent().is_some() {
             vte_terminal.unparent();
         }
-        
+
         content.append(&vte_terminal);
 
         let button_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);

@@ -848,7 +848,7 @@ impl Distrobox {
 
     /// Extracts the original binary path from a distrobox exported wrapper script.
     /// The wrapper script contains lines like: exec '/usr/bin/binary' "$@"
-    /// 
+    ///
     /// Uses the shared `extract_quoted_string` utility from desktop_file module for
     /// consistent string parsing across the codebase.
     async fn extract_binary_path_from_wrapper(&self, wrapper_path: &str) -> Option<String> {

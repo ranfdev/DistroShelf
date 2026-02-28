@@ -6,8 +6,8 @@ use gtk::{
 };
 use vte4::prelude::*;
 
-use crate::i18n::gettext;
 use crate::gtk_utils::ColorPalette;
+use crate::i18n::gettext;
 use crate::models::Container;
 
 mod imp {
@@ -170,19 +170,13 @@ impl IntegratedTerminal {
                 let enter_cmd = root_store.distrobox().enter_cmd(&name);
                 let command_runner = root_store.command_runner();
                 let shell = command_runner.wrap_command(enter_cmd).to_vec();
-                let shell_args = shell
-                    .iter()
-                    .filter_map(|s| s.to_str())
-                    .collect::<Vec<_>>();
+                let shell_args = shell.iter().filter_map(|s| s.to_str()).collect::<Vec<_>>();
 
                 // We don't need to resolve the environment from the host, I think `flatpak-spawn --host cmd` will already handle that for the subprocess we are spawning.
                 let env_list = std::env::vars()
                     .map(|(key, value)| format!("{key}={value}"))
                     .collect::<Vec<_>>();
-                let env_refs = env_list
-                    .iter()
-                    .map(String::as_str)
-                    .collect::<Vec<_>>();
+                let env_refs = env_list.iter().map(String::as_str).collect::<Vec<_>>();
 
                 let fut = this.imp().terminal.spawn_future(
                     vte4::PtyFlags::DEFAULT,

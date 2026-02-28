@@ -225,7 +225,7 @@ where
     pub fn debounce(duration: Duration) -> impl Fn(&Query<T>) {
         // Strategy state: managed by the closure itself
         let debounce_state: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
-        
+
         move |query: &Query<T>| {
             let key = { query.inner.borrow().key.clone() };
 
@@ -259,15 +259,15 @@ where
     /// if calls arrived during the throttle period.
     pub fn throttle(interval: Duration, trailing: bool) -> impl Fn(&Query<T>) {
         // Strategy state: managed by the closure itself
-        let throttle_state: Rc<RefCell<(Option<Instant>, Option<glib::SourceId>)>> = 
+        let throttle_state: Rc<RefCell<(Option<Instant>, Option<glib::SourceId>)>> =
             Rc::new(RefCell::new((None, None)));
-        
+
         move |query: &Query<T>| {
             let key = { query.inner.borrow().key.clone() };
             let now = Instant::now();
 
             let last_throttle_time = { throttle_state.borrow().0 };
-            
+
             let should_fetch = match last_throttle_time {
                 None => true,
                 Some(last_time) => now.duration_since(last_time) >= interval,
@@ -407,7 +407,10 @@ where
             }
             Err(error) => {
                 if inner.borrow().retry_strategy.is_some() {
-                    let retry_count = Self { inner: inner.clone() }.retry();
+                    let retry_count = Self {
+                        inner: inner.clone(),
+                    }
+                    .retry();
                     if let Some(_retry_count) = retry_count {
                         return;
                     }

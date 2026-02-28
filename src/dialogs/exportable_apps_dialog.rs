@@ -318,7 +318,10 @@ impl ExportableAppsDialog {
         let render_apps_closure = render_apps.clone();
         let this_for_apps_success = this.clone();
         apps.connect_success(move |apps_data| {
-            this_for_apps_success.imp().apps_error_label.set_visible(false);
+            this_for_apps_success
+                .imp()
+                .apps_error_label
+                .set_visible(false);
             render_apps_closure(apps_data);
         });
         let binaries = this.container().binaries();
