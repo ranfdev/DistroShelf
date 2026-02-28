@@ -222,7 +222,8 @@ impl DistroShelfApplication {
     }
 
     fn recreate_window(&self) -> adw::ApplicationWindow {
-        let command_runner = match { self.imp().distrobox_store_ty.borrow().to_owned() } {
+        let distrobox_store_ty = self.imp().distrobox_store_ty.borrow().to_owned();
+        let command_runner = match distrobox_store_ty {
             DistroboxStoreTy::NullWorking => Distrobox::null_command_runner(&[
                 DistroboxCommandRunnerResponse::Version,
                 DistroboxCommandRunnerResponse::new_list_common_distros(),
