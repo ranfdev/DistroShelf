@@ -1,5 +1,5 @@
 project('distroshelf', 'rust',
-          version: '1.4.6',
+          version: '1.4.7',
     meson_version: '>= 1.0.0',
   default_options: [ 'warning_level=2', 'werror=false', ],
 )

@@ -71,6 +71,16 @@
   </screenshots>
 
   <releases>
+    <release version="1.4.7" date="2026-02-28">
+      <description translate="no">
+        <ul>
+          <li>Fix: Increase exported apps timeout to 10s to prevent timeout errors when having lots of apps</li>
+          <li>Fix: Prevent crashes in downloader commands due to path UTF-8 handling</li>
+          <li>Fix: Improve error propagation in distrobox task output handling</li>
+          <li>Fix: Harden terminal combo row signal handling for better stability</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.4.6" date="2026-02-28">
       <description translate="no">
         <ul>
