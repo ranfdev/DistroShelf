@@ -5,10 +5,7 @@ use regex::Regex;
 
 // Matches tags that are numeric-only (e.g. "1.2.3" or "1_2-3")
 static VERSION_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(?:\d+(?:[._-]\d+)*)$").unwrap());
-// Capture a numeric version inside a tag (e.g. "v1.2" -> captures "1.2")
-static VER_CAPTURE_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?P<ver>\d+(?:[._-]\d+)*)").unwrap());
+    LazyLock::new(|| Regex::new(r"^(?P<ver>\d+(?:[._-]\d+)*)$").unwrap());
 
 // Compare two numeric-version vectors treating missing components as zeros.
 fn compare_version_vec(a: &[u64], b: &[u64]) -> std::cmp::Ordering {
@@ -176,17 +173,15 @@ pub fn derive_image_prefill(
                     if tag_l == "edge" {
                         continue;
                     }
-                    // require the whole tag to be numeric-like, then capture the numeric portion
-                    if VERSION_RE.is_match(&tag_l) {
-                        if let Some(cap) = VER_CAPTURE_RE.captures(&tag_l) {
-                            let ver = &cap["ver"];
-                            let nums: Vec<u64> = ver
-                                .split(|c| c == '.' || c == '_' || c == '-')
-                                .filter_map(|p| p.parse::<u64>().ok())
-                                .collect();
-                            if !nums.is_empty() {
-                                semvers.push(((*img), nums));
-                            }
+                    // require the whole tag to be numeric-like
+                    if let Some(cap) = VERSION_RE.captures(&tag_l) {
+                        let ver = &cap["ver"];
+                        let nums: Vec<u64> = ver
+                            .split(|c| c == '.' || c == '_' || c == '-')
+                            .filter_map(|p| p.parse::<u64>().ok())
+                            .collect();
+                        if !nums.is_empty() {
+                            semvers.push(((*img), nums));
                         }
                     }
                 }
