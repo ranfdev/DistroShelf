@@ -58,6 +58,15 @@
     <color type="primary" scheme_preference="dark">#241f31</color>
   </branding>
 
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>touch</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+
   <screenshots>
     <screenshot type="default">
       <image type="source">https://raw.githubusercontent.com/ranfdev/DistroShelf/master/data/screenshots/1.png</image>
