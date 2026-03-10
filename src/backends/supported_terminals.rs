@@ -166,7 +166,7 @@ impl TerminalRepository {
             async move {
                 match Self::load_terminals_from_json(&custom_list_path) {
                     Ok(terminals) => Ok(terminals),
-                    Err(e) if !custom_list_path.exists() => Ok(vec![]),
+                    Err(_e) if !custom_list_path.exists() => Ok(vec![]),
                     Err(e) => {
                         warn!(
                             "Failed to load custom terminals from JSON file {:?}: {}",

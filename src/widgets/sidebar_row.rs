@@ -63,7 +63,9 @@ mod imp {
             self.status_dot.remove_css_class("created");
 
             // Add the appropriate class
-            self.status_dot.add_css_class(value);
+            if ["up", "exited", "created"].contains(&value) {
+                self.status_dot.add_css_class(value);
+            }
         }
     }
 

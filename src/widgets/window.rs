@@ -131,7 +131,7 @@ impl DistroShelfWindow {
         let this_clone = this.clone();
         this.root_store()
             .selected_container_model()
-            .connect_selected_notify(move |model| {
+            .connect_selected_item_notify(move |model| {
                 if let Some(container) = model
                     .selected_item()
                     .and_then(|obj| obj.downcast::<Container>().ok())
