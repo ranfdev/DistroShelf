@@ -85,7 +85,6 @@ mod imp {
 
                     // Listen when a new task will fail
                     for i in position..position + added {
-                        dbg!(i);
                         let item = tasks.item(i);
                         let item: &DistroboxTask = item.and_downcast_ref().unwrap();
                         let this_clone = this_clone.clone();

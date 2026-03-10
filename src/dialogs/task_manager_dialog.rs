@@ -111,7 +111,6 @@ mod imp {
                 .tasks()
                 .inner()
                 .connect_items_changed(move |tasks, _, _, _| {
-                    dbg!(tasks.n_items());
                     if tasks.n_items() == 0 {
                         this.imp().stack.set_visible_child_name("empty");
                     } else {
