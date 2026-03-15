@@ -53,7 +53,6 @@ mod imp {
         pub nvidia_row: adw::SwitchRow,
         pub init_row: adw::SwitchRow,
         pub hostname_row: adw::EntryRow,
-        pub root_row: adw::SwitchRow,
         pub volume_rows: Rc<RefCell<Vec<adw::EntryRow>>>,
         pub scrolled_window: gtk::ScrolledWindow,
         #[property(get, set, nullable, construct_only)]
@@ -282,8 +281,6 @@ impl CreateDistroboxDialog {
 
         imp.hostname_row.set_title(&gettext("Hostname"));
 
-        imp.root_row.set_title(&gettext("Privileged"));
-
         preferences_group.add(&imp.name_row);
         preferences_group.add(&imp.image_row);
         preferences_group.add(&imp.home_row_expander);
@@ -291,7 +288,6 @@ impl CreateDistroboxDialog {
         let advanced_group = adw::PreferencesGroup::new();
         advanced_group.set_title(&gettext("Advanced"));
         advanced_group.add(&imp.hostname_row);
-        advanced_group.add(&imp.root_row);
         advanced_group.add(&imp.nvidia_row);
         advanced_group.add(&imp.init_row);
 
@@ -953,7 +949,7 @@ impl CreateDistroboxDialog {
             home_path: self.home_folder(),
             init: imp.init_row.is_active(),
             hostname,
-            root: imp.root_row.is_active(),
+            root: false,
             no_entry: self
                 .root_store()
                 .settings()
