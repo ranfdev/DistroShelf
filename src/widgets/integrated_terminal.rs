@@ -139,6 +139,22 @@ impl IntegratedTerminal {
             }
         ));
 
+        terminal.connect_notify_local(
+            Some("has-focus"),
+            clone!(
+                #[weak(rename_to=this)]
+                self,
+                move |terminal, _| {
+                    let root_store = this.container().root_store();
+                    if terminal.has_focus() {
+                        root_store.disable_shortcuts();
+                    } else {
+                        root_store.enable_shortcuts();
+                    }
+                }
+            ),
+        );
+
         // Reload button click handler
         reload_button.connect_clicked(clone!(
             #[weak(rename_to=this)]

@@ -81,17 +81,6 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
             obj.setup_gactions();
-            obj.set_accels_for_action("app.quit", &["<primary>q"]);
-            obj.set_accels_for_action("app.shortcuts", &["<primary>question"]);
-            obj.set_accels_for_action("win.refresh", &["F5"]);
-            obj.set_accels_for_action("win.upgrade-container", &["<primary>u"]);
-            obj.set_accels_for_action("win.upgrade-all", &["<primary><shift>u"]);
-            obj.set_accels_for_action("win.install-package", &["<primary>i"]);
-            obj.set_accels_for_action("win.preferences", &["<primary>comma"]);
-            obj.set_accels_for_action("win.open-terminal", &["<primary>period"]);
-            obj.set_accels_for_action("win.view-exportable-apps", &["<primary>e"]);
-            obj.set_accels_for_action("win.delete-container", &["<primary>Delete"]);
-            obj.set_accels_for_action("win.stop-container", &["<primary>s"]);
         }
     }
 
@@ -254,6 +243,7 @@ impl DistroShelfApplication {
         root_store.start_background_tasks();
 
         self.set_root_store(root_store);
+        self.bind_shortcuts_model();
         let window =
             DistroShelfWindow::new(self.upcast_ref::<adw::Application>(), self.root_store());
         window.upcast()
@@ -267,6 +257,38 @@ impl DistroShelfApplication {
             .activate(move |app: &Self, _, _| app.show_about())
             .build();
         self.add_action_entries([quit_action, about_action]);
+    }
+
+    fn bind_shortcuts_model(&self) {
+        let shortcuts = self.root_store().shortcuts_model();
+        let app = self.clone();
+        shortcuts.connect_items_changed(move |_, _, _, _| {
+            app.sync_shortcut_accels();
+        });
+        self.sync_shortcut_accels();
+    }
+
+    fn sync_shortcut_accels(&self) {
+        let shortcuts = self.root_store().shortcuts_model();
+
+        for action in self.root_store().shortcut_action_names() {
+            self.set_accels_for_action(action, &[]);
+        }
+
+        for shortcut in shortcuts.iter::<gtk::Shortcut>() {
+            let Ok(shortcut) = shortcut else {
+                continue;
+            };
+
+            let Some(named_action) = shortcut.action().and_downcast::<gtk::NamedAction>() else {
+                continue;
+            };
+            let Some(trigger) = shortcut.trigger() else {
+                continue;
+            };
+
+            self.set_accels_for_action(&named_action.action_name(), &[&trigger.to_string()]);
+        }
     }
 
     fn show_about(&self) {

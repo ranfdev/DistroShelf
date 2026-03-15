@@ -30,6 +30,22 @@ use crate::query::Query;
 
 use serde::Deserialize;
 
+const SHORTCUT_DEFINITIONS: [(&str, &str); 13] = [
+    ("<primary>q", "app.quit"),
+    ("<primary>question", "app.shortcuts"),
+    ("F5", "win.refresh"),
+    ("<primary>u", "win.upgrade-container"),
+    ("<primary><shift>u", "win.upgrade-all"),
+    ("<primary>i", "win.install-package"),
+    ("<primary>comma", "win.preferences"),
+    ("<primary>period", "win.open-terminal"),
+    ("<primary>e", "win.view-exportable-apps"),
+    ("<primary>Delete", "win.delete-container"),
+    ("<primary>s", "win.stop-container"),
+    ("<primary>l", "win.command-log"),
+    ("<primary>d", "win.delete-container"),
+];
+
 #[derive(Debug, Clone, Deserialize, Hash, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Image {
@@ -68,6 +84,9 @@ mod imp {
 
         #[property(get)]
         pub settings: gio::Settings,
+
+        pub shortcuts: gio::ListStore,
+        pub shortcuts_enabled: std::cell::Cell<bool>,
 
         #[property(get, set, builder(ViewType::default()))]
         current_view: RefCell<ViewType>,
@@ -109,6 +128,8 @@ mod imp {
                 selected_task: Default::default(),
                 bundled_update_available: std::cell::Cell::new(false),
                 settings: gio::Settings::new("com.ranfdev.DistroShelf"),
+                shortcuts: gio::ListStore::new::<gtk::Shortcut>(),
+                shortcuts_enabled: std::cell::Cell::new(false),
             }
         }
     }
@@ -312,7 +333,55 @@ impl RootStore {
             );
         });
 
+        this.enable_shortcuts();
+
         this
+    }
+
+    fn build_shortcut(trigger: &str, action: &str) -> Option<gtk::Shortcut> {
+        let trigger =
+            gtk::ShortcutTrigger::parse_string(trigger).expect("Invalid shortcut trigger");
+        let action = gtk::NamedAction::new(action);
+        Some(gtk::Shortcut::new(Some(trigger), Some(action)))
+    }
+
+    fn rebuild_shortcuts_model(&self) {
+        let shortcuts = &self.imp().shortcuts;
+        shortcuts.remove_all();
+        for (trigger, action) in SHORTCUT_DEFINITIONS {
+            if let Some(shortcut) = Self::build_shortcut(trigger, action) {
+                shortcuts.append(&shortcut);
+            }
+        }
+    }
+
+    pub fn shortcuts_model(&self) -> gio::ListStore {
+        self.imp().shortcuts.clone()
+    }
+
+    pub fn shortcut_action_names(&self) -> Vec<&'static str> {
+        SHORTCUT_DEFINITIONS
+            .iter()
+            .map(|(_, action)| *action)
+            .collect::<Vec<_>>()
+    }
+
+    pub fn enable_shortcuts(&self) {
+        if self.imp().shortcuts_enabled.get() {
+            return;
+        }
+
+        self.rebuild_shortcuts_model();
+        self.imp().shortcuts_enabled.set(true);
+    }
+
+    pub fn disable_shortcuts(&self) {
+        if !self.imp().shortcuts_enabled.get() {
+            return;
+        }
+
+        self.imp().shortcuts.remove_all();
+        self.imp().shortcuts_enabled.set(false);
     }
 
     pub fn start_background_tasks(&self) {
@@ -1178,5 +1247,33 @@ mod tests {
 
         assert_eq!(returned_task, existing_task);
         assert_eq!(store.tasks().iter().count(), 1);
+    }
+
+    #[gtk::test]
+    fn test_shortcuts_toggle_is_idempotent() {
+        let store = RootStore::new(NullCommandRunnerBuilder::new().build());
+
+        assert_eq!(
+            store.shortcuts_model().n_items(),
+            SHORTCUT_DEFINITIONS.len() as u32
+        );
+
+        store.enable_shortcuts();
+        assert_eq!(
+            store.shortcuts_model().n_items(),
+            SHORTCUT_DEFINITIONS.len() as u32
+        );
+
+        store.disable_shortcuts();
+        assert_eq!(store.shortcuts_model().n_items(), 0);
+
+        store.disable_shortcuts();
+        assert_eq!(store.shortcuts_model().n_items(), 0);
+
+        store.enable_shortcuts();
+        assert_eq!(
+            store.shortcuts_model().n_items(),
+            SHORTCUT_DEFINITIONS.len() as u32
+        );
     }
 }

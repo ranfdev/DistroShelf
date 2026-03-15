@@ -209,6 +209,8 @@ impl DistroShelfWindow {
                         .as_ref()
                 {
                     terminal.spawn_terminal();
+                } else {
+                    this_clone.root_store().enable_shortcuts();
                 }
             });
 
