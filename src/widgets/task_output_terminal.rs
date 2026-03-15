@@ -2,7 +2,6 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::glib;
 use gtk::{self, gio};
-use std::cell::RefCell;
 use vte4::prelude::*;
 
 use crate::gtk_utils::ColorPalette;
@@ -17,7 +16,6 @@ mod imp {
     #[properties(wrapper_type = super::TaskOutputTerminal)]
     pub struct TaskOutputTerminal {
         pub terminal: vte4::Terminal,
-        pub output_buffer: RefCell<String>,
     }
 
     #[glib::object_subclass]
@@ -29,7 +27,6 @@ mod imp {
         fn new() -> Self {
             Self {
                 terminal: vte4::Terminal::new(),
-                output_buffer: RefCell::new(String::new()),
             }
         }
     }
@@ -138,7 +135,6 @@ impl TaskOutputTerminal {
         let imp = self.imp();
         let terminal = &imp.terminal;
         terminal.reset(true, true);
-        *imp.output_buffer.borrow_mut() = String::new();
     }
 
     /// Get the terminal widget for advanced operations
