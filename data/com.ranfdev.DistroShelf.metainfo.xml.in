@@ -80,6 +80,15 @@
   </screenshots>
 
   <releases>
+    <release version="1.4.8" date="2026-03-16">
+      <description translate="no">
+        <ul>
+          <li>Fix: Correct container selection behavior.</li>
+          <li>Improved: Disable app shortcuts while integrated terminal is focused.</li>
+          <li>Changed: Remove privileged container support to restore safer and more predictable container creation behavior.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.4.7" date="2026-02-28">
       <description translate="no">
         <ul>
