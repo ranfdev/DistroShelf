@@ -39,6 +39,10 @@ flatpak install com.ranfdev.DistroShelf
 
 ### From Source
 
+#### With GNOME Builder
+The recommended way to build this project is with GNOME Builder. It will install all the required dependencies, then it will build and run the project as a flatpak.
+If you don't plan to use GNOME Builder, you can follow the instructions below.
+
 #### Requirements
 - Distrobox installed and configured
 - GTK 4 and libadwaita
