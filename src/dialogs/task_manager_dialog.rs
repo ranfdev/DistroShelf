@@ -5,7 +5,7 @@ use gtk::glib::clone;
 
 use crate::gtk_utils::reaction;
 use crate::i18n::gettext;
-use crate::models::{DistroboxTask, RootStore};
+use crate::models::{DialogType, DistroboxTask, RootStore};
 
 use gtk::glib::Properties;
 use std::cell::RefCell;
@@ -224,13 +224,17 @@ impl TaskManagerDialog {
         status_label.set_xalign(0.0);
         content.append(&status_label);
 
-        let description = task.description();
-        if !description.is_empty() {
-            let label = gtk::Label::new(Some(&description));
-            label.set_xalign(0.0);
-            label.set_wrap(true);
-            content.append(&label);
-        }
+        let label = gtk::Label::new(None);
+        label.set_xalign(0.0);
+        label.set_wrap(true);
+        task.bind_property("description", &label, "label")
+            .sync_create()
+            .build();
+        task.bind_property("description", &label, "visible")
+            .transform_to(|_binding, v: &str| Some(!v.is_empty()))
+            .sync_create()
+            .build();
+        content.append(&label);
 
         // Error label
         let error_label = gtk::Label::new(None);
@@ -289,16 +293,44 @@ impl TaskManagerDialog {
         ));
         stop_btn.add_css_class("destructive-action");
         stop_btn.add_css_class("pill");
-        stop_btn.set_sensitive(!task.ended());
+
+        let close_button = gtk::Button::with_label(&gettext("Close"));
+        close_button.add_css_class("pill");
+        close_button.connect_clicked(clone!(
+            #[weak(rename_to=this)]
+            self,
+            move |_| {
+                this.root_store().set_current_dialog(DialogType::None);
+            }
+        ));
+        close_button.add_css_class("suggested-action");
+
+        let button_stack = gtk::Stack::new();
+        button_stack.add_child(&stop_btn);
+        button_stack.add_child(&close_button);
+        if task.ended() {
+            button_stack.set_visible_child(&close_button);
+        } else {
+            button_stack.set_visible_child(&stop_btn);
+        }
+
         task.connect_status_notify(clone!(
             #[weak]
             stop_btn,
+            #[weak]
+            close_button,
+            #[weak]
+            button_stack,
             move |task| {
-                stop_btn.set_sensitive(!task.ended());
+                if task.ended() {
+                    button_stack.set_visible_child(&close_button);
+                } else {
+                    button_stack.set_visible_child(&stop_btn);
+                }
             }
         ));
 
-        button_row.append(&stop_btn);
+        button_row.append(&button_stack);
         content.append(&button_row);
 
         self.imp().selected_task_view.set_content(Some(&content));
