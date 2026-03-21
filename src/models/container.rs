@@ -2,10 +2,10 @@ use crate::{
     backends::{ContainerInfo, ExportableApp, Status, container_runtime::Usage},
     fakers::{Command, CommandRunner},
     gtk_utils::TypedListStore,
-    models::DistroboxTask,
-    models::{KnownDistro, known_distro_by_image},
+    models::{DistroboxTask, KnownDistro, known_distro_by_image},
     query::Query,
     root_store::RootStore,
+    widgets::IntegratedTerminal,
 };
 
 use adw::prelude::*;
@@ -17,6 +17,8 @@ use std::path::Path;
 use std::time::Duration;
 
 mod imp {
+    use crate::widgets::IntegratedTerminal;
+
     use super::*;
 
     // This contains all the container informations given by distrobox, plus an associated KnownDistro struct
@@ -25,7 +27,7 @@ mod imp {
     pub struct Container {
         #[property(get, set)]
         root_store: RefCell<RootStore>,
-        #[property(get, set)]
+        #[property(get)]
         pub name: RefCell<String>,
         #[property(get, set)]
         pub status_tag: RefCell<String>,
@@ -39,6 +41,8 @@ mod imp {
         pub binaries: Query<TypedListStore<glib::BoxedAnyObject>>,
         // Usage statistics, without polling
         pub usage: Query<Usage>,
+        #[property(get)]
+        pub terminal: RefCell<IntegratedTerminal>,
     }
 
     impl Default for Container {
@@ -72,6 +76,7 @@ mod imp {
                         }
                     }),
                 usage: Query::new("usage".into(), || async { Ok(Usage::default()) }),
+                terminal: Default::default(),
             }
         }
     }
@@ -152,10 +157,12 @@ impl Container {
             }
         });
 
+        *this.imp().terminal.borrow_mut() = IntegratedTerminal::new(&this);
+
         this
     }
 
-    pub fn apply_container_info(&self, value: ContainerInfo) {
+    fn apply_container_info(&self, value: ContainerInfo) {
         let distro = known_distro_by_image(&value.image);
 
         let (status_tag, status_detail) = match value.status {
@@ -165,7 +172,7 @@ impl Container {
             Status::Other(v) => ("other", v),
         };
 
-        self.set_name(value.name);
+        *self.imp().name.borrow_mut() = value.name;
         self.set_image(value.image);
         self.set_distro(distro);
         self.set_status_tag(status_tag.to_string());

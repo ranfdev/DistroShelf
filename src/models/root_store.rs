@@ -329,7 +329,7 @@ impl RootStore {
                 this.containers(),
                 &containers[..],
                 |item| item.name(),
-                &["name", "status-tag", "status-detail", "distro", "image"],
+                &["status-tag", "status-detail", "distro", "image"],
             );
         });
 

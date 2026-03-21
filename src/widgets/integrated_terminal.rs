@@ -1,3 +1,5 @@
+use std::ffi::OsString;
+
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{
@@ -6,14 +8,14 @@ use gtk::{
 };
 use vte4::prelude::*;
 
-use crate::gtk_utils::ColorPalette;
 use crate::i18n::gettext;
+use crate::{fakers::CommandRunner, gtk_utils::ColorPalette, models::RootStore};
+use std::cell::OnceCell;
+
 use crate::models::Container;
+use gtk::glib::{Properties, derived_properties};
 
 mod imp {
-    use std::cell::OnceCell;
-
-    use gtk::glib::{Properties, derived_properties};
 
     use super::*;
 
@@ -22,7 +24,9 @@ mod imp {
     #[properties(wrapper_type=super::IntegratedTerminal)]
     pub struct IntegratedTerminal {
         #[property(get, set, construct)]
-        pub container: OnceCell<Container>,
+        pub container_name: OnceCell<String>,
+        #[property(get, set)]
+        pub root_store: OnceCell<RootStore>,
         pub terminal: vte4::Terminal,
         pub reload_button: gtk::Button,
         pub terminal_pid: std::cell::Cell<Option<glib::Pid>>,
@@ -37,7 +41,8 @@ mod imp {
 
         fn new() -> Self {
             Self {
-                container: OnceCell::new(),
+                container_name: OnceCell::new(),
+                root_store: OnceCell::new(),
                 terminal: vte4::Terminal::new(),
                 reload_button: gtk::Button::new(),
                 terminal_pid: std::cell::Cell::new(None),
@@ -62,10 +67,21 @@ glib::wrapper! {
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Orientable;
 }
 
+impl Default for IntegratedTerminal {
+    fn default() -> Self {
+        let obj: Self = glib::Object::builder()
+            .property("container_name", "default")
+            .property("root_store", RootStore::new(CommandRunner::new_null()))
+            .build();
+        obj
+    }
+}
+
 impl IntegratedTerminal {
     pub fn new(container: &Container) -> Self {
         let obj: Self = glib::Object::builder()
-            .property("container", container)
+            .property("container_name", container.name())
+            .property("root_store", container.root_store())
             .build();
         obj.build_ui();
         obj
@@ -145,7 +161,7 @@ impl IntegratedTerminal {
                 #[weak(rename_to=this)]
                 self,
                 move |terminal, _| {
-                    let root_store = this.container().root_store();
+                    let root_store = this.root_store();
                     if terminal.has_focus() {
                         root_store.disable_shortcuts();
                     } else {
@@ -179,14 +195,17 @@ impl IntegratedTerminal {
             #[weak(rename_to=this)]
             self,
             async move {
-                let root_store = this.container().root_store();
+                let root_store = this.root_store();
 
                 // Prepare the shell command via the Distrobox backend (uses injected factory)
-                let name = this.container().name();
+                let name = this.container_name();
                 let enter_cmd = root_store.distrobox().enter_cmd(&name);
                 let command_runner = root_store.command_runner();
-                let shell = command_runner.wrap_command(enter_cmd).to_vec();
-                let shell_args = shell.iter().filter_map(|s| s.to_str()).collect::<Vec<_>>();
+                let shell: Vec<OsString> = command_runner.wrap_command(enter_cmd).to_vec();
+                let shell_args = shell
+                    .iter()
+                    .filter_map(|s: &OsString| s.to_str())
+                    .collect::<Vec<_>>();
 
                 // We don't need to resolve the environment from the host, I think `flatpak-spawn --host cmd` will already handle that for the subprocess we are spawning.
                 let env_list = std::env::vars()

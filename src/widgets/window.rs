@@ -78,8 +78,6 @@ mod imp {
         pub overview_bin: TemplateChild<adw::Bin>,
         #[template_child]
         pub terminal_bin: TemplateChild<adw::Bin>,
-
-        pub current_integrated_terminal: RefCell<Option<crate::widgets::IntegratedTerminal>>,
     }
 
     #[glib::object_subclass]
@@ -202,13 +200,9 @@ impl DistroShelfWindow {
             .view_stack
             .connect_visible_child_notify(move |stack| {
                 if stack.visible_child_name().as_deref() == Some("terminal")
-                    && let Some(terminal) = this_clone
-                        .imp()
-                        .current_integrated_terminal
-                        .borrow()
-                        .as_ref()
+                    && let Some(container) = this_clone.root_store().selected_container()
                 {
-                    terminal.spawn_terminal();
+                    container.terminal().spawn_terminal();
                 } else {
                     this_clone.root_store().enable_shortcuts();
                 }
@@ -493,12 +487,7 @@ impl DistroShelfWindow {
 
         let container_overview = crate::widgets::ContainerOverview::new(container);
         imp.overview_bin.set_child(Some(&container_overview));
-
-        let integrated_terminal = crate::widgets::IntegratedTerminal::new(container);
-        imp.terminal_bin.set_child(Some(&integrated_terminal));
-
-        // Store the current terminal so the callback can access it
-        *imp.current_integrated_terminal.borrow_mut() = Some(integrated_terminal);
+        imp.terminal_bin.set_child(Some(&container.terminal()));
 
         // Switch to overview page
         imp.view_stack.set_visible_child_name("overview");
