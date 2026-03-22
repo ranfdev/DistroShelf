@@ -31,9 +31,7 @@
                             <property name="title" translatable="yes">Container Runtime</property>
                             <property name="subtitle" translatable="yes">Checking…</property>
                             <child type="prefix">
-                              <object class="GtkSpinner" id="runtime_status_spinner">
-                                <property name="spinning">true</property>
-                              </object>
+                              <object class="AdwSpinner" id="runtime_status_spinner"/>
                             </child>
                             <child type="suffix">
                               <object class="GtkLabel" id="runtime_version_label">
@@ -50,9 +48,7 @@
                             <property name="title" translatable="yes">Distrobox</property>
                             <property name="subtitle" translatable="yes">Checking…</property>
                             <child type="prefix">
-                              <object class="GtkSpinner" id="distrobox_status_spinner">
-                                <property name="spinning">true</property>
-                              </object>
+                              <object class="AdwSpinner" id="distrobox_status_spinner"/>
                             </child>
                             <child type="suffix">
                               <object class="GtkBox">

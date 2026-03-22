@@ -38,9 +38,9 @@ mod imp {
         #[template_child]
         distrobox_row: TemplateChild<adw::ActionRow>,
         #[template_child]
-        runtime_status_spinner: TemplateChild<gtk::Spinner>,
+        runtime_status_spinner: TemplateChild<adw::Spinner>,
         #[template_child]
-        distrobox_status_spinner: TemplateChild<gtk::Spinner>,
+        distrobox_status_spinner: TemplateChild<adw::Spinner>,
         #[template_child]
         runtime_version_label: TemplateChild<gtk::Label>,
         #[template_child]
@@ -133,7 +133,6 @@ mod imp {
             &self,
             runtime: Option<&dyn crate::backends::container_runtime::ContainerRuntime>,
         ) {
-            self.runtime_status_spinner.set_spinning(false);
             self.runtime_status_spinner.set_visible(false);
 
             // Remove old icon if exists
@@ -183,7 +182,6 @@ mod imp {
         }
 
         fn update_distrobox_status(&self, version: Option<&str>) {
-            self.distrobox_status_spinner.set_spinning(false);
             self.distrobox_status_spinner.set_visible(false);
 
             // Remove old icon if exists
@@ -269,9 +267,7 @@ mod imp {
             let root_store = obj.root_store();
 
             // Show spinners
-            self.runtime_status_spinner.set_spinning(true);
             self.runtime_status_spinner.set_visible(true);
-            self.distrobox_status_spinner.set_spinning(true);
             self.distrobox_status_spinner.set_visible(true);
 
             // Clear icons
@@ -333,8 +329,7 @@ mod imp {
             let obj = self.obj();
 
             // Show spinner in button
-            let spinner = gtk::Spinner::new();
-            spinner.start();
+            let spinner = adw::Spinner::new();
             btn.set_child(Some(&spinner));
             btn.set_sensitive(false);
 
