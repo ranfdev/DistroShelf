@@ -30,16 +30,8 @@ pub struct CreateDistroboxErrors {
 }
 
 impl CreateDistroboxErrors {
-    fn reset(&self) {
+    fn reset_guided(&self) {
         self.dialog.imp().create_guided_btn.set_sensitive(true);
-        self.dialog
-            .imp()
-            .create_assemble_file_btn
-            .set_sensitive(true);
-        self.dialog
-            .imp()
-            .create_assemble_url_btn
-            .set_sensitive(true);
         self.dialog.imp().name_row.remove_css_class("error");
         self.dialog.imp().name_row.set_tooltip_text(None);
         self.dialog.imp().image_row.remove_css_class("error");
@@ -49,18 +41,33 @@ impl CreateDistroboxErrors {
             .home_row_expander
             .remove_css_class("error");
         self.dialog.imp().home_row_expander.set_tooltip_text(None);
-        self.dialog
-            .imp()
-            .assemble_file_row
-            .remove_css_class("error");
-        self.dialog.imp().assemble_file_row.set_tooltip_text(None);
-        self.dialog.imp().assemble_url_row.remove_css_class("error");
-        self.dialog.imp().assemble_url_row.set_tooltip_text(None);
         for volume_row in self.dialog.imp().volume_rows.borrow().iter() {
             volume_row.remove_css_class("error");
             volume_row.set_tooltip_text(None);
         }
     }
+
+    fn reset_assemble_file(&self) {
+        self.dialog
+            .imp()
+            .create_assemble_file_btn
+            .set_sensitive(true);
+        self.dialog
+            .imp()
+            .assemble_file_row
+            .remove_css_class("error");
+        self.dialog.imp().assemble_file_row.set_tooltip_text(None);
+    }
+
+    fn reset_assemble_url(&self) {
+        self.dialog
+            .imp()
+            .create_assemble_url_btn
+            .set_sensitive(true);
+        self.dialog.imp().assemble_url_row.remove_css_class("error");
+        self.dialog.imp().assemble_url_row.set_tooltip_text(None);
+    }
+
     fn disable_guided(&self) {
         self.dialog.imp().create_guided_btn.set_sensitive(false);
     }
@@ -157,6 +164,7 @@ mod imp {
         #[property(get, set, nullable, construct_only)]
         pub clone_src: RefCell<Option<Container>>,
         pub view_switcher: adw::InlineViewSwitcher,
+        pub view_stack: adw::ViewStack,
         pub downloaded_tags: RefCell<HashSet<String>>,
 
         pub create_guided_btn: gtk::Button,
@@ -175,16 +183,18 @@ mod imp {
             let header = adw::HeaderBar::new();
 
             // Create view switcher and stack
-            let view_stack = adw::ViewStack::new();
 
             let guided_page = self.obj().build_guided_page();
             let assemble_page = self.obj().build_assemble_from_file_page();
             let url_page = self.obj().build_assemble_from_url_page();
 
             // Add pages to view stack
-            view_stack.add_titled(&guided_page, Some("create"), "Guided");
-            view_stack.add_titled(&assemble_page, Some("assemble-file"), "From File");
-            view_stack.add_titled(&url_page, Some("assemble-url"), "From URL");
+            self.view_stack
+                .add_titled(&guided_page, Some("create"), "Guided");
+            self.view_stack
+                .add_titled(&assemble_page, Some("assemble-file"), "From File");
+            self.view_stack
+                .add_titled(&url_page, Some("assemble-url"), "From URL");
 
             // Create a box to hold the view switcher and content
             let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -192,7 +202,7 @@ mod imp {
             // Add inline view switcher only if not cloning
             // When cloning from an existing container, we skip the view switcher and go directly to guided page
             if self.clone_src.borrow().is_none() {
-                self.view_switcher.set_stack(Some(&view_stack));
+                self.view_switcher.set_stack(Some(&self.view_stack));
                 self.view_switcher.set_margin_start(12);
                 self.view_switcher.set_margin_end(12);
                 self.view_switcher.set_margin_top(12);
@@ -201,7 +211,7 @@ mod imp {
                 content_box.append(&self.view_switcher);
             }
 
-            content_box.append(&view_stack);
+            content_box.append(&self.view_stack);
 
             // Wrap content_box in a scrolled window
             let scrolled_window = gtk::ScrolledWindow::new();
@@ -293,15 +303,32 @@ impl CreateDistroboxDialog {
 
     fn run_error_checks(&self) {
         let errors = self.error_handler();
-        let _ = self.extract_create_args(&errors);
 
-        if self.assemble_file().is_none() {
-            errors.add_assemble_file_error(gettext("No file selected"));
-        }
+        let active_view = self
+            .imp()
+            .view_stack
+            .visible_child_name()
+            .map(|name| name.to_string())
+            .unwrap_or_else(|| "create".to_string());
 
-        let url_text = self.assemble_url().unwrap_or_default();
-        if url_text.trim().is_empty() {
-            errors.add_assemble_url_error(gettext("URL is empty"));
+        match active_view.as_str() {
+            "assemble-file" => {
+                errors.reset_assemble_file();
+                if self.assemble_file().is_none() {
+                    errors.add_assemble_file_error(gettext("No file selected"));
+                }
+            }
+            "assemble-url" => {
+                errors.reset_assemble_url();
+                let url_text = self.assemble_url().unwrap_or_default();
+                if url_text.trim().is_empty() {
+                    errors.add_assemble_url_error(gettext("URL is empty"));
+                }
+            }
+            _ => {
+                errors.reset_guided();
+                let _ = self.extract_create_args(&errors);
+            }
         }
     }
 
@@ -395,10 +422,7 @@ impl CreateDistroboxDialog {
                 self,
                 move |hint| {
                     this.set_home_folder(None::<&str>);
-                    CreateDistroboxErrors {
-                        dialog: this.clone(),
-                    }
-                    .add_home_error(hint);
+                    this.error_handler().add_home_error(hint);
                 }
             ),
         );
@@ -448,7 +472,9 @@ impl CreateDistroboxDialog {
             self,
             move |_| {
                 glib::MainContext::ref_thread_default().spawn_local(async move {
-                    let res = this.extract_create_args(&this.error_handler());
+                    let errors = this.error_handler();
+                    errors.reset_guided();
+                    let res = this.extract_create_args(&errors);
                     if let Ok(create_args) = res {
                         // If cloning from a source, delegate to clone_container, otherwise create normally
                         if let Some(src) = this.clone_src() {
@@ -550,11 +576,9 @@ impl CreateDistroboxDialog {
         page
     }
     pub fn error_handler(&self) -> CreateDistroboxErrors {
-        let res = CreateDistroboxErrors {
+        CreateDistroboxErrors {
             dialog: self.clone(),
-        };
-        res.reset();
-        res
+        }
     }
     pub fn build_assemble_from_file_page(&self) -> adw::NavigationPage {
         let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
@@ -588,10 +612,7 @@ impl CreateDistroboxDialog {
                 self,
                 move |hint| {
                     this.set_assemble_file(None::<&str>);
-                    CreateDistroboxErrors {
-                        dialog: this.clone(),
-                    }
-                    .add_assemble_file_error(hint);
+                    this.error_handler().add_assemble_file_error(hint);
                 }
             ),
         );
@@ -723,10 +744,8 @@ impl CreateDistroboxDialog {
             #[weak(rename_to=this)]
             self,
             move |error| {
-                CreateDistroboxErrors {
-                    dialog: this.clone(),
-                }
-                .add_assemble_url_error(error.to_string());
+                this.error_handler()
+                    .add_assemble_url_error(error.to_string());
             }
         ));
 
