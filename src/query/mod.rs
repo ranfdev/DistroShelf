@@ -502,6 +502,10 @@ where
         self.inner.borrow_mut().query_fn = Some(Box::new(move || Box::pin(query_fn())));
     }
 
+    pub fn set_resource_key(&self, key: &str) {
+        self.inner.borrow_mut().key = key.to_string();
+    }
+
     pub fn connect_success<F: Fn(&T) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         let inner = self.inner.clone();
         let query_obj = { inner.borrow().query_obj.clone() };

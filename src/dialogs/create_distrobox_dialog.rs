@@ -139,9 +139,7 @@ mod imp {
         pub image_row: adw::ActionRow,
         pub images_model: gtk::StringList,
         pub selected_image: RefCell<String>,
-        pub prefill_query: RefCell<Option<Query<Option<String>>>>,
-        pub ini_content_query: RefCell<Option<Query<String>>>,
-        pub errors_query: RefCell<Option<Query<()>>>,
+        pub errors_query: Query<()>,
         pub home_row_expander: adw::ExpanderRow,
         #[property(get, set, nullable)]
         pub home_folder: RefCell<Option<String>>,
@@ -220,6 +218,20 @@ mod imp {
             let page = adw::NavigationPage::new(toolbar_view, "Create a Distrobox");
             navigation_view.add(&page);
             self.obj().set_child(Some(navigation_view));
+
+            self.errors_query.set_fetcher(clone!(
+                #[weak(rename_to=this)]
+                self.obj(),
+                #[upgrade_or_panic]
+                move || async move {
+                    this.run_error_checks();
+                    Ok(())
+                }
+            ));
+            self.errors_query
+                .set_resource_key("create_distrobox_errors");
+            self.errors_query
+                .set_refetch_strategy(Query::debounce(Duration::from_millis(500)));
         }
     }
 
@@ -276,28 +288,7 @@ impl CreateDistroboxDialog {
 
         this.root_store().downloaded_images_query().refetch();
 
-        let errors_query: Query<()> = Query::new(
-            "create-dialog-errors".to_string(),
-            clone!(
-                #[weak(rename_to=this)]
-                this,
-                #[upgrade_or_panic]
-                move || async move {
-                    this.run_error_checks();
-                    Ok(())
-                }
-            ),
-        );
-        errors_query.set_refetch_strategy(Query::debounce(Duration::from_millis(300)));
-        *this.imp().errors_query.borrow_mut() = Some(errors_query);
-
         this
-    }
-
-    fn schedule_error_check(&self) {
-        if let Some(errors_query) = self.imp().errors_query.borrow().as_ref() {
-            errors_query.refetch();
-        }
     }
 
     fn run_error_checks(&self) {
@@ -479,7 +470,7 @@ impl CreateDistroboxDialog {
             #[weak(rename_to=this)]
             self,
             move |_entry| {
-                this.schedule_error_check();
+                this.imp().errors_query.refetch();
             }
         ));
 
@@ -546,12 +537,11 @@ impl CreateDistroboxDialog {
             #[weak(rename_to=this)]
             self,
             move |_| {
-                this.schedule_error_check();
+                this.imp().errors_query.refetch();
             }
         ));
 
-        prefill_query.set_refetch_strategy(Query::debounce(Duration::from_millis(300)));
-        *imp.prefill_query.borrow_mut() = Some(prefill_query.clone());
+        prefill_query.set_refetch_strategy(Query::debounce(Duration::from_millis(500)));
 
         imp.name_row.connect_changed(move |_| {
             prefill_query.refetch();
@@ -626,7 +616,7 @@ impl CreateDistroboxDialog {
 
         // Enable button when file is selected
         self.connect_assemble_file_notify(move |this| {
-            this.schedule_error_check();
+            this.imp().errors_query.refetch();
         });
         page
     }
@@ -741,7 +731,6 @@ impl CreateDistroboxDialog {
         ));
 
         ini_content_query.set_refetch_strategy(Query::debounce(Duration::from_millis(500)));
-        *self.imp().ini_content_query.borrow_mut() = Some(ini_content_query.clone());
 
         url_row.connect_changed(clone!(
             #[weak(rename_to=this)]
@@ -752,7 +741,7 @@ impl CreateDistroboxDialog {
             ini_content_query,
             move |entry| {
                 this.set_assemble_url(Some(entry.text()));
-                this.schedule_error_check();
+                this.imp().errors_query.refetch();
                 text_view.buffer().set_text("");
 
                 // Debounced download (validation is managed by ini_content_query's error checks)
@@ -821,7 +810,7 @@ impl CreateDistroboxDialog {
                                 row.remove_css_class("error");
                                 row.set_tooltip_text(None);
                                 cb(PathBuf::from(resolved_path));
-                                this.schedule_error_check();
+                                this.imp().errors_query.refetch();
                             }
 
                             Err(e) => {
@@ -829,7 +818,7 @@ impl CreateDistroboxDialog {
                                 row.add_css_class("error");
                                 row.set_tooltip_text(Some(&hint));
                                 on_error(hint);
-                                this.schedule_error_check();
+                                this.imp().errors_query.refetch();
                             }
                         }
                     });
@@ -1159,7 +1148,7 @@ impl CreateDistroboxDialog {
                     #[weak(rename_to=this)]
                     this,
                     move |_| {
-                        this.schedule_error_check();
+                        this.imp().errors_query.refetch();
                     }
                 ));
 
@@ -1181,14 +1170,14 @@ impl CreateDistroboxDialog {
                             .borrow_mut()
                             .retain(|row| row != &volume_row);
                         volumes_group.remove(&volume_row);
-                        this.schedule_error_check();
+                        this.imp().errors_query.refetch();
                     }
                 ));
                 volume_row.add_suffix(&remove_button);
 
                 this.imp().volume_rows.borrow_mut().push(volume_row.clone());
                 volumes_group.add(&volume_row);
-                this.schedule_error_check();
+                this.imp().errors_query.refetch();
             }
         ));
 
