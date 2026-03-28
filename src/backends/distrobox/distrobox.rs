@@ -225,16 +225,40 @@ impl std::fmt::Display for CreateArgName {
 }
 
 impl CreateArgName {
-    pub fn new(value: &str) -> Result<Self, Error> {
+    pub fn new(value: &str) -> Result<Self, InvalidValue> {
         let re = regex::Regex::new(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$").unwrap();
         if re.is_match(value) {
             Ok(CreateArgName(value.to_string()))
         } else {
-            Err(Error::InvalidField(
-                "name".into(),
-                "Must respect the format [a-zA-Z0-9][a-zA-Z0-9_.-]*".into(),
-            ))
+            Err(InvalidValue {
+                hint: "Must respect the format [a-zA-Z0-9][a-zA-Z0-9_.-]*".into(),
+            })
         }
+    }
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CreateArgsImage(String);
+
+impl CreateArgsImage {
+    pub fn new(value: &str) -> Result<Self, InvalidValue> {
+        if value.trim().is_empty() {
+            Err(InvalidValue {
+                hint: "Image cannot be empty".into(),
+            })
+        } else {
+            Ok(CreateArgsImage(value.to_string()))
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for CreateArgsImage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -246,7 +270,7 @@ pub struct CreateArgs {
     pub no_entry: bool,
     pub hostname: Option<String>,
     pub home_path: Option<String>,
-    pub image: String,
+    pub image: CreateArgsImage,
     pub name: CreateArgName,
     pub volumes: Vec<Volume>,
 }
@@ -272,7 +296,7 @@ pub struct Volume {
 }
 
 impl FromStr for Volume {
-    type Err = Error;
+    type Err = InvalidValue;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split(':').collect();
@@ -292,10 +316,9 @@ impl FromStr for Volume {
                 container_path: target.to_string(),
                 mode: Some(VolumeMode::ReadOnly),
             }),
-            _ => Err(Error::InvalidField(
-                "volume".into(),
-                format!("Invalid volume descriptor: {}", s),
-            )),
+            _ => Err(InvalidValue {
+                hint: format!("Invalid volume descriptor: {}", s),
+            }),
         }
     }
 }
@@ -321,8 +344,8 @@ pub enum Error {
     #[error("failed to parse command output: {0}")]
     ParseOutput(String),
 
-    #[error("invalid field {0}: {1}")]
-    InvalidField(String, String),
+    #[error("{0}")]
+    InvalidValue(#[from] InvalidValue),
 
     #[error("command failed with exit code {exit_code:?}: {command}\n{stderr}")]
     CommandFailed {
@@ -333,6 +356,12 @@ pub enum Error {
 
     #[error("failed to resolve host path: {0}. getfattr may not be installed on the host")]
     ResolveHostPath(String),
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("invalid value: {hint}")]
+pub struct InvalidValue {
+    pub hint: String,
 }
 
 /// Represents mock responses for the NullCommandRunner used in previews and testing.
@@ -983,10 +1012,9 @@ impl Distrobox {
     // assemble
     pub fn assemble(&self, file_path: &str) -> Result<Box<dyn Child + Send>, Error> {
         if file_path.is_empty() {
-            return Err(Error::InvalidField(
-                "file_path".into(),
-                "File path cannot be empty".into(),
-            ));
+            return Err(Error::InvalidValue(InvalidValue {
+                hint: "File path cannot be empty".into(),
+            }));
         }
         let mut cmd = self.dbcmd();
         cmd.arg("assemble")
@@ -998,10 +1026,9 @@ impl Distrobox {
 
     pub fn assemble_from_url(&self, url: &str) -> Result<Box<dyn Child + Send>, Error> {
         if url.is_empty() {
-            return Err(Error::InvalidField(
-                "url".into(),
-                "URL cannot be empty".into(),
-            ));
+            return Err(Error::InvalidValue(InvalidValue {
+                hint: "URL cannot be empty".into(),
+            }));
         }
         let mut cmd = self.dbcmd();
         cmd.arg("assemble").arg("create").arg("--file").arg(url);
@@ -1010,8 +1037,8 @@ impl Distrobox {
     fn create_cmd(&self, args: CreateArgs) -> Command {
         let mut cmd = self.dbcmd();
         cmd.arg("create").arg("--yes");
-        if !args.image.is_empty() {
-            cmd.arg("--image").arg(args.image);
+        if !args.image.as_str().is_empty() {
+            cmd.arg("--image").arg(args.image.as_str());
         }
         if !args.name.0.is_empty() {
             cmd.arg("--name").arg(args.name.0);
@@ -1365,7 +1392,7 @@ Categories=Utility;Security;";
         let output_tracker = db.cmd_runner.output_tracker();
         debug!("Testing container creation");
         let args = CreateArgs {
-            image: "docker.io/library/ubuntu:latest".into(),
+            image: CreateArgsImage::new("docker.io/library/ubuntu:latest").unwrap(),
             init: true,
             nvidia: true,
             root: true,
@@ -1391,7 +1418,7 @@ Categories=Utility;Security;";
         let db = Distrobox::new(CommandRunner::new_null(), default_cmd_factory());
         let output_tracker = db.cmd_runner.output_tracker();
         let args = CreateArgs {
-            image: "docker.io/library/ubuntu:latest".into(),
+            image: CreateArgsImage::new("docker.io/library/ubuntu:latest").unwrap(),
             no_entry: true,
             ..Default::default()
         };

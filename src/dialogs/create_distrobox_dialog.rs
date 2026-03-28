@@ -3,9 +3,8 @@ use adw::subclass::prelude::*;
 use gtk::gio::File;
 use gtk::{gio, glib};
 use std::time::Duration;
-use tracing::error;
 
-use crate::backends::{self, CreateArgName, CreateArgs, Error};
+use crate::backends::{self, CreateArgName, CreateArgs, CreateArgsImage};
 use crate::dialogs::create_distrobox_helpers::split_repo_tag_digest;
 use crate::fakers::Command;
 use crate::i18n::gettext;
@@ -25,6 +24,105 @@ pub enum FileRowSelection {
     File,
     Folder,
 }
+
+pub struct CreateDistroboxErrors {
+    dialog: CreateDistroboxDialog,
+}
+
+impl CreateDistroboxErrors {
+    fn reset(&self) {
+        self.dialog.imp().create_guided_btn.set_sensitive(true);
+        self.dialog
+            .imp()
+            .create_assemble_file_btn
+            .set_sensitive(true);
+        self.dialog
+            .imp()
+            .create_assemble_url_btn
+            .set_sensitive(true);
+        self.dialog.imp().name_row.remove_css_class("error");
+        self.dialog.imp().name_row.set_tooltip_text(None);
+        self.dialog.imp().image_row.remove_css_class("error");
+        self.dialog.imp().image_row.set_tooltip_text(None);
+        self.dialog
+            .imp()
+            .home_row_expander
+            .remove_css_class("error");
+        self.dialog.imp().home_row_expander.set_tooltip_text(None);
+        self.dialog
+            .imp()
+            .assemble_file_row
+            .remove_css_class("error");
+        self.dialog.imp().assemble_file_row.set_tooltip_text(None);
+        self.dialog.imp().assemble_url_row.remove_css_class("error");
+        self.dialog.imp().assemble_url_row.set_tooltip_text(None);
+        for volume_row in self.dialog.imp().volume_rows.borrow().iter() {
+            volume_row.remove_css_class("error");
+            volume_row.set_tooltip_text(None);
+        }
+    }
+    fn disable_guided(&self) {
+        self.dialog.imp().create_guided_btn.set_sensitive(false);
+    }
+
+    fn disable_assemble_file(&self) {
+        self.dialog
+            .imp()
+            .create_assemble_file_btn
+            .set_sensitive(false);
+    }
+
+    fn disable_assemble_url(&self) {
+        self.dialog
+            .imp()
+            .create_assemble_url_btn
+            .set_sensitive(false);
+    }
+}
+
+impl CreateDistroboxErrors {
+    fn add_name_error(&self, hint: String) {
+        self.disable_guided();
+        self.dialog.imp().name_row.add_css_class("error");
+        self.dialog.imp().name_row.set_tooltip_text(Some(&hint));
+    }
+    fn add_image_error(&self, hint: String) {
+        self.disable_guided();
+        self.dialog.imp().image_row.add_css_class("error");
+        self.dialog.imp().image_row.set_tooltip_text(Some(&hint));
+    }
+    fn add_home_error(&self, hint: String) {
+        self.disable_guided();
+        self.dialog.imp().home_row_expander.add_css_class("error");
+        self.dialog
+            .imp()
+            .home_row_expander
+            .set_tooltip_text(Some(&hint));
+    }
+    fn add_assemble_file_error(&self, hint: String) {
+        self.disable_assemble_file();
+        self.dialog.imp().assemble_file_row.add_css_class("error");
+        self.dialog
+            .imp()
+            .assemble_file_row
+            .set_tooltip_text(Some(&hint));
+    }
+    fn add_assemble_url_error(&self, hint: String) {
+        self.disable_assemble_url();
+        self.dialog.imp().assemble_url_row.add_css_class("error");
+        self.dialog
+            .imp()
+            .assemble_url_row
+            .set_tooltip_text(Some(&hint));
+    }
+
+    fn add_volume_error(&self, volume_row: &adw::EntryRow, hint: String) {
+        self.disable_guided();
+        volume_row.add_css_class("error");
+        volume_row.set_tooltip_text(Some(&hint));
+    }
+}
+
 mod imp {
     use super::*;
 
@@ -43,6 +141,7 @@ mod imp {
         pub selected_image: RefCell<String>,
         pub prefill_query: RefCell<Option<Query<Option<String>>>>,
         pub ini_content_query: RefCell<Option<Query<String>>>,
+        pub errors_query: RefCell<Option<Query<()>>>,
         pub home_row_expander: adw::ExpanderRow,
         #[property(get, set, nullable)]
         pub home_folder: RefCell<Option<String>>,
@@ -50,6 +149,8 @@ mod imp {
         pub assemble_file: RefCell<Option<String>>,
         #[property(get, set, nullable)]
         pub assemble_url: RefCell<Option<String>>,
+        pub assemble_file_row: adw::ActionRow,
+        pub assemble_url_row: adw::EntryRow,
         pub nvidia_row: adw::SwitchRow,
         pub init_row: adw::SwitchRow,
         pub hostname_row: adw::EntryRow,
@@ -59,6 +160,10 @@ mod imp {
         pub clone_src: RefCell<Option<Container>>,
         pub view_switcher: adw::InlineViewSwitcher,
         pub downloaded_tags: RefCell<HashSet<String>>,
+
+        pub create_guided_btn: gtk::Button,
+        pub create_assemble_file_btn: gtk::Button,
+        pub create_assemble_url_btn: gtk::Button,
     }
 
     #[derived_properties]
@@ -171,7 +276,42 @@ impl CreateDistroboxDialog {
 
         this.root_store().downloaded_images_query().refetch();
 
+        let errors_query: Query<()> = Query::new(
+            "create-dialog-errors".to_string(),
+            clone!(
+                #[weak(rename_to=this)]
+                this,
+                #[upgrade_or_panic]
+                move || async move {
+                    this.run_error_checks();
+                    Ok(())
+                }
+            ),
+        );
+        errors_query.set_refetch_strategy(Query::debounce(Duration::from_millis(300)));
+        *this.imp().errors_query.borrow_mut() = Some(errors_query);
+
         this
+    }
+
+    fn schedule_error_check(&self) {
+        if let Some(errors_query) = self.imp().errors_query.borrow().as_ref() {
+            errors_query.refetch();
+        }
+    }
+
+    fn run_error_checks(&self) {
+        let errors = self.error_handler();
+        let _ = self.extract_create_args(&errors);
+
+        if self.assemble_file().is_none() {
+            errors.add_assemble_file_error(gettext("No file selected"));
+        }
+
+        let url_text = self.assemble_url().unwrap_or_default();
+        if url_text.trim().is_empty() {
+            errors.add_assemble_url_error(gettext("URL is empty"));
+        }
     }
 
     pub fn build_guided_page(&self) -> adw::NavigationPage {
@@ -250,13 +390,26 @@ impl CreateDistroboxDialog {
         ));
 
         let this = self.clone();
-        let home_row = self.build_file_row(
+        let home_row = adw::ActionRow::new();
+        self.configure_file_row(
+            &home_row,
             &gettext("Select Home Directory"),
             FileRowSelection::Folder,
             None, // No filter for folders
             move |path| {
                 this.set_home_folder(Some(path.display().to_string()));
             },
+            clone!(
+                #[weak(rename_to=this)]
+                self,
+                move |hint| {
+                    this.set_home_folder(None::<&str>);
+                    CreateDistroboxErrors {
+                        dialog: this.clone(),
+                    }
+                    .add_home_error(hint);
+                }
+            ),
         );
         imp.home_row_expander
             .set_title(&gettext("Custom Home Directory"));
@@ -296,7 +449,7 @@ impl CreateDistroboxDialog {
         content.append(&advanced_group);
         content.append(&volumes_group);
 
-        let create_btn = self.build_create_btn();
+        let create_btn = self.build_create_btn(&self.imp().create_guided_btn);
         create_btn.set_sensitive(false);
 
         create_btn.connect_clicked(clone!(
@@ -304,8 +457,7 @@ impl CreateDistroboxDialog {
             self,
             move |_| {
                 glib::MainContext::ref_thread_default().spawn_local(async move {
-                    let res = this.extract_create_args().await;
-                    this.update_errors(&res);
+                    let res = this.extract_create_args(&this.error_handler());
                     if let Ok(create_args) = res {
                         // If cloning from a source, delegate to clone_container, otherwise create normally
                         if let Some(src) = this.clone_src() {
@@ -324,26 +476,10 @@ impl CreateDistroboxDialog {
 
         // Add name validation for Create button sensitivity and duplicate name check
         imp.name_row.connect_changed(clone!(
-            #[weak]
-            create_btn,
             #[weak(rename_to=this)]
             self,
-            move |entry| {
-                let text = entry.text();
-                let is_valid = !text.is_empty() && backends::CreateArgName::new(&text).is_ok();
-
-                // Check for duplicate container names
-                let mut has_duplicate = false;
-                if is_valid {
-                    for container in this.root_store().containers().iter() {
-                        if container.name() == text.as_str() {
-                            has_duplicate = true;
-                            break;
-                        }
-                    }
-                }
-
-                create_btn.set_sensitive(is_valid && !has_duplicate);
+            move |_entry| {
+                this.schedule_error_check();
             }
         ));
 
@@ -406,6 +542,14 @@ impl CreateDistroboxDialog {
             }
         ));
 
+        imp.image_row.connect_subtitle_notify(clone!(
+            #[weak(rename_to=this)]
+            self,
+            move |_| {
+                this.schedule_error_check();
+            }
+        ));
+
         prefill_query.set_refetch_strategy(Query::debounce(Duration::from_millis(300)));
         *imp.prefill_query.borrow_mut() = Some(prefill_query.clone());
 
@@ -414,6 +558,13 @@ impl CreateDistroboxDialog {
         });
 
         page
+    }
+    pub fn error_handler(&self) -> CreateDistroboxErrors {
+        let res = CreateDistroboxErrors {
+            dialog: self.clone(),
+        };
+        res.reset();
+        res
     }
     pub fn build_assemble_from_file_page(&self) -> adw::NavigationPage {
         let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
@@ -433,18 +584,31 @@ impl CreateDistroboxDialog {
         ini_filter.add_pattern("*.ini");
 
         let this = self.clone();
-        let file_row = self.build_file_row(
+        let file_row = self.imp().assemble_file_row.clone();
+        self.configure_file_row(
+            &file_row,
             &gettext("Select Assemble File"),
             FileRowSelection::File,
             Some(&ini_filter),
             move |path| {
                 this.set_assemble_file(Some(path.display().to_string()));
             },
+            clone!(
+                #[weak(rename_to=this)]
+                self,
+                move |hint| {
+                    this.set_assemble_file(None::<&str>);
+                    CreateDistroboxErrors {
+                        dialog: this.clone(),
+                    }
+                    .add_assemble_file_error(hint);
+                }
+            ),
         );
         assemble_group.add(&file_row);
         content.append(&assemble_group);
 
-        let create_btn = self.build_create_btn();
+        let create_btn = self.build_create_btn(&self.imp().create_assemble_file_btn);
         create_btn.set_sensitive(false);
         content.append(&create_btn);
 
@@ -461,8 +625,8 @@ impl CreateDistroboxDialog {
         ));
 
         // Enable button when file is selected
-        self.connect_assemble_file_notify(move |obj| {
-            create_btn.set_sensitive(obj.assemble_file().is_some());
+        self.connect_assemble_file_notify(move |this| {
+            this.schedule_error_check();
         });
         page
     }
@@ -480,7 +644,7 @@ impl CreateDistroboxDialog {
         url_group.set_title(&gettext("Assemble from URL"));
         url_group.set_description(Some(&gettext("Create a container from a remote URL")));
 
-        let url_row = adw::EntryRow::new();
+        let url_row = self.imp().assemble_url_row.clone();
         url_row.set_title(&gettext("URL"));
         url_row.set_text("https://example.com/container.ini");
 
@@ -513,7 +677,7 @@ impl CreateDistroboxDialog {
         content.append(&preview_box);
 
         // Add create button for URL
-        let create_btn = self.build_create_btn();
+        let create_btn = self.build_create_btn(&self.imp().create_assemble_url_btn);
         create_btn.set_sensitive(false);
         content.append(&create_btn);
 
@@ -568,16 +732,11 @@ impl CreateDistroboxDialog {
         ini_content_query.connect_error(clone!(
             #[weak(rename_to=this)]
             self,
-            #[weak]
-            create_btn,
-            #[weak]
-            url_row,
             move |error| {
-                create_btn.set_sensitive(false);
-                url_row.add_css_class("error");
-
-                let toast = adw::Toast::new(&format!("{}: {}", gettext("Download failed"), error));
-                this.imp().toast_overlay.add_toast(toast);
+                CreateDistroboxErrors {
+                    dialog: this.clone(),
+                }
+                .add_assemble_url_error(error.to_string());
             }
         ));
 
@@ -588,19 +747,15 @@ impl CreateDistroboxDialog {
             #[weak(rename_to=this)]
             self,
             #[weak]
-            create_btn,
-            #[weak]
             text_view,
             #[strong]
             ini_content_query,
             move |entry| {
                 this.set_assemble_url(Some(entry.text()));
-                create_btn.set_sensitive(false);
-                entry.remove_css_class("error");
-
+                this.schedule_error_check();
                 text_view.buffer().set_text("");
 
-                // Debounced download (validation happens implicitly)
+                // Debounced download (validation is managed by ini_content_query's error checks)
                 ini_content_query.refetch();
             }
         ));
@@ -619,23 +774,24 @@ impl CreateDistroboxDialog {
         page
     }
 
-    pub fn build_create_btn(&self) -> gtk::Button {
-        let create_btn = gtk::Button::with_label(&gettext("Create"));
-        create_btn.set_halign(gtk::Align::Center);
-        create_btn.add_css_class("suggested-action");
-        create_btn.add_css_class("pill");
-        create_btn.set_margin_top(12);
-        create_btn
+    pub fn build_create_btn(&self, button: &gtk::Button) -> gtk::Button {
+        button.set_label(&gettext("Create"));
+        button.set_halign(gtk::Align::Center);
+        button.add_css_class("suggested-action");
+        button.add_css_class("pill");
+        button.set_margin_top(12);
+        button.clone()
     }
 
-    pub fn build_file_row(
+    pub fn configure_file_row(
         &self,
+        row: &adw::ActionRow,
         title: &str,
         selection: FileRowSelection,
         filter: Option<&gtk::FileFilter>,
         cb: impl Fn(PathBuf) + Clone + 'static,
-    ) -> adw::ActionRow {
-        let row = adw::ActionRow::new();
+        on_error: impl Fn(String) + Clone + 'static,
+    ) {
         row.set_title(title);
         row.set_subtitle(&gettext("No file selected"));
         row.set_activatable(true);
@@ -648,8 +804,6 @@ impl CreateDistroboxDialog {
         let dialog_cb = clone!(
             #[weak(rename_to=this)]
             self,
-            #[strong]
-            title,
             #[weak]
             row,
             move |res: Result<File, _>| {
@@ -664,14 +818,18 @@ impl CreateDistroboxDialog {
                         {
                             Ok(resolved_path) => {
                                 row.set_subtitle(&resolved_path);
+                                row.remove_css_class("error");
+                                row.set_tooltip_text(None);
                                 cb(PathBuf::from(resolved_path));
+                                this.schedule_error_check();
                             }
 
                             Err(e) => {
-                                this.update_errors::<()>(&Err(Error::InvalidField(
-                                    title.to_lowercase(),
-                                    e.to_string(),
-                                )));
+                                let hint = e.to_string();
+                                row.add_css_class("error");
+                                row.set_tooltip_text(Some(&hint));
+                                on_error(hint);
+                                this.schedule_error_check();
                             }
                         }
                     });
@@ -703,7 +861,6 @@ impl CreateDistroboxDialog {
                 }
             }
         });
-        row
     }
 
     pub fn build_image_picker_view(&self, initial_search: Option<&str>) -> adw::NavigationPage {
@@ -897,7 +1054,7 @@ impl CreateDistroboxDialog {
         adw::NavigationPage::new(&view, "Select Image")
     }
 
-    pub async fn extract_create_args(&self) -> Result<CreateArgs, Error> {
+    pub fn extract_create_args(&self, errors: &CreateDistroboxErrors) -> Result<CreateArgs, ()> {
         let imp = self.imp();
         let image = {
             let sel = imp.selected_image.borrow();
@@ -915,49 +1072,69 @@ impl CreateDistroboxDialog {
             }
         };
         if image.is_empty() && imp.clone_src.borrow().is_none() {
-            return Err(Error::InvalidField(
-                "image".into(),
-                "No image selected".into(),
-            ));
+            errors.add_image_error("No image selected".into());
         }
-        let volumes = imp
-            .volume_rows
-            .borrow()
-            .iter()
-            .filter_map(|entry| {
-                if !entry.text().is_empty() {
-                    match entry.text().parse::<backends::Volume>() {
-                        Ok(volume) => Some(Ok(volume)),
-                        Err(e) => Some(Err(e)),
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let image = match CreateArgsImage::new(&image) {
+            Ok(img) => Some(img),
+            Err(e) => {
+                errors.add_image_error(e.hint);
+                None
+            }
+        };
 
-        let name = CreateArgName::new(&imp.name_row.text())?;
+        let mut volumes = Vec::new();
+        for entry in imp.volume_rows.borrow().iter() {
+            let text = entry.text();
+            if !text.is_empty() {
+                match text.parse::<backends::Volume>() {
+                    Ok(volume) => volumes.push(volume),
+                    Err(e) => errors.add_volume_error(entry, e.hint),
+                }
+            }
+        }
+        let name = match CreateArgName::new(&imp.name_row.text()) {
+            Ok(name) => {
+                for container in self.root_store().containers().iter() {
+                    if container.name() == imp.name_row.text() {
+                        errors.add_name_error(format!(
+                            "Container with name '{}' already exists",
+                            name
+                        ));
+                        break;
+                    }
+                }
+                Some(name)
+            }
+            Err(e) => {
+                errors.add_name_error(e.hint);
+                None
+            }
+        };
         let hostname = {
             let value = imp.hostname_row.text().trim().to_string();
             if value.is_empty() { None } else { Some(value) }
         };
 
-        let create_args = CreateArgs {
-            name,
-            image: image.to_string(),
-            nvidia: imp.nvidia_row.is_active(),
-            home_path: self.home_folder(),
-            init: imp.init_row.is_active(),
-            hostname,
-            root: false,
-            no_entry: self
-                .root_store()
-                .settings()
-                .boolean("distrobox-create-no-entry"),
-            volumes,
-        };
-
-        Ok(create_args)
+        if let Some(name) = name
+            && let Some(image) = image
+        {
+            Ok(CreateArgs {
+                name,
+                image,
+                nvidia: imp.nvidia_row.is_active(),
+                home_path: self.home_folder(),
+                init: imp.init_row.is_active(),
+                hostname,
+                root: false,
+                no_entry: self
+                    .root_store()
+                    .settings()
+                    .boolean("distrobox-create-no-entry"),
+                volumes,
+            })
+        } else {
+            Err(())
+        }
     }
 
     pub fn build_volumes_group(&self) -> adw::PreferencesGroup {
@@ -978,6 +1155,13 @@ impl CreateDistroboxDialog {
             move |_| {
                 let volume_row = adw::EntryRow::new();
                 volume_row.set_title(&gettext("Volume"));
+                volume_row.connect_changed(clone!(
+                    #[weak(rename_to=this)]
+                    this,
+                    move |_| {
+                        this.schedule_error_check();
+                    }
+                ));
 
                 let remove_button = gtk::Button::from_icon_name("user-trash-symbolic");
                 remove_button.set_tooltip_text(Some(&gettext("Remove Volume")));
@@ -997,42 +1181,20 @@ impl CreateDistroboxDialog {
                             .borrow_mut()
                             .retain(|row| row != &volume_row);
                         volumes_group.remove(&volume_row);
+                        this.schedule_error_check();
                     }
                 ));
                 volume_row.add_suffix(&remove_button);
 
                 this.imp().volume_rows.borrow_mut().push(volume_row.clone());
                 volumes_group.add(&volume_row);
+                this.schedule_error_check();
             }
         ));
 
         volumes_group.add(&add_volume_button);
 
         volumes_group
-    }
-
-    fn update_errors<T>(&self, res: &Result<T, backends::Error>) {
-        let imp = self.imp();
-        imp.name_row.remove_css_class("error");
-        imp.name_row.set_tooltip_text(None);
-        if let Err(e) = res {
-            error!(error = %e, "CreateDistroboxDialog: update_errors");
-        }
-        match res {
-            Err(backends::Error::InvalidField(field, msg)) if field == "name" => {
-                imp.name_row.add_css_class("error");
-                imp.name_row.set_tooltip_text(Some(msg));
-                // Show toast for name validation error
-                let toast = adw::Toast::new(msg);
-                imp.toast_overlay.add_toast(toast);
-            }
-            Err(backends::Error::InvalidField(_, msg)) => {
-                // Show toast for other field validation errors
-                let toast = adw::Toast::new(msg);
-                imp.toast_overlay.add_toast(toast);
-            }
-            _ => {}
-        }
     }
 
     async fn download_ini_file(&self, url: &str) -> anyhow::Result<String> {
