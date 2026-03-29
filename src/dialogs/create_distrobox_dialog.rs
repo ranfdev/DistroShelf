@@ -1064,6 +1064,7 @@ impl CreateDistroboxDialog {
 
     pub fn extract_create_args(&self, errors: &CreateDistroboxErrors) -> Result<CreateArgs, ()> {
         let imp = self.imp();
+        let is_clone = imp.clone_src.borrow().is_some();
         let image = {
             let sel = imp.selected_image.borrow();
             if sel.is_empty() {
@@ -1079,14 +1080,20 @@ impl CreateDistroboxDialog {
                 sel.clone()
             }
         };
-        if image.is_empty() && imp.clone_src.borrow().is_none() {
+        let mut image_error = false;
+        let image = if is_clone && image.is_empty() {
+            None
+        } else if !is_clone && image.is_empty() {
             errors.add_image_error("No image selected".into());
-        }
-        let image = match CreateArgsImage::new(&image) {
-            Ok(img) => Some(img),
-            Err(e) => {
-                errors.add_image_error(e.hint);
-                None
+            image_error = true;
+            None
+        } else {
+            match CreateArgsImage::new(&image) {
+                Ok(img) => Some(img),
+                Err(e) => {
+                    errors.add_image_error(e.hint);
+                    None
+                }
             }
         };
 
@@ -1124,7 +1131,7 @@ impl CreateDistroboxDialog {
         };
 
         if let Some(name) = name
-            && let Some(image) = image
+            && !image_error
         {
             Ok(CreateArgs {
                 name,

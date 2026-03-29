@@ -270,7 +270,7 @@ pub struct CreateArgs {
     pub no_entry: bool,
     pub hostname: Option<String>,
     pub home_path: Option<String>,
-    pub image: CreateArgsImage,
+    pub image: Option<CreateArgsImage>,
     pub name: CreateArgName,
     pub volumes: Vec<Volume>,
 }
@@ -1037,8 +1037,8 @@ impl Distrobox {
     fn create_cmd(&self, args: CreateArgs) -> Command {
         let mut cmd = self.dbcmd();
         cmd.arg("create").arg("--yes");
-        if !args.image.as_str().is_empty() {
-            cmd.arg("--image").arg(args.image.as_str());
+        if let Some(image) = args.image {
+            cmd.arg("--image").arg(image.as_str());
         }
         if !args.name.0.is_empty() {
             cmd.arg("--name").arg(args.name.0);
@@ -1392,7 +1392,7 @@ Categories=Utility;Security;";
         let output_tracker = db.cmd_runner.output_tracker();
         debug!("Testing container creation");
         let args = CreateArgs {
-            image: CreateArgsImage::new("docker.io/library/ubuntu:latest").unwrap(),
+            image: Some(CreateArgsImage::new("docker.io/library/ubuntu:latest").unwrap()),
             init: true,
             nvidia: true,
             root: true,
@@ -1418,7 +1418,7 @@ Categories=Utility;Security;";
         let db = Distrobox::new(CommandRunner::new_null(), default_cmd_factory());
         let output_tracker = db.cmd_runner.output_tracker();
         let args = CreateArgs {
-            image: CreateArgsImage::new("docker.io/library/ubuntu:latest").unwrap(),
+            image: Some(CreateArgsImage::new("docker.io/library/ubuntu:latest").unwrap()),
             no_entry: true,
             ..Default::default()
         };
