@@ -1093,7 +1093,7 @@ impl Distrobox {
     // enter
     pub fn enter_cmd(&self, name: &str) -> Command {
         let mut cmd = self.dbcmd();
-        cmd.arg("enter").arg(name);
+        cmd.arg("enter").arg(name).arg("--no-workdir");
         cmd
     }
     // clone from an existing container using create args to customize the clone
