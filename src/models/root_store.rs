@@ -2,6 +2,7 @@ use anyhow::Context;
 use futures::prelude::*;
 use glib::Properties;
 use glib::subclass::prelude::*;
+use gtk::glib::clone;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::OnceCell;
@@ -22,7 +23,7 @@ use crate::backends::supported_terminals::{Terminal, TerminalRepository};
 use crate::backends::{self, CreateArgs};
 use crate::fakers::{Command, CommandRunner, FdMode};
 use crate::gtk_utils::{TypedListStore, reconcile_list_by_key};
-use crate::models::Container;
+use crate::models::{Container, ContainerSortKey};
 use crate::models::DistroboxTask;
 use crate::models::ViewType;
 use crate::models::{DialogParams, DialogType};
@@ -58,7 +59,7 @@ pub struct Image {
 mod imp {
     use std::rc::Rc;
 
-    use crate::{backends::container_runtime::ContainerRuntime, query::Query};
+    use crate::{backends::container_runtime::ContainerRuntime, models::ContainerSortKey, query::Query};
 
     use super::*;
 
@@ -77,6 +78,11 @@ mod imp {
 
         pub containers: TypedListStore<Container>,
         pub selected_container_model: OnceCell<gtk::SingleSelection>,
+        pub sorted_container_model: OnceCell<gtk::SortListModel>,
+        pub containers_sorter: OnceCell<gtk::CustomSorter>,
+
+        #[property(get, set, builder(ContainerSortKey::default()))]
+        pub containers_sort_key: RefCell<ContainerSortKey>,
 
         pub tasks: TypedListStore<DistroboxTask>,
         #[property(get, set, nullable)]
@@ -112,6 +118,9 @@ mod imp {
                     CommandRunner::new_null(),
                 )),
                 selected_container_model: OnceCell::new(),
+                sorted_container_model: OnceCell::new(),
+                containers_sorter: OnceCell::new(),
+                containers_sort_key: RefCell::new(ContainerSortKey::default()),
                 current_view: Default::default(),
                 current_dialog: Default::default(),
                 dialog_params: Default::default(),
@@ -247,14 +256,37 @@ impl RootStore {
             .set(Distrobox::new(command_runner.clone(), cmd_factory))
             .or(Err("distrobox already set"))
             .unwrap();
+        
+        let sorter = gtk::CustomSorter::new(clone!(#[strong] this, move |obj1, obj2| {
+            let container1 = obj1.downcast_ref::<Container>().unwrap();
+            let container2 = obj2.downcast_ref::<Container>().unwrap();
+            let sort_key = *this.imp().containers_sort_key.borrow();
+            match sort_key {
+                ContainerSortKey::Name => container1.name().cmp(&container2.name()).into(),
+                _ => unimplemented!("Sorting by {:?} not implemented yet", sort_key),
+            }
+        }));
+        this.imp().containers_sorter.set(sorter).expect("containers_sorter already set");
+        let sorted = gtk::SortListModel::new(Some(this.containers().inner().clone()), Some(this.imp().containers_sorter.get().unwrap().clone()));
+
+        this.connect_containers_sort_key_notify(clone!(#[strong] this, move |_obj| {
+            this.imp().containers_sorter.get().unwrap().changed(gtk::SorterChange::Different);
+        }));
+        
+        this.imp()
+            .sorted_container_model
+            .set(sorted)
+            .expect("sorted_container_model already set");
 
         // Initialize the SingleSelection model
-        let selection = gtk::SingleSelection::new(Some(this.containers().inner().clone()));
+        let selection = gtk::SingleSelection::new(Some(this.sorted_container_model()));
         this.imp()
             .selected_container_model
             .set(selection)
-            .or(Err("selected_container_model already set"))
-            .unwrap();
+            .expect("selected_container_model already set");
+
+
+        
 
         let this_clone = this.clone();
         this.imp().distrobox_version.set_fetcher(move || {
@@ -484,6 +516,10 @@ impl RootStore {
 
     pub fn selected_container_model(&self) -> gtk::SingleSelection {
         self.imp().selected_container_model.get().unwrap().clone()
+    }
+
+    pub fn sorted_container_model(&self) -> gtk::SortListModel {
+        self.imp().sorted_container_model.get().unwrap().clone()
     }
 
     /// Get the currently selected container, if any

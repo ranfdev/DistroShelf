@@ -1,4 +1,5 @@
 pub mod container;
+pub mod container_sort_key;
 pub mod dialog_type;
 pub mod distrobox_task;
 pub mod known_distros;
@@ -7,6 +8,7 @@ pub mod tagged_object;
 pub mod view_type;
 
 pub use container::Container;
+pub use container_sort_key::ContainerSortKey;
 pub use dialog_type::{DialogParams, DialogType};
 pub use distrobox_task::{DistroboxTask, TaskStatus};
 pub use known_distros::{KnownDistro, known_distro_by_image};

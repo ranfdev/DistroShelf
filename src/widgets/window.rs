@@ -290,8 +290,6 @@ impl DistroShelfWindow {
     fn build_sidebar(&self) {
         let imp = self.imp();
 
-        let selection_model = self.root_store().selected_container_model();
-
         // Create a factory for creating and binding sidebar rows
         let factory = gtk::SignalListItemFactory::new();
 
@@ -331,7 +329,7 @@ impl DistroShelfWindow {
         });
 
         imp.sidebar_list_view.set_factory(Some(&factory));
-        imp.sidebar_list_view.set_model(Some(&selection_model));
+        imp.sidebar_list_view.set_model(Some(&self.root_store().selected_container_model()));
         imp.sidebar_list_view.connect_activate(clone!(
             #[weak(rename_to = this)]
             self,
