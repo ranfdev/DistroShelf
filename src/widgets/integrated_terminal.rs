@@ -12,7 +12,6 @@ use crate::i18n::gettext;
 use crate::{fakers::CommandRunner, gtk_utils::ColorPalette, models::RootStore};
 use std::cell::OnceCell;
 
-use crate::models::Container;
 use gtk::glib::{Properties, derived_properties};
 
 mod imp {
@@ -78,10 +77,10 @@ impl Default for IntegratedTerminal {
 }
 
 impl IntegratedTerminal {
-    pub fn new(container: &Container) -> Self {
+    pub fn new(container_name: &str, root_store: &RootStore) -> Self {
         let obj: Self = glib::Object::builder()
-            .property("container_name", container.name())
-            .property("root_store", container.root_store())
+            .property("container_name", container_name)
+            .property("root_store", root_store)
             .build();
         obj.build_ui();
         obj

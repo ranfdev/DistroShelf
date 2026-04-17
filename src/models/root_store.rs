@@ -20,12 +20,12 @@ use crate::backends::Status;
 use crate::backends::container_runtime::{ContainerRuntime, get_container_runtime};
 use crate::backends::podman::PodmanEvent;
 use crate::backends::supported_terminals::{Terminal, TerminalRepository};
-use crate::backends::{self, CreateArgs};
+use crate::backends::{self, CreateArgs, ExportableApp};
 use crate::fakers::{Command, CommandRunner, FdMode};
 use crate::gtk_utils::{TypedListStore, reconcile_list_by_key};
-use crate::models::{Container, ContainerSortKey};
 use crate::models::DistroboxTask;
 use crate::models::ViewType;
+use crate::models::{Container, ContainerSortKey};
 use crate::models::{DialogParams, DialogType};
 use crate::query::Query;
 
@@ -59,7 +59,9 @@ pub struct Image {
 mod imp {
     use std::rc::Rc;
 
-    use crate::{backends::container_runtime::ContainerRuntime, models::ContainerSortKey, query::Query};
+    use crate::{
+        backends::container_runtime::ContainerRuntime, models::ContainerSortKey, query::Query,
+    };
 
     use super::*;
 
@@ -239,7 +241,7 @@ impl RootStore {
         // Build a CmdFactory that will be injected into the Distrobox backend. The factory
         // is created here (root_store) so the distrobox module does not depend on `gio::Settings`.
         let this_clone = this.clone();
-        let cmd_factory: crate::backends::distrobox::command::CmdFactory = Box::new(move || {
+        let cmd_factory: crate::backends::distrobox::command::CmdFactory = Rc::new(move || {
             let distrobox_executable_val = this_clone.settings().string("distrobox-executable");
             let selected_program: String = if distrobox_executable_val == "bundled" {
                 crate::distrobox_downloader::resolve_bundled_distrobox_path()
@@ -256,23 +258,41 @@ impl RootStore {
             .set(Distrobox::new(command_runner.clone(), cmd_factory))
             .or(Err("distrobox already set"))
             .unwrap();
-        
-        let sorter = gtk::CustomSorter::new(clone!(#[strong] this, move |obj1, obj2| {
-            let container1 = obj1.downcast_ref::<Container>().unwrap();
-            let container2 = obj2.downcast_ref::<Container>().unwrap();
-            let sort_key = *this.imp().containers_sort_key.borrow();
-            match sort_key {
-                ContainerSortKey::Name => container1.name().cmp(&container2.name()).into(),
-                _ => unimplemented!("Sorting by {:?} not implemented yet", sort_key),
-            }
-        }));
-        this.imp().containers_sorter.set(sorter).expect("containers_sorter already set");
-        let sorted = gtk::SortListModel::new(Some(this.containers().inner().clone()), Some(this.imp().containers_sorter.get().unwrap().clone()));
 
-        this.connect_containers_sort_key_notify(clone!(#[strong] this, move |_obj| {
-            this.imp().containers_sorter.get().unwrap().changed(gtk::SorterChange::Different);
-        }));
-        
+        let sorter = gtk::CustomSorter::new(clone!(
+            #[strong]
+            this,
+            move |obj1, obj2| {
+                let container1 = obj1.downcast_ref::<Container>().unwrap();
+                let container2 = obj2.downcast_ref::<Container>().unwrap();
+                let sort_key = *this.imp().containers_sort_key.borrow();
+                match sort_key {
+                    ContainerSortKey::Name => container1.name().cmp(&container2.name()).into(),
+                    _ => unimplemented!("Sorting by {:?} not implemented yet", sort_key),
+                }
+            }
+        ));
+        this.imp()
+            .containers_sorter
+            .set(sorter)
+            .expect("containers_sorter already set");
+        let sorted = gtk::SortListModel::new(
+            Some(this.containers().inner().clone()),
+            Some(this.imp().containers_sorter.get().unwrap().clone()),
+        );
+
+        this.connect_containers_sort_key_notify(clone!(
+            #[strong]
+            this,
+            move |_obj| {
+                this.imp()
+                    .containers_sorter
+                    .get()
+                    .unwrap()
+                    .changed(gtk::SorterChange::Different);
+            }
+        ));
+
         this.imp()
             .sorted_container_model
             .set(sorted)
@@ -284,9 +304,6 @@ impl RootStore {
             .selected_container_model
             .set(selection)
             .expect("selected_container_model already set");
-
-
-        
 
         let this_clone = this.clone();
         this.imp().distrobox_version.set_fetcher(move || {
@@ -342,10 +359,23 @@ impl RootStore {
         this.imp().containers_query.set_fetcher(move || {
             let this_clone = this_clone.clone();
             async move {
+                let distrobox = this_clone.distrobox().clone();
+                let runtime_query = this_clone.container_runtime();
+                let on_containers_changed: Rc<dyn Fn()> = {
+                    let this = this_clone.clone();
+                    Rc::new(move || this.load_containers())
+                };
                 let containers = this_clone.distrobox().list().await?;
                 let containers: Vec<_> = containers
                     .into_values()
-                    .map(|v| Container::from_info(&this_clone, v))
+                    .map(|v| {
+                        Container::from_info(
+                            distrobox.clone(),
+                            on_containers_changed.clone(),
+                            runtime_query.clone(),
+                            v,
+                        )
+                    })
                     .collect();
                 Ok(containers)
             }
@@ -691,9 +721,173 @@ impl RootStore {
         });
         self.view_task(&task);
     }
+
+    pub fn upgrade_container(&self, container: &Container) -> DistroboxTask {
+        let this = self.clone();
+        let name_for_task = container.name();
+        let name = name_for_task.clone();
+        self.create_task(&name_for_task, "upgrade", move |task| async move {
+            let child = this.distrobox().upgrade(&name)?;
+            task.handle_child_output(child).await
+        })
+    }
+
+    pub fn launch_app(&self, container: &Container, app: ExportableApp) {
+        let this = self.clone();
+        let container = container.clone();
+        self.create_task(&container.name(), "launch-app", move |task| async move {
+            let child = this.distrobox().launch_app(&container.name(), &app)?;
+            task.handle_child_output(child).await
+        });
+    }
+
+    pub fn install_package(&self, container: &Container, path: &Path) {
+        let Some(distro) = container.distro() else {
+            tracing::error!(
+                container = %container.name(),
+                "Cannot install package: distro information not available"
+            );
+            return;
+        };
+
+        let this = self.clone();
+        let package_manager = distro.package_manager();
+        let path_clone = path.to_owned();
+        let name_for_task = container.name();
+        let name = name_for_task.clone();
+        self.create_task(&name_for_task, "install", move |task| async move {
+            task.set_description(format!("Installing {:?}", path_clone));
+            // The file provided from the portal is under /run/user/1000 which is not accessible by root.
+            // We can copy the file as a normal user to /tmp and then install.
+
+            let enter_cmd = this.distrobox().enter_cmd(&name);
+
+            // the file of the package must have the correct extension (.deb for apt-get).
+            // Use original filename or generate one with proper extension
+            let filename = path_clone
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| {
+                    format!(
+                        "package{}",
+                        package_manager.installable_file().unwrap_or("")
+                    )
+                });
+            let tmp_path = format!("/tmp/com.ranfdev.DistroShelf.{}", filename);
+            let tmp_path = Path::new(&tmp_path);
+            let cp_cmd_pure = Command::new_with_args("cp", [&path_clone, tmp_path]);
+
+            let Some(install_cmd_pure) = package_manager.install_cmd(tmp_path) else {
+                anyhow::bail!(
+                    "Package manager {:?} does not support installing files",
+                    package_manager
+                );
+            };
+
+            let mut cp_cmd = enter_cmd.clone();
+            cp_cmd.extend("--", &cp_cmd_pure);
+            let mut install_cmd = enter_cmd.clone();
+            install_cmd.extend("--", &install_cmd_pure);
+
+            this.spawn_terminal_cmd(name.clone(), &cp_cmd).await?;
+            this.spawn_terminal_cmd(name, &install_cmd).await
+        });
+    }
+
+    pub fn export_app(&self, container: &Container, desktop_file_path: &str) {
+        let this = self.clone();
+        let container = container.clone();
+        let desktop_file_path = desktop_file_path.to_string();
+        self.create_task(&container.name(), "export", move |_task| async move {
+            this.distrobox()
+                .export_app(&container.name(), &desktop_file_path)
+                .await?;
+            container.apps().refetch();
+            Ok(())
+        });
+    }
+
+    pub fn unexport_app(&self, container: &Container, desktop_file_path: &str) {
+        let this = self.clone();
+        let container = container.clone();
+        let desktop_file_path = desktop_file_path.to_string();
+        self.create_task(&container.name(), "unexport", move |_task| async move {
+            this.distrobox()
+                .unexport_app(&container.name(), &desktop_file_path)
+                .await?;
+            container.apps().refetch();
+            Ok(())
+        });
+    }
+
+    pub fn export_binary(&self, container: &Container, binary_path: &str) -> DistroboxTask {
+        let this = self.clone();
+        let container = container.clone();
+        let binary_path = binary_path.to_string();
+        self.create_task(
+            &container.name(),
+            "export-binary",
+            move |_task| async move {
+                this.distrobox()
+                    .export_binary(&container.name(), &binary_path)
+                    .await?;
+                container.binaries().refetch();
+                Ok(())
+            },
+        )
+    }
+
+    pub fn unexport_binary(&self, container: &Container, binary_path: &str) {
+        let this = self.clone();
+        let container = container.clone();
+        let binary_path = binary_path.to_string();
+        self.create_task(
+            &container.name(),
+            "unexport-binary",
+            move |_task| async move {
+                this.distrobox()
+                    .unexport_binary(&container.name(), &binary_path)
+                    .await?;
+                container.binaries().refetch();
+                Ok(())
+            },
+        );
+    }
+
+    pub fn delete_container(&self, container: &Container) {
+        let name_for_task = container.name();
+        let name = name_for_task.clone();
+        let this = self.clone();
+        self.create_task(&name_for_task, "delete", move |_task| async move {
+            this.distrobox().remove(&name).await?;
+            Ok(())
+        });
+    }
+
+    pub fn stop_container(&self, container: &Container) {
+        let name_for_task = container.name();
+        let name = name_for_task.clone();
+        let this = self.clone();
+        self.create_task(&name_for_task, "stop", move |_task| async move {
+            this.distrobox().stop(&name).await?;
+            Ok(())
+        });
+    }
+
+    pub fn spawn_container_terminal(&self, container: &Container) -> DistroboxTask {
+        let name_for_task = container.name();
+        let name = name_for_task.clone();
+        let this = self.clone();
+        self.create_task(&name_for_task, "spawn-terminal", move |_task| async move {
+            let enter_cmd = this.distrobox().enter_cmd(&name);
+            this.spawn_terminal_cmd(name, &enter_cmd).await
+        })
+    }
+
     pub fn upgrade_all(&self) {
         for container in self.containers().iter() {
-            container.upgrade();
+            self.upgrade_container(&container);
         }
     }
 

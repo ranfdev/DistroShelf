@@ -25,7 +25,7 @@ use crate::dialogs::{
 use crate::i18n::gettext;
 use crate::models::{Container, DialogParams, DialogType};
 use crate::root_store::RootStore;
-use crate::widgets::{SidebarRow, TasksButton};
+use crate::widgets::{IntegratedTerminal, SidebarRow, TasksButton};
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{Properties, derived_properties};
@@ -33,6 +33,7 @@ use gtk::gio::ActionEntry;
 use gtk::glib::clone;
 use gtk::{gio, glib};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use tracing::info;
 
 mod imp {
@@ -78,6 +79,7 @@ mod imp {
         pub overview_bin: TemplateChild<adw::Bin>,
         #[template_child]
         pub terminal_bin: TemplateChild<adw::Bin>,
+        pub terminals_by_container: RefCell<HashMap<String, IntegratedTerminal>>,
     }
 
     #[glib::object_subclass]
@@ -170,7 +172,7 @@ impl DistroShelfWindow {
                         let Some(container) = this_clone.root_store().selected_container() else {
                             return;
                         };
-                        ExportableAppsDialog::new(&container).upcast()
+                        ExportableAppsDialog::new(root_store, &container).upcast()
                     }
                     DialogType::CreateDistrobox => {
                         let dialog = CreateDistroboxDialog::new(
@@ -199,10 +201,15 @@ impl DistroShelfWindow {
         this.imp()
             .view_stack
             .connect_visible_child_notify(move |stack| {
-                if stack.visible_child_name().as_deref() == Some("terminal")
-                    && let Some(container) = this_clone.root_store().selected_container()
-                {
-                    container.terminal().spawn_terminal();
+                if stack.visible_child_name().as_deref() == Some("terminal") {
+                    if let Some(terminal) = this_clone
+                        .imp()
+                        .terminal_bin
+                        .child()
+                        .and_then(|w| w.downcast::<IntegratedTerminal>().ok())
+                    {
+                        terminal.spawn_terminal();
+                    }
                 } else {
                     this_clone.root_store().enable_shortcuts();
                 }
@@ -263,7 +270,7 @@ impl DistroShelfWindow {
             }),
             a("upgrade-container").activate(|this, _, _| {
                 if let Some(container) = this.root_store().selected_container() {
-                    let task = container.upgrade();
+                    let task = this.root_store().upgrade_container(&container);
                     this.root_store().view_task(&task);
                 }
             }),
@@ -275,7 +282,7 @@ impl DistroShelfWindow {
             }),
             a("stop-container").activate(|this, _, _| {
                 if let Some(container) = this.root_store().selected_container() {
-                    container.stop();
+                    this.root_store().stop_container(&container);
                 }
             }),
             a("delete-container").activate(|this, _, _| {
@@ -329,7 +336,8 @@ impl DistroShelfWindow {
         });
 
         imp.sidebar_list_view.set_factory(Some(&factory));
-        imp.sidebar_list_view.set_model(Some(&self.root_store().selected_container_model()));
+        imp.sidebar_list_view
+            .set_model(Some(&self.root_store().selected_container_model()));
         imp.sidebar_list_view.connect_activate(clone!(
             #[weak(rename_to = this)]
             self,
@@ -398,27 +406,26 @@ impl DistroShelfWindow {
     }
 
     fn open_terminal(&self) {
-        let task = self
-            .root_store()
-            .selected_container()
-            .unwrap()
-            .spawn_terminal();
-        let this = self.clone();
-        task.connect_status_notify(move |task| {
-            if task.error().is_some() {
-                let toast = adw::Toast::new(&gettext("Check your terminal settings."));
-                toast.set_button_label(Some(&gettext("Preferences")));
-                toast.connect_button_clicked(clone!(
-                    #[weak]
-                    this,
-                    move |_| {
-                        this.root_store()
-                            .set_current_dialog(DialogType::Preferences);
-                    }
-                ));
-                this.add_toast(toast);
-            }
-        });
+        let root_store = self.root_store();
+        if let Some(container) = root_store.selected_container() {
+            let task = root_store.spawn_container_terminal(&container);
+            let this = self.clone();
+            task.connect_status_notify(move |task| {
+                if task.error().is_some() {
+                    let toast = adw::Toast::new(&gettext("Check your terminal settings."));
+                    toast.set_button_label(Some(&gettext("Preferences")));
+                    toast.connect_button_clicked(clone!(
+                        #[weak]
+                        this,
+                        move |_| {
+                            this.root_store()
+                                .set_current_dialog(DialogType::Preferences);
+                        }
+                    ));
+                    this.add_toast(toast);
+                }
+            });
+        }
     }
 
     fn build_delete_dialog(&self) {
@@ -445,7 +452,7 @@ impl DistroShelfWindow {
                 self,
                 move |dialog, _| {
                     if let Some(container) = this.root_store().selected_container() {
-                        container.delete();
+                        this.root_store().delete_container(&container);
                         this.root_store()
                             .selected_container_model()
                             .set_selected(gtk::INVALID_LIST_POSITION);
@@ -460,6 +467,7 @@ impl DistroShelfWindow {
 
     fn build_install_package_dialog(&self) {
         if let Some(container) = self.root_store().selected_container() {
+            let root_store = self.root_store();
             // Show file chooser and install package using the appropriate command
             let file_dialog = gtk::FileDialog::builder()
                 .title(gettext("Select Package"))
@@ -473,7 +481,7 @@ impl DistroShelfWindow {
                         && let Some(path) = file.path()
                     {
                         info!(container = %container.name(), path = %path.display(), "Installing package into container");
-                        container.install(&path);
+                        root_store.install_package(&container, &path);
                     }
                 },
             );
@@ -485,7 +493,16 @@ impl DistroShelfWindow {
 
         let container_overview = crate::widgets::ContainerOverview::new(container);
         imp.overview_bin.set_child(Some(&container_overview));
-        imp.terminal_bin.set_child(Some(&container.terminal()));
+
+        let container_name = container.name();
+        let terminal = {
+            let mut terminals_by_container = imp.terminals_by_container.borrow_mut();
+            terminals_by_container
+                .entry(container_name.clone())
+                .or_insert_with(|| IntegratedTerminal::new(&container_name, &self.root_store()))
+                .clone()
+        };
+        imp.terminal_bin.set_child(Some(&terminal));
 
         // Switch to overview page
         imp.view_stack.set_visible_child_name("overview");

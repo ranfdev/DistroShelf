@@ -98,6 +98,7 @@ impl DesktopFiles {
     }
 }
 
+#[derive(Clone)]
 pub struct Distrobox {
     cmd_runner: CommandRunner,
     cmd_factory: CmdFactory,

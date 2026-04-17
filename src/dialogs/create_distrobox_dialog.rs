@@ -478,7 +478,7 @@ impl CreateDistroboxDialog {
                     if let Ok(create_args) = res {
                         // If cloning from a source, delegate to clone_container, otherwise create normally
                         if let Some(src) = this.clone_src() {
-                            src.stop();
+                            this.root_store().stop_container(&src);
                             this.root_store().clone_container(&src.name(), create_args);
                         } else {
                             this.root_store().create_container(create_args);

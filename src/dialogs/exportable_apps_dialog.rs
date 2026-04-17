@@ -8,9 +8,9 @@ use crate::backends::{ExportableApp, ExportableBinary};
 use crate::fakers::Command;
 use crate::gtk_utils::{TypedListStore, reaction};
 use crate::i18n::gettext;
-use crate::models::Container;
+use crate::models::{Container, RootStore};
 
-use std::cell::RefCell;
+use std::cell::{OnceCell, RefCell};
 
 use glib::VariantTy;
 use gtk::glib::{Properties, derived_properties};
@@ -21,6 +21,8 @@ mod imp {
     #[derive(Default, Properties)]
     #[properties(wrapper_type=super::ExportableAppsDialog)]
     pub struct ExportableAppsDialog {
+        #[property(get, set, construct_only)]
+        pub root_store: OnceCell<RootStore>,
         #[property(get, set)]
         pub container: RefCell<Container>,
         pub dialog: adw::Dialog,
@@ -148,7 +150,8 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let file_path = target.unwrap().str().unwrap();
-                    this.container().export(file_path);
+                    let container = this.container();
+                    this.root_store().export_app(&container, file_path);
                 },
             );
             klass.install_action(
@@ -156,7 +159,8 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let file_path = target.unwrap().str().unwrap();
-                    this.container().unexport(file_path);
+                    let container = this.container();
+                    this.root_store().unexport_app(&container, file_path);
                 },
             );
             klass.install_action(
@@ -164,7 +168,8 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let binary_path = target.unwrap().str().unwrap();
-                    this.container().export_binary(binary_path);
+                    let container = this.container();
+                    this.root_store().export_binary(&container, binary_path);
                 },
             );
             klass.install_action(
@@ -172,7 +177,8 @@ mod imp {
                 Some(VariantTy::STRING),
                 |this, _action, target| {
                     let binary_path = target.unwrap().str().unwrap();
-                    this.container().unexport_binary(binary_path);
+                    let container = this.container();
+                    this.root_store().unexport_binary(&container, binary_path);
                 },
             );
         }
@@ -190,7 +196,10 @@ glib::wrapper! {
 impl ExportableAppsDialog {
     /// Check if a binary exists on the host system
     /// Handles both binary names (e.g., "nvim") and paths (e.g., "/usr/bin/nvim")
-    async fn binary_exists_on_host(container: &Container, binary_name_or_path: &str) -> bool {
+    async fn binary_exists_on_host(
+        command_runner: crate::fakers::CommandRunner,
+        binary_name_or_path: &str,
+    ) -> bool {
         // If it contains a '/', treat it as a path
         if binary_name_or_path.contains('/') {
             // For paths, we need to check on the host using a command
@@ -205,7 +214,6 @@ impl ExportableAppsDialog {
             let mut cmd = Command::new("test");
             cmd.args(["-e", &expanded_path]);
 
-            let command_runner = container.root_store().command_runner();
             if let Ok(output) = command_runner.output(cmd).await {
                 output.status.success()
             } else {
@@ -216,7 +224,6 @@ impl ExportableAppsDialog {
             let mut cmd = Command::new("which");
             cmd.arg(binary_name_or_path);
 
-            let command_runner = container.root_store().command_runner();
             if let Ok(output) = command_runner.output(cmd).await {
                 output.status.success()
             } else {
@@ -225,8 +232,9 @@ impl ExportableAppsDialog {
         }
     }
 
-    pub fn new(container: &Container) -> Self {
+    pub fn new(root_store: &RootStore, container: &Container) -> Self {
         let this: Self = glib::Object::builder()
+            .property("root-store", root_store)
             .property("container", container)
             .build();
 
@@ -344,11 +352,10 @@ impl ExportableAppsDialog {
                 if !binary_name.is_empty() {
                     let this = this_clone.clone();
                     let binary_name_clone = binary_name.clone();
-                    let container = this_clone.container();
-
                     // Check if binary exists on host and show confirmation dialog if needed
                     glib::spawn_future_local(async move {
-                        let exists = Self::binary_exists_on_host(&container, &binary_name).await;
+                        let command_runner = this.root_store().command_runner();
+                        let exists = Self::binary_exists_on_host(command_runner, &binary_name).await;
 
                         if exists {
                             // Show confirmation dialog
@@ -392,7 +399,8 @@ impl ExportableAppsDialog {
 
     /// Helper method to perform the actual export of a binary
     fn do_export_binary(&self, binary_name: &str) {
-        let task = self.container().export_binary(binary_name);
+        let container = self.container();
+        let task = self.root_store().export_binary(&container, binary_name);
 
         // Monitor task status to show error toasts
         let this = self.clone();
@@ -468,7 +476,8 @@ impl ExportableAppsDialog {
             #[strong]
             app,
             move |_| {
-                this.container().launch(app.clone());
+                let container = this.container();
+                this.root_store().launch_app(&container, app.clone());
             }
         ));
 
