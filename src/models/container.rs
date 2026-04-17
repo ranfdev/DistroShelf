@@ -16,6 +16,8 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::time::Duration;
 
+
+
 mod imp {
     use crate::widgets::IntegratedTerminal;
 
@@ -104,6 +106,11 @@ impl Container {
             .build();
 
         this.apply_container_info(value);
+
+        let container_name = this.name();
+        this.apps().set_resource_key(&format!("{container_name}:apps"));
+        this.binaries().set_resource_key(&format!("{container_name}:binaries"));
+        this.usage().set_resource_key(&format!("{container_name}:usage"));
 
         let this_clone = this.clone();
         this.apps().set_fetcher(move || {
