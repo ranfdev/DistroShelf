@@ -1,5 +1,6 @@
 [Desktop Entry]
 Name=DistroShelf
+Comment=Graphical interface for managing Distrobox containers
 Exec=distroshelf
 Icon=com.ranfdev.DistroShelf
 Terminal=false
