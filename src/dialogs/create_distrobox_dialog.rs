@@ -190,11 +190,11 @@ mod imp {
 
             // Add pages to view stack
             self.view_stack
-                .add_titled(&guided_page, Some("create"), "Guided");
+                .add_titled(&guided_page, Some("create"), &gettext("Guided"));
             self.view_stack
-                .add_titled(&assemble_page, Some("assemble-file"), "From File");
+                .add_titled(&assemble_page, Some("assemble-file"), &gettext("From File"));
             self.view_stack
-                .add_titled(&url_page, Some("assemble-url"), "From URL");
+                .add_titled(&url_page, Some("assemble-url"), &gettext("From URL"));
 
             // Create a box to hold the view switcher and content
             let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -225,7 +225,7 @@ mod imp {
             toolbar_view.set_vexpand(true);
             toolbar_view.set_content(Some(&self.toast_overlay));
 
-            let page = adw::NavigationPage::new(toolbar_view, "Create a Distrobox");
+            let page = adw::NavigationPage::new(toolbar_view, &gettext("Create a Distrobox"));
             navigation_view.add(&page);
             self.obj().set_child(Some(navigation_view));
 

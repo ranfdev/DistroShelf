@@ -99,7 +99,7 @@ mod imp {
 
             self.navigation_view.add(&adw::NavigationPage::new(
                 &self.toolbar_view,
-                "Manage Tasks",
+                &gettext("Manage Tasks"),
             ));
             let this = self.obj().clone();
             if root_store.tasks().is_empty() {
@@ -135,7 +135,7 @@ mod imp {
                     }
                     this.imp()
                         .navigation_view
-                        .push(&adw::NavigationPage::new(stv, "Task Details"));
+                        .push(&adw::NavigationPage::new(stv, &gettext("Task Details")));
                 }
             });
             let this = self.obj().clone();

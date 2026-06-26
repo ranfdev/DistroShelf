@@ -1,3 +1,4 @@
+use crate::i18n::gettext;
 use crate::models::{DialogType, DistroboxTask, RootStore};
 use adw::prelude::*;
 use adw::subclass::prelude::*;
@@ -44,7 +45,7 @@ mod imp {
 
             // Create a horizontal box with a "Tasks" label and warning icon
             let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-            let label = gtk::Label::new(Some("Tasks"));
+            let label = gtk::Label::new(Some(&gettext("Tasks")));
             let warning_icon = &self.warning_icon;
             warning_icon.set_hexpand(true);
             warning_icon.set_halign(gtk::Align::End);
