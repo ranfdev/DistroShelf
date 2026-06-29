@@ -12,6 +12,7 @@ src/dialogs/task_manager_dialog.rs
 src/widgets/container_overview.rs
 src/widgets/image_row_item.rs
 src/widgets/integrated_terminal.rs
+src/widgets/tasks_button.rs
 src/widgets/terminal_combo_row.rs
 src/widgets/welcome_view.rs
 src/widgets/welcome_view.ui
