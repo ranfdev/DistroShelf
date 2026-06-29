@@ -1,0 +1,1183 @@
+# Chinese translations for distroshelf package
+# distroshelf 套件的正體中文翻譯.
+# Copyright (C) 2026 THE distroshelf'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the distroshelf package.
+# Kisaragi Hiu <mail@kisaragi-hiu.com>, 2026.
+#
+# SPDX-FileCopyrightText: 2026 Kisaragi Hiu <mail@kisaragi-hiu.com>
+msgid ""
+msgstr ""
+"Project-Id-Version: distroshelf\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-27 04:10+0900\n"
+"PO-Revision-Date: 2026-06-27 04:40+0900\n"
+"Last-Translator: Kisaragi Hiu <mail@kisaragi-hiu.com>\n"
+"Language-Team: Traditional Chinese <zh-l10n@lists.slat.org>\n"
+"Language: zh_TW\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Lokalize 26.07.70\n"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:2
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:7 src/widgets/window.ui:30
+msgid "DistroShelf"
+msgstr "DistroShelf"
+
+#: data/com.ranfdev.DistroShelf.desktop.in:8
+msgid "GTK;"
+msgstr "GTK;"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:6
+msgid "Selected terminal emulator"
+msgstr "所選終端機模擬器"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:7
+msgid "The terminal emulator selected by the user."
+msgstr "使用者所選取的終端機模擬器。"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:11
+msgid "Window width"
+msgstr "視窗寬度"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:12
+msgid "The width of the main window when last closed."
+msgstr "主視窗上次關閉時的寬度。"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:16
+msgid "Window height"
+msgstr "視窗高度"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:17
+msgid "The height of the main window when last closed."
+msgstr "主視窗上次關閉時的高度。"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:21
+msgid "Distrobox executable source"
+msgstr "Distrobox 執行檔來源"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:22
+msgid "The source of the distrobox executable. Can be 'host' or 'bundled'."
+msgstr "Distrobox 執行檔的來源。可以是 'host' 或是 'bundled'。"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:26
+msgid "Use --no-entry when creating a distrobox"
+msgstr "建立 Distrobox 容器時使用 --no-entry"
+
+#: data/com.ranfdev.DistroShelf.gschema.xml:27
+msgid "When enabled, distrobox create commands include --no-entry by default."
+msgstr "啟用時，distrobox create 指令會預設包含 --no-entry 選項。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:8
+msgid "Graphical interface for managing Distrobox containers"
+msgstr "管理 Distrobox 容器用的圖形介面"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:10
+msgid ""
+"DistroShelf is a graphical interface for managing Distrobox containers on "
+"Linux. It provides an easy way to:"
+msgstr "DistroShelf 是一個在 Linux 上管理 Distrobox 容器的圖形介面。它支援以下功能："
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:15
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:322
+msgid "Create and manage containers"
+msgstr "建立與管理容器"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:16
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:323
+msgid "View container status and details"
+msgstr "檢視容器狀態與詳細資料"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:17
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:324
+msgid "Install packages"
+msgstr "安裝套件"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:18
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:325
+msgid "Manage exported applications"
+msgstr "管理已匯出的應用程式"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:19
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:326
+msgid "Open terminal sessions"
+msgstr "開啟終端機工作階段"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:20
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:327
+msgid "Upgrade containers"
+msgstr "更新容器"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:21
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:328
+msgid "Clone and delete containers"
+msgstr "刪除容器或建立容器複本"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:86
+msgid "Fix: Correct container selection behavior."
+msgstr "修正：修正容器選取行為。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:87
+msgid "Improved: Disable app shortcuts while integrated terminal is focused."
+msgstr "改善：聚焦內嵌終端機時停用應用程式快捷鍵。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:88
+msgid ""
+"Changed: Remove privileged container support to restore safer and more "
+"predictable container creation behavior."
+msgstr "修改：移除對於提升權限容器的支援，以恢復容器建立的安全性與可預測性。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:95
+msgid ""
+"Fix: Increase exported apps timeout to 10s to prevent timeout errors when "
+"having lots of apps"
+msgstr "修正：提高應用程式匯出逾時到 10 秒，來避免在有許多應用程式時發生逾時錯誤"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:96
+msgid "Fix: Prevent crashes in downloader commands due to path UTF-8 handling"
+msgstr "修正：防止下載器指令由於路徑 UTF-8 處理發生崩潰"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:97
+msgid "Fix: Improve error propagation in distrobox task output handling"
+msgstr "修正：改善 distrobox 工作項目輸出處理的錯誤傳遞"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:98
+msgid "Fix: Harden terminal combo row signal handling for better stability"
+msgstr "修正：讓終端機組合列的訊號處理更堅固與穩定"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:105
+msgid "Feature: Add --no-entry preference (now enabled by default)"
+msgstr "功能：新增 --no-entry 偏好設定（現在預設啟用）"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:106
+msgid "Fix: embed more symbolic icons so that they show correctly on Bazzite"
+msgstr "修正：內嵌更多符號圖示，確保它們能在 Bazzite 上正確顯示"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:107
+msgid "Fix: avoid overwriting preferred flatpak terminal selection on startup"
+msgstr "修正：避免在啟動時覆寫偏好使用哪個 Flatpak 終端機"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:114
+msgid "Fix: enable search path flag in integrated terminal."
+msgstr "修正：在內嵌終端機裡啟用搜尋路徑旗標。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:121
+msgid ""
+"Fix: lookup env from host when spawning integrated terminal (fixes build on "
+"NixOS)."
+msgstr "修正：啟動內嵌終端機時從主系統查詢環境（修正 NixOS 上的建置）。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:128
+msgid "Fix: Show container view when selecting a container on small screens."
+msgstr "修正：在小螢幕上選取容器時顯示容器檢視。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:135
+msgid "Fix: Added empty status page when no Distroboxes are selected."
+msgstr "修正：新增空白狀態頁面，用於沒有選取任何 Distrobox 容器的時候。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:136
+msgid "Fix: Copy image URL to clipboard correctly."
+msgstr "修正：正確地複製映像檔連結到剪貼簿。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:143
+msgid "Fix: Exported apps are now loaded correctly across distros"
+msgstr "修正：讓匯出的應用程式在不同發行版都能正確載入"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:150
+msgid "New: Added .ini file preview with approval for assembly from URL."
+msgstr "新增：新增從網址組建時的 .ini 檔案預覽，以便確認是否接受"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:151
+msgid "New: Added keyboard shortcuts dialog."
+msgstr "新增：新增鍵盤快捷鍵對話框。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:152
+msgid ""
+"New: Added \"Update Distrobox\" button in the sidebar when a bundled update "
+"is available."
+msgstr "新增：在側邊欄新增「更新 Distrobox」按鈕，在有新版隨附 Distrobox 時顯示。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:153
+msgid "Improved: Task terminal now has a scrolled window."
+msgstr "改善：讓工作項目終端機變成可捲動視窗。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:154
+msgid "Improved: Clearer placeholder text in base image search box."
+msgstr "改善：在基底映像檔搜尋介面中提供更清晰的佔位文字。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:155
+msgid ""
+"Improved: Export dialog uses alert dialogs with more context instead of "
+"toasts."
+msgstr "改善：讓匯出對話框使用包含更多前後文的警告對話框而非 toast。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:156
+msgid "Improved: Updated bundled Distrobox to latest version."
+msgstr "改善：將隨附 Distrobox 更新為最新版。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:157
+msgid "Fix: Corrected mixed stdout/stderr output in terminals."
+msgstr "修正：修正終端機混合 stdout 與 stderr 輸出。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:158
+msgid "Fix: Archlinux binary paths now display correctly."
+msgstr "修正：現在會正確顯示 Arch Linux 的執行檔路徑。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:159
+msgid "Fix: Prevented empty dialogs when using bundled Distrobox."
+msgstr "修正：防止使用隨附 Distrobox 時出現空白對話框。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:160
+msgid ""
+"Fix: Added fallback to older bundled Distrobox when latest is not downloaded."
+msgstr "修正：未下載最新版隨附 Distrobox 時改為使用舊版的隨附 Distrobox。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:161
+msgid ""
+"Fix: Restored task detail view clicking in the task manager (regression fix)."
+msgstr "修正：復原在工作項目管理器當中點擊工作時顯示工作項目詳細資料檢視的功能（修正功能退化）。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:162
+msgid "i18n: Updated translations for various UI strings."
+msgstr "i18n：更新諸多介面字串的翻譯。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:169
+msgid ""
+"New: Real VTE-based task output terminal — a read-only embedded terminal "
+"widget to view command output (ANSI aware), with copy/paste support and "
+"color palette matching the theme."
+msgstr ""
+"新增：用真正的基於 VTE 的終端機來顯示工作項目輸出 — 這個唯讀內嵌終端機元件用"
+"來檢視指令輸出（支援 ANSI 序列），並支援複製貼上與符合主題的配色方案。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:170
+msgid ""
+"Improved: Integrated terminal now uses a unified ColorPalette for consistent "
+"appearance across light/dark themes."
+msgstr "改善：內嵌終端機現在使用一致的 ColorPalette（配色盤），讓深色與淺色主題的外觀能一致。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:171
+msgid "Fix: Prevent creating containers with duplicate names."
+msgstr "修正：防止建立相同名稱的容器。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:172
+msgid "Fix: Properly display command stderr output in task output streams."
+msgstr "修正：在工作項目輸出串流當中正確顯示指令 stderr 輸出。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:179
+msgid ""
+"Support for a bundled Distrobox: download, verify and use a bundled "
+"distrobox executable from the app."
+msgstr ""
+"支援使用隨附 Distrobox 版本：從應用程式下載、驗證並使用隨附的 Distrobox 執行"
+"檔。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:180
+msgid "Initial support for launching flatpak terminals"
+msgstr "啟動 Flatpak 終端機的初始支援"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:181
+msgid ""
+"Refactor: move distrobox implementation into a `backends` module and "
+"introduce a `ContainerRuntime` abstraction (Podman / Docker) with automatic "
+"detection."
+msgstr ""
+"重構：將 distrobox 實作移動到一個 `backends`（後端）模組，並新增支援自動偵測"
+"的 `ContainerRuntime`（容器執行環境，Podman / Docker）抽象化概念。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:182
+msgid ""
+"Welcome page and system checks: new page shows runtime and Distrobox status, "
+"with actions to fetch or use a bundled Distrobox."
+msgstr ""
+"歡迎頁面與系統檢查：新頁面會顯示執行環境與 Distrobox 狀態，並提供抓取或使用隨"
+"附 Distrobox 的動作。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:183
+msgid ""
+"Desktop file parsing and app export: safer parsing (hex-encoded payloads) "
+"and include user .local apps when home differs."
+msgstr ".desktop 檔案剖析與應用程式匯出：更安全的剖析（以十六進位編碼的負載）並在家目錄不同時包含使用者 .local 裡面的應用程式。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:184
+msgid ""
+"UI polish: updated window switcher, responsive improvements and task manager "
+"error/status UI updates."
+msgstr "UI 改善：更新視窗切換器、改善響應式設計，並更新工作項目管理器的錯誤與狀態介面。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:185
+msgid "Translations: 7+ translations added."
+msgstr "翻譯：新增超過 7 個翻譯"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:186
+msgid ""
+"Misc: dependency updates, various bug fixes, test adjustments and small "
+"typos corrected."
+msgstr "其他：相依性更新、一些錯誤修正、調整測試，並修復一些小拼字錯誤。"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:193
+msgid "Show container resource usage (CPU and Memory)"
+msgstr "顯示容器資源用量（CPU 與記憶體）"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:194
+msgid "New image picker view with custom image support"
+msgstr "新的映像檔挑選檢視，並且支援自訂映像檔"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:195
+msgid "Indicate already downloaded images in the picker"
+msgstr "在挑選器裡顯示哪些映像檔已下載"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:196
+msgid "Add UI for cloning containers"
+msgstr "新增建立容器複本的介面"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:197
+msgid "Add integrated VTE terminal"
+msgstr "新增內嵌 VTE 終端機"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:198
+msgid "Listen to podman events for real-time updates"
+msgstr "聆聽 podman 事件以便進行即時更新"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:199
+msgid "Fix issues with loading apps by adding timeouts and retries"
+msgstr "加入逾時與重試行為來修正載入應用程式的問題"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:206
+msgid "Save and restore main window size between sessions"
+msgstr "在工作階段間儲存並還原主視窗大小"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:207
+msgid "Add support for exporting binaries"
+msgstr "新增匯出執行檔的支援"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:214
+msgid "Improve lscpi handling with a timeout to avoid blocking operations"
+msgstr "改善 lspci 處理，新增逾時來避免阻擋其他操作"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:215
+msgid "Reduce terminal repository lookup errors from fatal to warnings"
+msgstr "將終端機儲存庫查詢問題的嚴重度從嚴重錯誤降為警告"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:216
+msgid "Added keyboard shortcuts for common actions"
+msgstr "對通用動作新增鍵盤快捷鍵"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:217
+msgid "Switch to GIO actions for window-level commands"
+msgstr "為視窗層級的指令改為使用 GIO 動作"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:218
+msgid "Ignore the development \"plans/\" folder from distribution"
+msgstr "釋出版本時忽略開發用的 \"plans/\" 資料夾"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:219
+msgid ""
+"Refactor dialogs: add and reorganize various dialog modules (create, "
+"exportable apps, preferences, task manager)"
+msgstr ""
+"重構各對話框：新增並整理各對話框模組（建立、可匯出應用程式、偏好設定、工作項"
+"目管理器）"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:226
+msgid "Fix listing apps with whitespace in the name"
+msgstr "修正列出名稱有空格的應用程式時會發生的問題"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:227
+msgid "Add zh_CN translation"
+msgstr "新增簡體中文翻譯"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:228
+msgid "Add qterminal and deepin terminal support"
+msgstr "新增 qterminal 與 Deepin 終端機支援"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:235
+msgid "Improve about dialog"
+msgstr "改善關於對話框"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:242
+msgid "Fix switch rows not working in creation dialog"
+msgstr "修正切換列在建立對話框當中無法正常運作的問題"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:243
+msgid "Auto select nvidia support if nvidia driver is installed"
+msgstr "已安裝 nvidia 驅動程式時自動選取 nvidia 支援"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:244
+msgid "Add tooltips on headerbar buttons to improve accessibility"
+msgstr "對標頭列按鈕新增工具提示以改善無障礙使用"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:245
+msgid "Install additional systemd package when init option is selected"
+msgstr "有選取 init 選項時安裝額外 systemd 套件"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:246
+msgid "Refactor path resolution and command runner abstraction"
+msgstr "重構路徑解決與指令執行器的抽象化"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:253
+msgid "Added command log dialog"
+msgstr "新增指令紀錄對話框"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:260
+msgid "Fixed assemble from file and from url"
+msgstr "修正從檔案或網址的組建"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:261
+msgid "Preview resolved path from host filesystem in assemble dialog"
+msgstr "在組建對話框中預覽解析後的主系統檔案系統路徑"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:268
+msgid "Fixed custom home path resolution"
+msgstr "修正自訂家目錄路徑解析"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:269
+msgid "Add parsing of volume paths"
+msgstr "新增資料卷路徑的剖析"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:276
+msgid "Added support for custom terminal commands"
+msgstr "新增自訂終端機指令支援"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:277
+msgid "Refactored code to improve support of flatpak and non-flatpak versions"
+msgstr "重構程式碼以改善 Flatpak 與非 Flatpak 版本的支援"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:284
+msgid "Added Italian translation"
+msgstr "新增義大利文翻譯"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:285
+msgid "Added Dutch translation"
+msgstr "新增荷蘭語翻譯"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:286
+msgid "Added Ghostty terminal support"
+msgstr "新增 Ghostty 終端機支援"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:287
+msgid "Added Terminator terminal support"
+msgstr "新增 Terminator 終端機支援"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:293
+msgid "Lighter, bigger items in icon"
+msgstr "圖示中使用更亮、更大的項目"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:298
+msgid ""
+"Fix appstream metadata, showing more screenshots and improving banner colors"
+msgstr "修正 appstream 中繼資料，顯示更多螢幕截圖並且改善橫幅色彩"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:304
+msgid "Wait for export commands to finish before reloading app list"
+msgstr "重新載入應用程式清單前等待匯出指令先完成"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:305
+msgid "Close selected task when closing the entire task dialog"
+msgstr "關閉整個工作項目對話框時也關閉所選工作項目"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:306
+msgid "Remove main view of container actions after container is deleted"
+msgstr "容器刪除後移除容器動作的主檢視"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:313
+msgid "Fixed create container button not working"
+msgstr "修正建立容器按鈕無法正常運作的問題"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:314
+msgid ""
+"Fixed continue button in welcome screen not working after having installed "
+"distrobox"
+msgstr "修正歡迎頁面的繼續按鈕在安裝 Distrobox 後卻無法正常運作的問題"
+
+#: data/com.ranfdev.DistroShelf.metainfo.xml.in:320
+msgid "First release"
+msgstr "首次釋出"
+
+#: data/gtk/shortcuts-dialog.ui:6
+msgctxt "shortcut window"
+msgid "General"
+msgstr "一般"
+
+#: data/gtk/shortcuts-dialog.ui:9
+msgctxt "shortcut window"
+msgid "Keyboard Shortcuts"
+msgstr "鍵盤快捷鍵"
+
+#: data/gtk/shortcuts-dialog.ui:15
+msgctxt "shortcut window"
+msgid "Settings"
+msgstr "設定"
+
+#: data/gtk/shortcuts-dialog.ui:21
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "退出"
+
+#: data/gtk/shortcuts-dialog.ui:29
+msgctxt "shortcut window"
+msgid "Containers"
+msgstr "容器"
+
+#: data/gtk/shortcuts-dialog.ui:32
+msgctxt "shortcut window"
+msgid "Refresh"
+msgstr "重新整理"
+
+#: data/gtk/shortcuts-dialog.ui:38
+msgctxt "shortcut window"
+msgid "Upgrade Container"
+msgstr "更新容器"
+
+#: data/gtk/shortcuts-dialog.ui:44
+msgctxt "shortcut window"
+msgid "Upgrade All"
+msgstr "更新全部"
+
+#: data/gtk/shortcuts-dialog.ui:50
+msgctxt "shortcut window"
+msgid "Stop Container"
+msgstr "停止容器"
+
+#: data/gtk/shortcuts-dialog.ui:56
+msgctxt "shortcut window"
+msgid "Delete Container"
+msgstr "刪除容器"
+
+#: data/gtk/shortcuts-dialog.ui:62
+msgctxt "shortcut window"
+msgid "Open Terminal"
+msgstr "開啟終端機"
+
+#: data/gtk/shortcuts-dialog.ui:68
+msgctxt "shortcut window"
+msgid "Install Package"
+msgstr "安裝套件"
+
+#: data/gtk/shortcuts-dialog.ui:74
+msgctxt "shortcut window"
+msgid "View Exportable Apps"
+msgstr "檢視可匯出的應用程式"
+
+#: src/dialogs/command_log_dialog.rs:35 src/dialogs/command_log_dialog.rs:44
+msgid "Command Log"
+msgstr "指令紀錄"
+
+#: src/dialogs/command_log_dialog.rs:62
+msgid ""
+"Executing a single task (eg: listing applications) may require multiple "
+"chains of commands. For debugging purposes, this log shows all commands "
+"executed by the application."
+msgstr ""
+"執行單個工作項目（像是列出應用程式）可能會需要執行許多串的指令。為了方便除"
+"錯，這個紀錄會顯示所有此應用程式所執行的指令。"
+
+#: src/dialogs/create_distrobox_dialog.rs:178
+#: src/dialogs/create_distrobox_dialog.rs:228
+msgid "Create a Distrobox"
+msgstr "建立一個 Distrobox 容器"
+
+#: src/dialogs/create_distrobox_dialog.rs:193
+#: src/dialogs/create_distrobox_dialog.rs:342
+msgid "Guided"
+msgstr "引導"
+
+#: src/dialogs/create_distrobox_dialog.rs:195
+msgid "From File"
+msgstr "從檔案"
+
+#: src/dialogs/create_distrobox_dialog.rs:197
+msgid "From URL"
+msgstr "從網址"
+
+#: src/dialogs/create_distrobox_dialog.rs:318
+#: src/dialogs/create_distrobox_dialog.rs:804
+msgid "No file selected"
+msgstr "沒有選取檔案"
+
+#: src/dialogs/create_distrobox_dialog.rs:325
+msgid "URL is empty"
+msgstr "網址是空的"
+
+#: src/dialogs/create_distrobox_dialog.rs:355
+msgid "Cloning"
+msgstr "正在建立複本"
+
+#: src/dialogs/create_distrobox_dialog.rs:369
+msgid "Cloning the container requires stopping it first"
+msgstr "需要先停止容器才能建立它的複本"
+
+#: src/dialogs/create_distrobox_dialog.rs:376
+msgid "Settings"
+msgstr "設定"
+
+#: src/dialogs/create_distrobox_dialog.rs:377
+msgid "Name"
+msgstr "名稱"
+
+#: src/dialogs/create_distrobox_dialog.rs:379
+msgid "Base Image"
+msgstr "基底映像檔"
+
+#: src/dialogs/create_distrobox_dialog.rs:380
+#: src/dialogs/create_distrobox_dialog.rs:391
+#: src/dialogs/create_distrobox_dialog.rs:521
+#: src/dialogs/create_distrobox_dialog.rs:1073
+msgid "Select an image..."
+msgstr "選取映像檔…"
+
+#: src/dialogs/create_distrobox_dialog.rs:414
+msgid "Select Home Directory"
+msgstr "選取作為家目錄使用的目錄"
+
+#: src/dialogs/create_distrobox_dialog.rs:430
+msgid "Custom Home Directory"
+msgstr "自訂家目錄"
+
+#: src/dialogs/create_distrobox_dialog.rs:446
+msgid "NVIDIA Support"
+msgstr "NVIDIA 支援"
+
+#: src/dialogs/create_distrobox_dialog.rs:448
+msgid "Init process"
+msgstr "Init 程序"
+
+#: src/dialogs/create_distrobox_dialog.rs:450
+msgid "Hostname"
+msgstr "主機名稱"
+
+#: src/dialogs/create_distrobox_dialog.rs:457
+msgid "Advanced"
+msgstr "進階"
+
+#: src/dialogs/create_distrobox_dialog.rs:590
+#: src/dialogs/create_distrobox_dialog.rs:593
+msgid "Assemble from File"
+msgstr "從檔案組建"
+
+#: src/dialogs/create_distrobox_dialog.rs:594
+msgid "Create a container from an assemble file"
+msgstr "從 INI 設定檔案來組建容器"
+
+#: src/dialogs/create_distrobox_dialog.rs:597
+msgid "INI Files"
+msgstr "INI 檔案"
+
+#: src/dialogs/create_distrobox_dialog.rs:604
+msgid "Select Assemble File"
+msgstr "選取建立容器用的 INI 組建檔案"
+
+#: src/dialogs/create_distrobox_dialog.rs:652
+#: src/dialogs/create_distrobox_dialog.rs:655
+msgid "Assemble from URL"
+msgstr "從網址組建"
+
+#: src/dialogs/create_distrobox_dialog.rs:656
+msgid "Create a container from a remote URL"
+msgstr "從遠端網址上的設定檔案來建立容器"
+
+#: src/dialogs/create_distrobox_dialog.rs:659
+msgid "URL"
+msgstr "網址"
+
+#. Create preview section with always-visible text view
+#: src/dialogs/create_distrobox_dialog.rs:666
+msgid "Configuration Preview"
+msgstr "設定預覽"
+
+#: src/dialogs/create_distrobox_dialog.rs:786
+msgid "Create"
+msgstr "建立"
+
+#: src/dialogs/create_distrobox_dialog.rs:881
+msgid "Search or enter custom image..."
+msgstr "搜尋或輸入自訂映像檔…"
+
+#: src/dialogs/create_distrobox_dialog.rs:947
+msgid "Custom"
+msgstr "自訂"
+
+#: src/dialogs/create_distrobox_dialog.rs:1157
+msgid "Volumes"
+msgstr "資料卷"
+
+#: src/dialogs/create_distrobox_dialog.rs:1159
+msgid "Specify volumes in the format 'host_path:container_path'"
+msgstr "用這個格式指定資料卷：'主系統路徑:容器路徑'"
+
+#: src/dialogs/create_distrobox_dialog.rs:1163
+msgid "Add Volume"
+msgstr "新增資料卷"
+
+#: src/dialogs/create_distrobox_dialog.rs:1172
+msgid "Volume"
+msgstr "資料卷"
+
+#: src/dialogs/create_distrobox_dialog.rs:1182
+msgid "Remove Volume"
+msgstr "移除資料卷"
+
+#: src/dialogs/exportable_apps_dialog.rs:47
+msgid "Manage Exports"
+msgstr "管理匯出"
+
+#: src/dialogs/exportable_apps_dialog.rs:64
+msgid "Loading Exports"
+msgstr "正在載入匯出項目"
+
+#: src/dialogs/exportable_apps_dialog.rs:66
+msgid ""
+"Please wait while we load the list of exportable apps and binaries. This may "
+"take some time if the distrobox wasn't running"
+msgstr ""
+"請稍候，正在載入可匯出應用程式與執行檔清單。如果 Distrobox 尚未執行中的話這可"
+"能會花一些時間"
+
+#: src/dialogs/exportable_apps_dialog.rs:78
+msgid "Exportable Apps"
+msgstr "可匯出的應用程式"
+
+#: src/dialogs/exportable_apps_dialog.rs:80
+#: src/dialogs/exportable_apps_dialog.rs:278
+msgid "No exportable apps found"
+msgstr "未找到可匯出的應用程式"
+
+#: src/dialogs/exportable_apps_dialog.rs:84
+msgid "Error loading exportable apps"
+msgstr "載入可匯出的應用程式時發生錯誤"
+
+#: src/dialogs/exportable_apps_dialog.rs:96
+msgid "Export New Binary"
+msgstr "匯出新的執行檔"
+
+#: src/dialogs/exportable_apps_dialog.rs:110
+msgid "Exported Binaries"
+msgstr "已匯出的執行檔"
+
+#: src/dialogs/exportable_apps_dialog.rs:112
+#: src/dialogs/exportable_apps_dialog.rs:306
+msgid "No exported binaries"
+msgstr "沒有匯出的執行檔"
+
+#: src/dialogs/exportable_apps_dialog.rs:117
+msgid "Error loading exported binaries"
+msgstr "載入匯出的執行檔時發生錯誤"
+
+#: src/dialogs/exportable_apps_dialog.rs:363
+msgid "The binary already exists on your host system. Do you want to continue?"
+msgstr "該執行檔已存在於您的主系統。您還是要繼續嗎？"
+
+#: src/dialogs/exportable_apps_dialog.rs:366
+msgid "Binary Already Exists on Host"
+msgstr "執行檔已存在於主系統"
+
+#: src/dialogs/exportable_apps_dialog.rs:369
+#: src/dialogs/preferences_dialog.rs:312 src/dialogs/preferences_dialog.rs:415
+#: src/widgets/window.rs:444
+msgid "Cancel"
+msgstr "取消"
+
+#: src/dialogs/exportable_apps_dialog.rs:370
+msgid "Export Anyway"
+msgstr "還是要匯出"
+
+#: src/dialogs/exportable_apps_dialog.rs:411
+msgid "Failed to export"
+msgstr "匯出失敗"
+
+#: src/dialogs/exportable_apps_dialog.rs:439
+msgid "DistroShelf failed to export the binary because:"
+msgstr "DistroShelf 匯出執行檔失敗，原因："
+
+#: src/dialogs/exportable_apps_dialog.rs:446
+msgid "Unknown error occurred"
+msgstr "發生未知的錯誤"
+
+#: src/dialogs/exportable_apps_dialog.rs:460
+#: src/dialogs/task_manager_dialog.rs:297
+msgid "Close"
+msgstr "關閉"
+
+#: src/dialogs/preferences_dialog.rs:43 src/widgets/window.rs:416
+msgid "Preferences"
+msgstr "偏好設定"
+
+#: src/dialogs/preferences_dialog.rs:49
+msgid "Terminal Settings"
+msgstr "終端機設定"
+
+#. Initialize delete button
+#: src/dialogs/preferences_dialog.rs:57 src/dialogs/preferences_dialog.rs:313
+#: src/widgets/window.rs:445
+msgid "Delete"
+msgstr "刪除"
+
+#. Initialize add terminal button
+#: src/dialogs/preferences_dialog.rs:112
+msgid "Add Custom"
+msgstr "新增自訂終端機"
+
+#: src/dialogs/preferences_dialog.rs:141
+msgid "Distrobox Settings"
+msgstr "Distrobox 設定"
+
+#: src/dialogs/preferences_dialog.rs:144
+msgid "Use --no-entry for new containers"
+msgstr "為新容器使用 --no-entry"
+
+#: src/dialogs/preferences_dialog.rs:146
+msgid "No .desktop app entry is created, so it won't appear in your app list."
+msgstr "不建立 .desktop 應用程式項目，讓它不會出現在您的應用程式清單中。"
+
+#: src/dialogs/preferences_dialog.rs:159
+msgid "Distrobox Source"
+msgstr "Distrobox 來源"
+
+#: src/dialogs/preferences_dialog.rs:161
+msgid "System (host)"
+msgstr "系統（宿主）"
+
+#: src/dialogs/preferences_dialog.rs:161
+msgid "Bundled Version"
+msgstr "隨附版本"
+
+#: src/dialogs/preferences_dialog.rs:186
+msgid "Distrobox Version"
+msgstr "Distrobox 版本"
+
+#: src/dialogs/preferences_dialog.rs:204
+msgid "Not available"
+msgstr "無法使用"
+
+#: src/dialogs/preferences_dialog.rs:219
+msgid "Re-download Bundled"
+msgstr "重新下載隨附版本"
+
+#: src/dialogs/preferences_dialog.rs:307
+msgid "Delete this terminal?"
+msgstr "要刪除這個終端機嗎？"
+
+#: src/dialogs/preferences_dialog.rs:308
+msgid ""
+"This terminal will be removed from the terminal list. This action cannot be "
+"undone."
+msgstr "這個終端機會從終端機清單中移除。這個動作無法復原。"
+
+#: src/dialogs/preferences_dialog.rs:347
+msgid "Terminal removed successfully"
+msgstr "終端機移除成功"
+
+#: src/dialogs/preferences_dialog.rs:353
+msgid "Failed to delete terminal"
+msgstr "刪除終端機失敗"
+
+#: src/dialogs/preferences_dialog.rs:366
+msgid "Add Custom Terminal"
+msgstr "新增自訂終端機"
+
+#: src/dialogs/preferences_dialog.rs:381
+msgid "Terminal Name"
+msgstr "終端機名稱"
+
+#: src/dialogs/preferences_dialog.rs:386
+msgid "Program Path"
+msgstr "程式路徑"
+
+#: src/dialogs/preferences_dialog.rs:391
+msgid "Separator Argument"
+msgstr "分隔符引數"
+
+#: src/dialogs/preferences_dialog.rs:401
+msgid ""
+"The separator argument is used to pass commands to the terminal.\n"
+"Examples: '--' for GNOME Terminal, '-e' for xterm"
+msgstr ""
+"分隔符引數會用來向終端機傳遞指令。\n"
+"例如：GNOME 終端機需要使用 '--'，xterm 則需要使用 '-e'"
+
+#: src/dialogs/preferences_dialog.rs:418
+msgid "Save"
+msgstr "儲存"
+
+#: src/dialogs/preferences_dialog.rs:456
+msgid "All fields are required"
+msgstr "所有欄位都是必要的"
+
+#. Show success toast
+#: src/dialogs/preferences_dialog.rs:476
+msgid "Custom terminal added successfully"
+msgstr "成功新增自訂終端機"
+
+#: src/dialogs/preferences_dialog.rs:490
+msgid "Failed to save terminal"
+msgstr "儲存終端機失敗"
+
+#: src/dialogs/task_manager_dialog.rs:40
+msgid "Running Tasks"
+msgstr "執行中的工作項目"
+
+#: src/dialogs/task_manager_dialog.rs:56
+msgid "No Running Tasks"
+msgstr "沒有執行中的工作項目"
+
+#: src/dialogs/task_manager_dialog.rs:58
+msgid "Tasks such as starting, stopping and upgrading will appear here."
+msgstr "啟動、停止、更新等等的工作項目會顯示於此。"
+
+#: src/dialogs/task_manager_dialog.rs:86
+msgid "Clear Ended Tasks"
+msgstr "清除已結束的工作項目"
+
+#: src/dialogs/task_manager_dialog.rs:102
+msgid "Manage Tasks"
+msgstr "管理工作項目"
+
+#: src/dialogs/task_manager_dialog.rs:138
+msgid "Task Details"
+msgstr "工作項目詳細資料"
+
+#: src/dialogs/task_manager_dialog.rs:286 src/widgets/container_overview.rs:84
+msgid "Stop"
+msgstr "停止"
+
+#: src/widgets/container_overview.rs:74
+msgid "Container Status"
+msgstr "容器狀態"
+
+#: src/widgets/container_overview.rs:78 src/widgets/welcome_view.ui:28
+msgid "Status"
+msgstr "狀態"
+
+#: src/widgets/container_overview.rs:89
+msgid "Open Terminal"
+msgstr "開啟終端機"
+
+#: src/widgets/container_overview.rs:98
+msgid "Resources"
+msgstr "資源"
+
+#: src/widgets/container_overview.rs:128
+msgid "Quick Actions"
+msgstr "快速動作"
+
+#: src/widgets/container_overview.rs:131
+msgid "Upgrade Container"
+msgstr "更新容器"
+
+#: src/widgets/container_overview.rs:133
+msgid "Update all packages"
+msgstr "更新所有套件"
+
+#: src/widgets/container_overview.rs:139
+msgid "Applications"
+msgstr "應用程式"
+
+#: src/widgets/container_overview.rs:141
+msgid "Manage exportable applications"
+msgstr "管理可匯出的應用程式"
+
+#: src/widgets/container_overview.rs:150
+msgid "Install Package"
+msgstr "安裝套件"
+
+#: src/widgets/container_overview.rs:152
+msgid "Install packages into container"
+msgstr "在容器裡安裝套件"
+
+#: src/widgets/container_overview.rs:159
+msgid "Clone Container"
+msgstr "建立容器複本"
+
+#: src/widgets/container_overview.rs:161
+msgid "Create a copy of this container"
+msgstr "建立此容器的複本"
+
+#: src/widgets/container_overview.rs:168
+msgid "Danger Zone"
+msgstr "危險區域"
+
+#: src/widgets/container_overview.rs:172
+msgid "Delete Container"
+msgstr "刪除容器"
+
+#: src/widgets/container_overview.rs:174
+msgid "Permanently remove this container and all its data"
+msgstr "永久刪除這個容器及它的資料"
+
+#: src/widgets/container_overview.rs:208
+msgid "Copy image URL"
+msgstr "複製映像檔網址"
+
+#: src/widgets/container_overview.rs:223
+msgid "Image URL copied"
+msgstr "映像檔網址已複製"
+
+#: src/widgets/image_row_item.rs:42
+msgid "Image already downloaded"
+msgstr "映像檔已經下載"
+
+#: src/widgets/integrated_terminal.rs:129
+msgid "Copy"
+msgstr "複製"
+
+#: src/widgets/integrated_terminal.rs:130
+msgid "Paste"
+msgstr "貼上"
+
+#: src/widgets/integrated_terminal.rs:139
+msgid "Reload Terminal"
+msgstr "重新載入終端機"
+
+#: src/widgets/tasks_button.rs:48
+msgid "Tasks"
+msgstr "工作項目"
+
+#: src/widgets/terminal_combo_row.rs:36
+msgid "Preferred Terminal"
+msgstr "偏好使用的終端機"
+
+#: src/widgets/welcome_view.rs:158 src/widgets/welcome_view.rs:210
+msgid "available"
+msgstr "可用"
+
+#: src/widgets/welcome_view.rs:178
+msgid "Not found - Please install Podman or Docker"
+msgstr "找不到 - 請安裝 Podman 或 Docker"
+
+#: src/widgets/welcome_view.rs:202
+msgid "Bundled version"
+msgstr "隨附版本"
+
+#: src/widgets/welcome_view.rs:204
+msgid "System version"
+msgstr "系統版本"
+
+#: src/widgets/welcome_view.rs:220
+msgid "Not found - Install from system or use bundled version"
+msgstr "找不到 - 請從系統安裝或使用隨附版本"
+
+#: src/widgets/welcome_view.rs:282 src/widgets/welcome_view.rs:283
+#: src/widgets/welcome_view.ui:32 src/widgets/welcome_view.ui:49
+msgid "Checking…"
+msgstr "檢查中…"
+
+#: src/widgets/welcome_view.rs:352
+msgid "Use Bundled Version"
+msgstr "使用隨附版本"
+
+#: src/widgets/welcome_view.rs:355
+msgid "Download failed"
+msgstr "下載失敗"
+
+#: src/widgets/welcome_view.ui:17
+msgid "System Requirements"
+msgstr "系統需求"
+
+#: src/widgets/welcome_view.ui:31
+msgid "Container Runtime"
+msgstr "容器執行環境"
+
+#: src/widgets/welcome_view.ui:48 src/widgets/window.ui:126
+msgid "Distrobox"
+msgstr "Distrobox"
+
+#: src/widgets/welcome_view.ui:93
+msgid "Refresh"
+msgstr "重新整理"
+
+#: src/widgets/welcome_view.ui:103 src/widgets/welcome_view.ui:164
+msgid "Continue"
+msgstr "繼續"
+
+#: src/widgets/welcome_view.ui:142
+msgid "Preferred terminal"
+msgstr "偏好使用的終端機"
+
+#: src/widgets/welcome_view.ui:193
+msgid "Use Bundled Distrobox"
+msgstr "使用隨附的 Distrobox"
+
+#: src/widgets/welcome_view.ui:197 src/widgets/window.ui:70
+msgid "Learn More"
+msgstr "了解更多"
+
+#: src/widgets/window.rs:368
+msgid "Update Distrobox"
+msgstr "更新 Distrobox"
+
+#: src/widgets/window.rs:415
+msgid "Check your terminal settings."
+msgstr "請檢查您的終端機設定。"
+
+#: src/widgets/window.rs:433
+msgid "Delete this container?"
+msgstr "要刪除這個容器嗎？"
+
+#: src/widgets/window.rs:439
+msgid "will be deleted. This action cannot be undone."
+msgstr "會被刪除。這個動作無法復原。"
+
+#: src/widgets/window.rs:473
+msgid "Select Package"
+msgstr "選取套件"
+
+#: src/widgets/window.ui:39 src/widgets/window.ui:80
+msgid "Create Distrobox"
+msgstr "建立 Distrobox 容器"
+
+#: src/widgets/window.ui:47
+msgid "Main Menu"
+msgstr "主選單"
+
+#: src/widgets/window.ui:59
+msgid "No Distroboxes Found"
+msgstr "未找到 Distrobox 容器"
+
+#: src/widgets/window.ui:60
+msgid "Distrobox lets you run any Linux distribution inside your terminal."
+msgstr "Distrobox 讓您在終端機裡執行任何 Linux 發行版。"
+
+#: src/widgets/window.ui:140
+msgid "No Distrobox Selected"
+msgstr "未選取 Distrobox 容器"
+
+#: src/widgets/window.ui:141
+msgid "Select a Distrobox from the sidebar to view its details and terminal."
+msgstr "從側邊欄選取 Distrobox 容器來查看它的細節與終端機。"
+
+#: src/widgets/window.ui:182
+msgid "Overview"
+msgstr "概覽"
+
+#: src/widgets/window.ui:193
+msgid "Terminal"
+msgstr "終端機"
+
+#: src/widgets/window.ui:246
+msgid "_Refresh"
+msgstr "重新整理(_R)"
+
+#: src/widgets/window.ui:250
+msgid "_Upgrade All"
+msgstr "更新全部(_U)"
+
+#: src/widgets/window.ui:254
+msgid "_Command Log"
+msgstr "指令紀錄(_C)"
+
+#: src/widgets/window.ui:260
+msgid "_Settings"
+msgstr "設定(_S)"
+
+#: src/widgets/window.ui:264
+msgid "_Keyboard Shortcuts"
+msgstr "鍵盤快捷鍵(_K)"
+
+#: src/widgets/window.ui:268
+msgid "_About"
+msgstr "關於(_A)"
+
+#: src/widgets/window.ui:272
+msgid "Discover _Distrobox"
+msgstr "探索 _Distrobox"
