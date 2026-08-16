@@ -54,10 +54,36 @@ jobs:
           name: meson-dist
           path: '.flatpak-builder/build/distroshelf/_flatpak_build/meson-dist/*.tar.xz'
 
+      - name: Extract changelog from AppStream metainfo
+        id: changelog
+        run: |
+          python3 - <<'PYEOF' >> "$GITHUB_OUTPUT"
+          import sys, xml.etree.ElementTree as ET
+
+          tag = "${{ github.ref_name }}".lstrip("v")
+          root = ET.parse("data/com.ranfdev.DistroShelf.metainfo.xml.in").getroot()
+          for release in root.findall("./releases/release"):
+              if release.get("version") != tag:
+                  continue
+              lines = []
+              for node in release.find("description"):
+                  if node.tag == "p" and node.text:
+                      lines.append("- " + " ".join(node.text.split()))
+                  elif node.tag == "ul":
+                      for li in node.findall("li"):
+                          if li.text:
+                              lines.append("- " + " ".join(li.text.split()))
+              print("changelog<<CHANGELOG_EOF")
+              print("\n".join(lines))
+              print("CHANGELOG_EOF")
+              sys.exit(0)
+          sys.exit("No release entry found in metainfo for tag " + tag)
+          PYEOF
+
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}      # defaults to this if omitted
           name: Release ${{ github.ref_name }}  # defaults to tag name if omitted
           files: '.flatpak-builder/build/distroshelf/_flatpak_build/meson-dist/*.tar.xz'
-          generate_release_notes: true         # optional: auto-generate notes
+          body: ${{ steps.changelog.outputs.changelog }}
