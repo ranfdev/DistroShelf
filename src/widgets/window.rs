@@ -140,6 +140,34 @@ impl DistroShelfWindow {
         this
     }
 
+    // End-to-end tests drive the window's widgets through these typed
+    // accessors, so they never walk the widget tree; the tree itself stays
+    // private to the window.
+    /// The stack switching between the main and welcome views.
+    #[cfg(test)]
+    pub fn main_stack(&self) -> gtk::Stack {
+        self.imp().main_stack.clone()
+    }
+
+    /// The stack switching between the overview and terminal pages.
+    #[cfg(test)]
+    pub fn view_stack(&self) -> adw::ViewStack {
+        self.imp().view_stack.clone()
+    }
+
+    /// The vte terminal embedded in the terminal page, if a container
+    /// is selected.
+    #[cfg(test)]
+    pub fn embedded_terminal(&self) -> Option<vte4::Terminal> {
+        let terminal = self
+            .imp()
+            .terminal_bin
+            .child()?
+            .downcast::<IntegratedTerminal>()
+            .ok()?;
+        Some(terminal.terminal())
+    }
+
     fn setup(&self) {
         let this = self.clone();
 
@@ -233,6 +261,7 @@ impl DistroShelfWindow {
                         .and_then(|w| w.downcast::<IntegratedTerminal>().ok())
                     {
                         terminal.spawn_terminal();
+                        terminal.focus_terminal();
                     }
                 } else {
                     this_clone.root_store().enable_shortcuts();

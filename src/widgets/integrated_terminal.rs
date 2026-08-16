@@ -217,6 +217,19 @@ impl IntegratedTerminal {
         self.set_child(Some(&terminal_overlay));
     }
 
+    /// The embedded vte terminal widget. Exposed for tests, which assert
+    /// on its focus state.
+    #[cfg(test)]
+    pub fn terminal(&self) -> vte4::Terminal {
+        self.imp().terminal.clone()
+    }
+
+    /// Grabs keyboard focus on the embedded terminal, so keystrokes go
+    /// straight to the shell.
+    pub fn focus_terminal(&self) {
+        self.imp().terminal.grab_focus();
+    }
+
     pub fn spawn_terminal(&self) {
         let imp = self.imp();
 

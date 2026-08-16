@@ -33,12 +33,25 @@ fn register_app_resources() {
 /// against the predefined null command runner of `store_ty` and first-boot
 /// (schema default) null settings.
 fn boot_first_start(store_ty: DistroboxStoreTy) -> (DistroShelfWindow, RootStore) {
+    boot_first_start_with_host_path(store_ty, crate::application::NULL_HOST_DISTROBOX_PATH)
+}
+
+/// Like [`boot_first_start`], but the host distrobox is registered under
+/// `host_path` instead of [`NULL_HOST_DISTROBOX_PATH`]. The integrated
+/// terminal spawns its shell directly through vte (bypassing the command
+/// runner), so tests that switch to the terminal tab must point that spawn
+/// at a path guaranteed not to exist — otherwise they would enter a real
+/// container.
+fn boot_first_start_with_host_path(
+    store_ty: DistroboxStoreTy,
+    host_path: &str,
+) -> (DistroShelfWindow, RootStore) {
     let _ = adw::init();
 
     register_app_resources();
 
     let runner = store_ty
-        .null_command_runner()
+        .null_command_runner_with_host_path(host_path)
         .expect("null store type must provide a command runner");
     let settings = Settings::new_null();
     let root_store = RootStore::new(runner, settings, store_ty.null_file_system());
@@ -48,29 +61,10 @@ fn boot_first_start(store_ty: DistroboxStoreTy) -> (DistroShelfWindow, RootStore
     (window, root_store)
 }
 
-/// The `GtkStack` switching between the "main" and "welcome" views.
-fn main_view_stack(window: &DistroShelfWindow) -> gtk::Stack {
-    fn find(widget: &gtk::Widget) -> Option<gtk::Stack> {
-        if let Some(stack) = widget.downcast_ref::<gtk::Stack>()
-            && stack.child_by_name("welcome").is_some()
-        {
-            return Some(stack.clone());
-        }
-        let mut child = widget.first_child();
-        while let Some(c) = child {
-            if let Some(found) = find(&c) {
-                return Some(found);
-            }
-            child = c.next_sibling();
-        }
-        None
-    }
-    find(window.upcast_ref()).expect("main/welcome view stack not found")
-}
-
 /// All user-visible strings of the currently shown view.
 fn visible_view_strings(window: &DistroShelfWindow) -> Vec<String> {
-    let visible = main_view_stack(window)
+    let visible = window
+        .main_stack()
         .visible_child()
         .expect("view stack has a visible child");
     extract_widget_text(&visible)
@@ -134,7 +128,7 @@ fn test_first_boot_with_host_distrobox_shows_containers() {
         "a working host distrobox must boot into the main view"
     );
     assert_eq!(
-        main_view_stack(&window).visible_child_name().as_deref(),
+        window.main_stack().visible_child_name().as_deref(),
         Some("main")
     );
 
@@ -172,7 +166,7 @@ fn test_first_boot_without_host_distrobox_shows_welcome_requirements() {
         "a missing distrobox must boot into the welcome view"
     );
     assert_eq!(
-        main_view_stack(&window).visible_child_name().as_deref(),
+        window.main_stack().visible_child_name().as_deref(),
         Some("welcome")
     );
 
@@ -205,7 +199,7 @@ fn test_choosing_bundled_distrobox_shows_main_view() {
                 .any(|s| s == "Not found - Install from system or use bundled version")
     });
     assert_eq!(
-        main_view_stack(&window).visible_child_name().as_deref(),
+        window.main_stack().visible_child_name().as_deref(),
         Some("welcome")
     );
 
@@ -214,7 +208,8 @@ fn test_choosing_bundled_distrobox_shows_main_view() {
     // this call once the bundled executable is installed.
     root_store.set_distrobox_source(DistroboxSource::Bundled);
 
-    let welcome_view = main_view_stack(&window)
+    let welcome_view = window
+        .main_stack()
         .child_by_name("welcome")
         .expect("welcome page must exist");
     let continue_buttons = buttons_labeled(&welcome_view, "Continue");
@@ -260,7 +255,7 @@ fn test_choosing_bundled_distrobox_shows_main_view() {
         "choosing the bundled distrobox and continuing must show the main view"
     );
     assert_eq!(
-        main_view_stack(&window).visible_child_name().as_deref(),
+        window.main_stack().visible_child_name().as_deref(),
         Some("main")
     );
 
@@ -274,6 +269,58 @@ fn test_choosing_bundled_distrobox_shows_main_view() {
     }
 
     let _ = save_screenshot_if_requested(&window, "e2e_choosing_bundled_distrobox_main").unwrap();
+
+    window.destroy();
+}
+
+#[gtk::test]
+fn test_switching_to_terminal_tab_focuses_terminal() {
+    // Point the host distrobox at a path that cannot exist: the terminal
+    // tab spawns its shell directly through vte (bypassing the command
+    // runner), and the test must not enter a real container.
+    let (window, root_store) = boot_first_start_with_host_path(
+        DistroboxStoreTy::NullHostWorking,
+        "/nonexistent/distroshelf-test-distrobox",
+    );
+
+    spin_main_context_until(Duration::from_secs(5), || {
+        visible_view_strings(&window).iter().any(|s| s == "Ubuntu")
+    });
+
+    // Select a container so the overview/terminal pages are built.
+    let main = root_store.main_store().expect("main store must exist");
+    main.selected_container_model().set_selected(0);
+    spin_main_context_until(Duration::from_secs(5), || {
+        root_store.selected_container().is_some()
+    });
+
+    // Present the window so the terminal page is mapped (needed for the
+    // focus grab to take effect). We assert on `is_focus()` — the terminal
+    // being the focus widget within the toplevel — rather than
+    // `has_focus()`, which additionally requires the window manager to
+    // grant the toplevel the global input focus and would flake headless.
+    window.present();
+    spin_main_context_until(Duration::from_secs(5), || window.is_mapped());
+
+    let view_stack = window.view_stack();
+    view_stack.set_visible_child_name("terminal");
+    let terminal = window
+        .embedded_terminal()
+        .expect("a selected container must provide an embedded terminal");
+    spin_main_context_until(Duration::from_secs(5), || terminal.is_focus());
+    assert!(
+        terminal.is_focus(),
+        "switching to the terminal tab must focus the embedded terminal"
+    );
+
+    // Switching away and back re-focuses it.
+    view_stack.set_visible_child_name("overview");
+    view_stack.set_visible_child_name("terminal");
+    spin_main_context_until(Duration::from_secs(5), || terminal.is_focus());
+    assert!(
+        terminal.is_focus(),
+        "switching back to the terminal tab must re-focus the embedded terminal"
+    );
 
     window.destroy();
 }

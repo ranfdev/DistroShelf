@@ -163,12 +163,23 @@ impl DistroboxStoreTy {
     /// Predefined `CommandRunner` for the null store types, used by UI
     /// previews and end-to-end tests. Returns `None` for [`Self::Real`].
     pub fn null_command_runner(self) -> Option<CommandRunner> {
+        self.null_command_runner_with_host_path(NULL_HOST_DISTROBOX_PATH)
+    }
+
+    /// Like [`null_command_runner`](Self::null_command_runner), but the host
+    /// distrobox is registered under `host_path` instead of
+    /// [`NULL_HOST_DISTROBOX_PATH`]. Tests use this to point the integrated
+    /// terminal's shell spawn (which vte executes directly, outside the
+    /// command runner) at a path guaranteed not to exist, so switching to
+    /// the terminal tab never launches a real shell.
+    pub fn null_command_runner_with_host_path(self, host_path: &str) -> Option<CommandRunner> {
         let mut builder = NullCommandRunnerBuilder::new();
         match self {
             DistroboxStoreTy::Real => return None,
             DistroboxStoreTy::NullHostWorking => {
                 Self::add_host_distrobox_responses(
                     &mut builder,
+                    host_path,
                     &[
                         DistroboxCommandRunnerResponse::Version,
                         DistroboxCommandRunnerResponse::new_list_common_distros(),
@@ -176,7 +187,7 @@ impl DistroboxStoreTy {
                         DistroboxCommandRunnerResponse::new_common_exported_apps(),
                     ],
                 );
-                Self::add_host_distrobox_path(&mut builder);
+                Self::add_host_distrobox_path(&mut builder, host_path);
                 Self::add_podman(&mut builder);
                 Self::add_terminal(&mut builder);
                 // Make unmatched commands (test -e, etc.) fail so bundled
@@ -186,13 +197,14 @@ impl DistroboxStoreTy {
             DistroboxStoreTy::NullEmpty => {
                 Self::add_host_distrobox_responses(
                     &mut builder,
+                    host_path,
                     &[
                         DistroboxCommandRunnerResponse::Version,
                         DistroboxCommandRunnerResponse::List(vec![]),
                         DistroboxCommandRunnerResponse::new_common_images(),
                     ],
                 );
-                Self::add_host_distrobox_path(&mut builder);
+                Self::add_host_distrobox_path(&mut builder, host_path);
                 Self::add_podman(&mut builder);
                 Self::add_terminal(&mut builder);
                 builder.fallback(ExitStatus::from_raw(1));
@@ -200,6 +212,7 @@ impl DistroboxStoreTy {
             DistroboxStoreTy::NullNoVersion => {
                 Self::add_host_distrobox_responses(
                     &mut builder,
+                    host_path,
                     &[DistroboxCommandRunnerResponse::NoVersion],
                 );
                 // Unmatched commands (test -e, command -v, etc.) should fail
@@ -209,6 +222,7 @@ impl DistroboxStoreTy {
             DistroboxStoreTy::NullHostAndBundledWorking => {
                 Self::add_host_distrobox_responses(
                     &mut builder,
+                    host_path,
                     &[
                         DistroboxCommandRunnerResponse::Version,
                         DistroboxCommandRunnerResponse::new_list_common_distros(),
@@ -216,7 +230,7 @@ impl DistroboxStoreTy {
                         DistroboxCommandRunnerResponse::new_common_exported_apps(),
                     ],
                 );
-                Self::add_host_distrobox_path(&mut builder);
+                Self::add_host_distrobox_path(&mut builder, host_path);
                 Self::add_podman(&mut builder);
                 Self::add_terminal(&mut builder);
                 Self::add_installed_bundled_distrobox(&mut builder);
@@ -269,15 +283,16 @@ impl DistroboxStoreTy {
     }
 
     /// Registers each distrobox response twice: under the bare `distrobox`
-    /// program used before the executable is resolved, and under
-    /// [`NULL_HOST_DISTROBOX_PATH`] used after the host path resolves.
+    /// program used before the executable is resolved, and under `host_path`
+    /// used after the host path resolves.
     /// Program-independent helper commands are registered only once.
     fn add_host_distrobox_responses(
         builder: &mut NullCommandRunnerBuilder,
+        host_path: &str,
         responses: &[DistroboxCommandRunnerResponse],
     ) {
         Self::add_distrobox_responses_filtered(builder, "distrobox", responses, false);
-        Self::add_distrobox_responses_filtered(builder, NULL_HOST_DISTROBOX_PATH, responses, true);
+        Self::add_distrobox_responses_filtered(builder, host_path, responses, true);
     }
 
     fn add_distrobox_responses_filtered(
@@ -298,10 +313,11 @@ impl DistroboxStoreTy {
         }
     }
 
-    fn add_host_distrobox_path(builder: &mut NullCommandRunnerBuilder) {
+    fn add_host_distrobox_path(builder: &mut NullCommandRunnerBuilder, host_path: &str) {
+        let host_path = host_path.to_string();
         builder.cmd_full(
             Command::new_with_args("sh", ["-c", "command -v distrobox"]),
-            || Ok(NULL_HOST_DISTROBOX_PATH.to_string()),
+            move || Ok(host_path.clone()),
         );
     }
 
