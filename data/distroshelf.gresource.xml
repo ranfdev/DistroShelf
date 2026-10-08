@@ -13,6 +13,7 @@
     <file preprocess="xml-stripblanks" alias="view-list-bullet-symbolic.svg">icons/view-list-bullet-symbolic.svg</file>
     
     <file preprocess="xml-stripblanks" alias="alma-symbolic.svg">icons/alma.svg</file>
+    <file preprocess="xml-stripblanks" alias="azurelinux-symbolic.svg">icons/azurelinux.svg</file>
     <file preprocess="xml-stripblanks" alias="arch-symbolic.svg">icons/arch.svg</file>
     <file preprocess="xml-stripblanks" alias="coreos-symbolic.svg">icons/coreos.svg</file>
     <file preprocess="xml-stripblanks" alias="crystal-symbolic.svg">icons/crystal.svg</file>
