@@ -15,6 +15,7 @@ fn build_distros() -> HashMap<String, KnownDistro> {
         ("alpine", "#2147ea", PackageManager::Apk),
         ("amazon", "#de5412", PackageManager::Dnf),
         ("arch", "#12aaff", PackageManager::Pacman),
+        ("azurelinux", "#0078d4", PackageManager::Dnf),
         ("centos", "#ff6600", PackageManager::Dnf),
         ("clearlinux", "#56bbff", PackageManager::Unknown),
         ("crystal", "#8839ef", PackageManager::Unknown),
