@@ -114,6 +114,9 @@ impl IntegratedTerminal {
         // Create context menu actions
         let action_group = gio::SimpleActionGroup::new();
 
+        // Keep the action enabled even without a selection so that the
+        // Ctrl+Shift+C accelerator is consumed here instead of being passed
+        // through to the terminal.
         let copy_action = gio::SimpleAction::new("copy", None);
         copy_action.connect_activate(clone!(
             #[weak]
@@ -121,6 +124,12 @@ impl IntegratedTerminal {
             #[weak(rename_to=this)]
             self,
             move |_, _| {
+                // VTE's copy would place an empty selection on the clipboard,
+                // wiping its previous contents. Do nothing unless there is
+                // something to copy.
+                if !terminal.has_selection() {
+                    return;
+                }
                 terminal.copy_clipboard_format(vte4::Format::Text);
                 if let Some(win) = this.root().and_downcast::<DistroShelfWindow>() {
                     win.add_toast(adw::Toast::new(&gettext("Text copied")));
